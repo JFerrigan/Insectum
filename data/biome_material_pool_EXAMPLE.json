@@ -1,0 +1,75 @@
+{
+  "_note": "All weights illustrative/proposed; this is a data-schema sketch, not designer-approved spawn balance.",
+  "forest": {
+    "material_weights": {
+      "soft_dirt": 45,
+      "packed_dirt": 30,
+      "soft_stone": 10,
+      "clay": 5,
+      "reinforced": 10
+    },
+    "visual_motifs": [
+      "roots",
+      "moss",
+      "leaf litter",
+      "fungi"
+    ]
+  },
+  "swamp": {
+    "material_weights": {
+      "mud": 40,
+      "soft_dirt": 22,
+      "clay": 18,
+      "soft_stone": 10,
+      "reinforced": 10
+    },
+    "visual_motifs": [
+      "reeds",
+      "pools",
+      "vines",
+      "mushrooms"
+    ]
+  },
+  "caves": {
+    "material_weights": {
+      "soft_stone": 42,
+      "hard_stone": 30,
+      "packed_dirt": 10,
+      "metal": 5,
+      "reinforced": 13
+    },
+    "visual_motifs": [
+      "crystal pockets",
+      "stalactites",
+      "old ruins"
+    ]
+  },
+  "desert": {
+    "material_weights": {
+      "sand": 48,
+      "packed_dirt": 20,
+      "soft_stone": 12,
+      "hard_stone": 10,
+      "reinforced": 10
+    },
+    "visual_motifs": [
+      "sandstone",
+      "burrows",
+      "ruined machines"
+    ]
+  },
+  "alien": {
+    "material_weights": {
+      "alien_organic": 50,
+      "metal": 15,
+      "soft_stone": 10,
+      "hard_stone": 10,
+      "reinforced": 15
+    },
+    "visual_motifs": [
+      "original alien flora",
+      "luminescent organisms",
+      "geometric technology"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+id,name,worm_energy_cost_PROPOSED,destructible,candidate_biome_tags
+sand,Sand,3,yes,desert
+soft_dirt,Soft dirt,4,yes,forest
+mud,Mud,5,yes,swamp
+packed_dirt,Packed dirt,7,yes,forest;desert
+clay,Clay,9,yes,swamp
+alien_organic,Alien organic matter,10,yes,alien
+soft_stone,Soft stone,12,yes,caves
+hard_stone,Hard stone,18,yes,caves;desert
+metal,Metal,25,yes,industrial;alien
+reinforced,Reinforced,,no,all

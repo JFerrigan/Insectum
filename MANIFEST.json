@@ -1,0 +1,101 @@
+{
+  "package_name": "Hex Insect Roguelike Design Package",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 2838
+    },
+    {
+      "path": "art/concepts/art_contact_sheet.png",
+      "bytes": 1720469
+    },
+    {
+      "path": "art/concepts/biome_color_guide.png",
+      "bytes": 37766
+    },
+    {
+      "path": "art/concepts/character_lineup_concept.png",
+      "bytes": 134463
+    },
+    {
+      "path": "art/concepts/five_biomes_thumbnail_concepts.png",
+      "bytes": 168792
+    },
+    {
+      "path": "art/concepts/terrain_hex_guide.png",
+      "bytes": 49113
+    },
+    {
+      "path": "art/references/01_preferred_native_pixel_top_left.png",
+      "bytes": 596036
+    },
+    {
+      "path": "art/references/02_chunky_low_resolution.png",
+      "bytes": 140180
+    },
+    {
+      "path": "art/references/03_pixel_source_256x192.png",
+      "bytes": 86634
+    },
+    {
+      "path": "art/references/04_vertical_shop_level.png",
+      "bytes": 2276735
+    },
+    {
+      "path": "art/references/05_boss_arena.png",
+      "bytes": 2504258
+    },
+    {
+      "path": "art/references/06_swamp_level.png",
+      "bytes": 2504597
+    },
+    {
+      "path": "art/references/07_forest_cavern_biopunk.png",
+      "bytes": 2670539
+    },
+    {
+      "path": "art/references/08_four_style_comparison.png",
+      "bytes": 3194986
+    },
+    {
+      "path": "data/biome_material_pool_EXAMPLE.json",
+      "bytes": 1423
+    },
+    {
+      "path": "data/character_balancing_PROPOSED.csv",
+      "bytes": 410
+    },
+    {
+      "path": "data/terrain_materials_PROPOSED.csv",
+      "bytes": 412
+    },
+    {
+      "path": "docs/00_GAME_DESIGN_PLAN.md",
+      "bytes": 8232
+    },
+    {
+      "path": "docs/01_CHARACTERS_AND_ABILITIES.md",
+      "bytes": 8763
+    },
+    {
+      "path": "docs/02_TERRAIN_AND_GENERATION.md",
+      "bytes": 8517
+    },
+    {
+      "path": "docs/03_ITEMS_ECONOMY_AND_ENEMIES.md",
+      "bytes": 7176
+    },
+    {
+      "path": "docs/04_ART_DIRECTION_AND_REFERENCES.md",
+      "bytes": 7534
+    },
+    {
+      "path": "docs/05_IMPLEMENTATION_ROADMAP.md",
+      "bytes": 6509
+    },
+    {
+      "path": "docs/06_OPEN_QUESTIONS_AND_DECISION_LOG.md",
+      "bytes": 5701
+    }
+  ]
+}

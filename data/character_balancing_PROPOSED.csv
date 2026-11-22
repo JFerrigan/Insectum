@@ -1,0 +1,6 @@
+character_id,starting_hearts_PROPOSED,maximum_energy_PROPOSED,ability,energy_cost_PROPOSED,cost_basis,secondary_ability,secondary_cost_PROPOSED,secondary_basis
+jumping_spider,3,100,charged_leap,16,per_leap,climb,3,per_second
+beetle,6,100,shell_block,25,per_heart_blocked,,,
+dragonfly,2,100,flight,14,per_second,,,
+fire_ant,4,100,heavy_attack,15,per_attack,,,
+worm,4,100,dig,material dependent,per_hex,,,
