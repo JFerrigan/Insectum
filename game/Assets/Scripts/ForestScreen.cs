@@ -169,7 +169,7 @@ namespace Insectum.Game
             GUI.DrawTextureWithTexCoords(new Rect(62, 64, 64, 48), ForestArt.Actors,
                 ForestArt.TexCoords(ForestArt.Actors, 0, row * 24, 32, 24));
             Write(session.Run.Character.Name, 134, 66, Light);
-            Write($"{session.Run.World} {session.Run.WorldLevel}/{RunWorlds.LevelsPerWorld}", 134, 78, Mint);
+            Write(DevMode.LevelName(session.Run.LevelNumber), 134, 78, Mint);
             Write($"NEKTAR {session.Run.Inventory.Nektar}", 134, 90, Gold);
             Write($"SEED {session.Run.Seed}", 134, 102, Muted);
             Button(RetryButton, "ENTER RETRY");
@@ -203,7 +203,7 @@ namespace Insectum.Game
             string nektar = run.Inventory.Nektar.ToString();
             int nektarX = 312 - TextWidth(nektar);
             int levelX = nektarX - 20;
-            string level = $"{run.World} {run.WorldLevel}/{RunWorlds.LevelsPerWorld}";
+            string level = DevMode.LevelName(run.LevelNumber);
             Right(level, levelX + 1, 10, Ink);
             Right(level, levelX, 9, Light);
             Write(nektar, nektarX + 1, 10, Ink);

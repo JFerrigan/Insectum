@@ -43,7 +43,7 @@ namespace Insectum.Game
         }
 
         internal static string LevelName(int level) =>
-            $"{RunWorlds.AtLevel(level)} {RunWorlds.LocalLevel(level)}".ToUpperInvariant();
+            $"{RunWorlds.AtLevel(level)} {(Math.Max(1, level) - 1) / RunWorlds.LevelsPerWorld + 1}-{RunWorlds.LocalLevel(level)}".ToUpperInvariant();
 
         // ---------- layout (pixel viewport coordinates, 320x180) ----------
         internal const int PanelX = 2, PanelY = 104, RowHeight = 12;
