@@ -95,8 +95,9 @@ Install macOS Build Support for Unity 6000.3.11f1. Run this from `game/`.
 ```
 
 The output is `Builds/Insectum.app`. Add `-insectum-tunnel-trial-build` to
-write `Builds/Insectum Tunnel Trial.app`. The scene renders to 320×180 and scales
-in whole pixels. Larger windows use letterboxing when needed. With Pillow
+write `Builds/Insectum Tunnel Trial.app`. The game opens in fullscreen. The
+world renders at 480×270 and fills the available 16:9 area with point filtering.
+Other aspect ratios use letterboxing. With Pillow
 installed, run the matching `*_pixels.py` script in `ArtSource` to
 regenerate that world's textures in `Assets/Resources/PixelArt`.
 

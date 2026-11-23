@@ -253,8 +253,8 @@ namespace Insectum.Game
             }
             Rect bounds = space.Bounds;
             // A camera centered near the edge of the board still needs solid rock around the tunnel.
-            float viewHalfWidth = PixelViewport.Width / (2f * PixelViewport.PixelsPerUnit);
-            float viewHalfHeight = PixelViewport.Height / (2f * PixelViewport.PixelsPerUnit);
+            float viewHalfWidth = PixelViewport.WorldHalfWidth;
+            float viewHalfHeight = PixelViewport.WorldHalfHeight;
             int firstRow = Mathf.FloorToInt((bounds.yMin - viewHalfHeight) / HexGrid.RowSpacing) - 1;
             int lastRow = Mathf.CeilToInt((bounds.yMax + viewHalfHeight) / HexGrid.RowSpacing) + 1;
             for (int r = firstRow; r <= lastRow; r++)

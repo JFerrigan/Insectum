@@ -36,15 +36,15 @@ namespace Insectum.Game
             marker = Sprite.Create(markerTexture, new Rect(0f, 0f, 1f, 1f), Vector2.one / 2f, 1f);
             surface = new PhysicsMaterial2D("Player movement") { friction = 0f };
 
-            view = CreateNativeTarget("Insectum 320 x 180");
+            view = CreateNativeTarget("Insectum world");
             nightView = CreateNativeTarget("Insectum night vision");
             nightMaterial = new Material(Resources.Load<Shader>("NightVision"));
             var cameraObject = new GameObject("Forest Camera", typeof(Camera), typeof(AudioListener));
             cameraObject.transform.SetParent(transform, false);
             routeCamera = cameraObject.GetComponent<Camera>();
             routeCamera.orthographic = true;
-            routeCamera.orthographicSize = PixelViewport.Height / (2f * PixelViewport.PixelsPerUnit);
-            routeCamera.aspect = (float)PixelViewport.Width / PixelViewport.Height;
+            routeCamera.orthographicSize = PixelViewport.WorldHalfHeight;
+            routeCamera.aspect = (float)PixelViewport.WorldWidth / PixelViewport.WorldHeight;
             routeCamera.allowHDR = false;
             routeCamera.allowMSAA = false;
             routeCamera.targetTexture = view;
@@ -52,6 +52,7 @@ namespace Insectum.Game
             routeCamera.backgroundColor = new Color32(23, 18, 37, 255);
             routeCamera.transform.position = new Vector3(0f, 0f, -10f);
             backdrop = ForestArt.Place(transform, "Cavern background", Vector2.zero, ForestArt.Backdrop, -20);
+            backdrop.transform.localScale = Vector3.one * ((float)PixelViewport.WorldHeight / PixelViewport.Height);
 
             session = new GameSession(transform, marker, surface);
 
@@ -206,7 +207,7 @@ namespace Insectum.Game
             if (session.NightVisionRadius > 0f && session.Motor != null)
             {
                 Vector3 center = routeCamera.WorldToViewportPoint(session.Motor.Body.position);
-                nightMaterial.SetVector(NightLight, new Vector4(center.x * PixelViewport.Width, center.y * PixelViewport.Height,
+                nightMaterial.SetVector(NightLight, new Vector4(center.x * view.width, center.y * view.height,
                     session.NightVisionRadius * PixelViewport.PixelsPerUnit, 0f));
                 RenderTexture previous = RenderTexture.active;
                 Graphics.Blit(view, nightView, nightMaterial);
@@ -217,7 +218,7 @@ namespace Insectum.Game
         }
 
         private static RenderTexture CreateNativeTarget(string label) =>
-            new(PixelViewport.Width, PixelViewport.Height, 0, RenderTextureFormat.ARGB32)
+            new(PixelViewport.WorldWidth, PixelViewport.WorldHeight, 0, RenderTextureFormat.ARGB32)
             {
                 name = label,
                 antiAliasing = 1,

@@ -64,15 +64,19 @@ namespace Insectum.Game
     {
         internal const int Width = 320;
         internal const int Height = 180;
+        internal const int WorldWidth = Width * 3 / 2;
+        internal const int WorldHeight = Height * 3 / 2;
         internal const float PixelsPerUnit = 16f;
+        internal const float WorldHalfWidth = WorldWidth / (2f * PixelsPerUnit);
+        internal const float WorldHalfHeight = WorldHeight / (2f * PixelsPerUnit);
 
         internal static Rect ScreenRect
         {
             get
             {
-                int scale = Mathf.Max(1, Mathf.Min(Screen.width / Width, Screen.height / Height));
-                int width = Width * scale;
-                int height = Height * scale;
+                float scale = Mathf.Min((float)Screen.width / Width, (float)Screen.height / Height);
+                float width = Width * scale;
+                float height = Height * scale;
                 return new Rect(Mathf.Floor((Screen.width - width) * 0.5f), Mathf.Floor((Screen.height - height) * 0.5f),
                     width, height);
             }

@@ -35,7 +35,7 @@ namespace Insectum.Game
             Application.runInBackground = true;
             LoadScene();
             warmup = 90;
-            Debug.Log($"Insectum terrain profile started. {samples} edits, 60 FPS target, native {PixelViewport.Width}x{PixelViewport.Height} scene.");
+            Debug.Log($"Insectum terrain profile started. {samples} edits, 60 FPS target, native {PixelViewport.WorldWidth}x{PixelViewport.WorldHeight} scene.");
         }
 
         internal static TerrainEditProfile FromArguments(GameSession session)
