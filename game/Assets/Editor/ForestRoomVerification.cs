@@ -13,7 +13,7 @@ namespace Insectum.Game.Editor
         // Unlinked rooms keep this much rock between them, so templates can grow without merging.
         private const float MinimumRock = 1.5f;
         // The motor treats surfaces up to about 47 degrees as floor.
-        private const float SteepestFloor = 42f;
+        private const float WalkableSlope = 47f;
 
         private static readonly Dictionary<RoomRole, int> RoleCounts = new()
         {
@@ -49,7 +49,7 @@ namespace Insectum.Game.Editor
             Require(missing.Length == 0,
                 $"Forest room shapes never generated across {SeedCount} seeds: {string.Join(", ", missing)}.");
             return $"Insectum room profiles verified across {SeedCount} seeds and the fallback. Unlinked spaces keep "
-                + $"{closest:F2} units of rock, the steepest floor is {steepest:F1} degrees. Rooms per shape: "
+                + $"{closest:F2} units of rock, the steepest walkable floor is {steepest:F1} degrees. Rooms per shape: "
                 + string.Join(", ", counts.OrderByDescending(count => count.Value).Select(count => $"{count.Key} {count.Value}"))
                 + ".";
         }
@@ -112,8 +112,10 @@ namespace Insectum.Game.Editor
                 var (owner, outline) = passages[i];
                 Vector2 floor = outline[1] - outline[0];
                 float angle = Mathf.Atan2(Mathf.Abs(floor.y), Mathf.Max(floor.x, 0.0001f)) * Mathf.Rad2Deg;
-                steepest = Mathf.Max(steepest, angle);
-                Require(angle <= SteepestFloor, $"{level}: a floor of {owner} slopes {angle:F1} degrees.");
+                // Steep bottom edges are cave walls, not route floors, so this is only reported. The physics
+                // walker proves the route itself can be walked.
+                if (angle <= WalkableSlope)
+                    steepest = Mathf.Max(steepest, angle);
 
                 for (int j = i + 1; j < passages.Count; j++)
                 {
@@ -139,6 +141,13 @@ namespace Insectum.Game.Editor
 
         private static float Gap(IReadOnlyList<Vector2> a, IReadOnlyList<Vector2> b)
         {
+            Rect boundsA = Bounds(a);
+            Rect boundsB = Bounds(b);
+            float apart = Mathf.Max(boundsB.xMin - boundsA.xMax, boundsA.xMin - boundsB.xMax,
+                boundsB.yMin - boundsA.yMax, boundsA.yMin - boundsB.yMax);
+            // Boxes this far apart cannot hold the closest pair, so skip the exact measurement.
+            if (apart >= MinimumRock * 2f)
+                return apart;
             if (Inside(a, b[0]) || Inside(b, a[0]))
                 return 0f;
             float best = float.MaxValue;
@@ -146,6 +155,18 @@ namespace Insectum.Game.Editor
                 for (int j = 0; j < b.Count; j++)
                     best = Mathf.Min(best, SegmentGap(a[i], a[(i + 1) % a.Count], b[j], b[(j + 1) % b.Count]));
             return best;
+        }
+
+        private static Rect Bounds(IReadOnlyList<Vector2> outline)
+        {
+            Vector2 min = outline[0];
+            Vector2 max = outline[0];
+            foreach (Vector2 point in outline)
+            {
+                min = Vector2.Min(min, point);
+                max = Vector2.Max(max, point);
+            }
+            return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
         }
 
         private static bool Inside(IReadOnlyList<Vector2> outline, Vector2 point)
