@@ -223,6 +223,7 @@ namespace Insectum.Game
 
             // Templates draw from their own stream so adding one never changes a seed's route.
             var roomRandom = new SeededRandom(seeds.Layout ^ RoomSalt);
+            var templateIds = new Dictionary<Vector2Int, string>();
             foreach (var entry in ports)
                 CarveRoom(entry.Key);
             foreach (var link in links)
@@ -239,7 +240,7 @@ namespace Insectum.Game
             {
                 Vector2Int center = ForestTemplates.MacroCenter(coordinate);
                 MacroPort mask = ports.GetValueOrDefault(coordinate);
-                chunks.Add(new MacroChunk(coordinate, center, mask == MacroPort.None ? "Forest.Tunnel.Solid" : "Forest.Tunnel",
+                chunks.Add(new MacroChunk(coordinate, center, mask == MacroPort.None ? "Forest.Tunnel.Solid" : templateIds[coordinate],
                     mask, route.Contains(coordinate)));
                 for (int r = -HexGrid.MacroRadius; r <= HexGrid.MacroRadius; r++)
                 {
@@ -276,7 +277,7 @@ namespace Insectum.Game
             {
                 Vector2Int chunk = route[index];
                 int entry = Side(chunk, route[index - 1]);
-                checkpoints.Add(new RouteCheckpoint(landings[chunk], chunk, (MacroPort)(1 << entry), "Forest.Tunnel"));
+                checkpoints.Add(new RouteCheckpoint(landings[chunk], chunk, (MacroPort)(1 << entry), templateIds[chunk]));
             }
 
             var encounters = new SeededRandom(seeds.Encounters);
@@ -320,6 +321,7 @@ namespace Insectum.Game
             {
                 ForestRoomProfile profile = space.Rooms[chunk];
                 ForestRoomTemplate template = ForestRoomCatalog.Choose(profile, ref roomRandom);
+                templateIds.Add(chunk, template.Id);
                 var room = new ForestRoomBuilder(space, chunk, Center(chunk), profile);
                 template.Carve(room);
                 landings.Add(chunk, room.Landing);
