@@ -72,8 +72,8 @@ namespace Insectum.Game.Editor
             session.Start(worm, 553);
             fixture.Advance(8);
             fixture.Step(new PlayerCommand(abilityPressed: true));
-            Require(session.Terrain.Revision == 0 && session.Run.Energy == 100f && session.Abilities.DigFeedback != null,
-                "Aiming into air must give feedback without changing terrain or spending energy.");
+            Require(session.Terrain.Revision == 0 && session.Run.Energy == 100f && session.Abilities.DigFeedback == null,
+                "Aiming into air must stay silent and preserve terrain and energy.");
             fixture.Advance(9);
             fixture.Step(new PlayerCommand(aim: -1, abilityPressed: true));
             Require(session.Terrain.Revision == 1 && session.Run.Energy == 100f,

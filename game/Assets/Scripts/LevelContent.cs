@@ -44,13 +44,14 @@ namespace Insectum.Game
         public void Consume()
         {
             Available = false;
-            if (art != null)
+            if (art != null && Kind != LevelFeatureKind.Shop)
                 art.gameObject.SetActive(false);
         }
     }
 
     internal sealed class LevelContent
     {
+        private const float ShopPreviewRange = 3f;
         private readonly GameSession session;
         private readonly Transform parent;
         private readonly Sprite pixel;
@@ -233,6 +234,24 @@ namespace Insectum.Game
             foreach (LevelFeature feature in features)
             {
                 if (!feature.Available || !feature.Interactable)
+                    continue;
+                float distance = (feature.Position - position).sqrMagnitude;
+                if (distance >= best)
+                    continue;
+                best = distance;
+                closest = feature;
+            }
+            return closest;
+        }
+
+        internal LevelFeature NearbyShop()
+        {
+            float best = ShopPreviewRange * ShopPreviewRange;
+            LevelFeature closest = null;
+            Vector2 position = session.Motor.Body.position;
+            foreach (LevelFeature feature in features)
+            {
+                if (feature.Kind != LevelFeatureKind.Shop)
                     continue;
                 float distance = (feature.Position - position).sqrMagnitude;
                 if (distance >= best)

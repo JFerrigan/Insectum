@@ -146,13 +146,9 @@ namespace Insectum.Game
                 DigFeedback = null;
                 digFeedbackSteps = 0;
             }
-            else if (command.AbilityPressed || result == ExcavationResult.InsufficientEnergy)
+            else if (result == ExcavationResult.InsufficientEnergy)
             {
-                DigFeedback = result switch
-                {
-                    ExcavationResult.InsufficientEnergy => "Need more energy to dig",
-                    _ => "No terrain in reach"
-                };
+                DigFeedback = "Need more energy to dig";
                 digFeedbackSteps = 60;
             }
             digCooldown = DigIntervalSteps;

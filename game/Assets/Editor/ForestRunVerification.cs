@@ -176,7 +176,10 @@ namespace Insectum.Game.Editor
             RunState run = session.Run;
             fixture.Advance(8);
             LevelFeature shop = session.Content.Features.Single(feature => feature.Kind == LevelFeatureKind.Shop);
-            Require(session.Content.ClosestInteractable() != shop, "The shop prompt appeared outside interaction range.");
+            Require(session.Content.NearbyShop() == null, "The shop offer appeared from too far away.");
+            BiomeVerification.Walk(fixture, () => Near(session, shop.Position, 2.5f), 350);
+            Require(session.Content.NearbyShop() == shop && session.Content.ClosestInteractable() != shop,
+                "Approaching the shop did not reveal its offer before entering purchase range.");
             BiomeVerification.Walk(fixture, () => run.Inventory.Nektar >= shop.Amount && Near(session, shop.Position, 1.2f), 350);
             Require(session.Content.ClosestInteractable() == shop &&
                 session.InteractionPrompt == $"E  Buy {Items.Name(shop.Item)}  ({shop.Amount} Nektar)",
@@ -185,7 +188,8 @@ namespace Insectum.Game.Editor
             fixture.Step(new PlayerCommand(interactPressed: true));
             Require(!shop.Available && run.Inventory.Active == shop.Item && run.Inventory.Nektar == wallet - shop.Amount,
                 "The route pickups did not fund the first shop purchase through E.");
-            Require(session.Content.ClosestInteractable() != shop, "The shop prompt remained after purchase.");
+            Require(session.Content.NearbyShop() == shop && session.Content.ClosestInteractable() != shop,
+                "The sold-out shop did not remain visible or still offered a purchase.");
             ItemId active = run.Inventory.Active;
 
             BiomeVerification.Walk(fixture, () => session.AtExit && session.Motor.Grounded, 500);
