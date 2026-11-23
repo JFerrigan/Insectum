@@ -36,9 +36,8 @@ namespace Insectum.Game
         [SerializeField] private Character[] roster;
 
         [Header("Jumping Spider")]
+        [Min(1)] public float spiderJumpHeightMultiplier = 2f;
         [Min(0)] public float spiderLeapEnergy = 16f;
-        [Min(0)] public float spiderClimbEnergyPerSecond = 3f;
-        [Min(0)] public float spiderLeapSpeed = 16f;
         [Min(0)] public float spiderClimbSpeed = 3.5f;
 
         [Header("Beetle")]

@@ -51,7 +51,8 @@ namespace Insectum.Game.Editor
                 var spec = new EnemySpec("Dune Maw", EnemyStyle.BurrowBoss, 9, 0, 0.84f, Color.white);
                 var boss = new LevelEnemy(null, null, spec, Vector2.zero, 0, null);
                 Vector2 position = new(1.6f, 0.43f);
-                var target = new DamageReceiver(new HealthPool(3), 0.43f, () => position, 0);
+                var target = new DamageReceiver(new HealthPool(3), 0.43f, () => position,
+                    CharacterTuning.Current.playerInvulnerabilitySteps);
                 boss.Step(target);
                 Require(boss.AttackPhase == LevelEnemy.Phase.Warning && target.Health.Current == 3,
                     "Dune Maw's target marker was already damaging.");
@@ -138,7 +139,7 @@ namespace Insectum.Game.Editor
                 bool evade = underground && Mathf.Abs(body.x - warningX) < 2.0f;
                 bool hit = !underground && sawBurrow && Mathf.Abs(dx) < 1.96f;
                 int move = evade ? retreat : underground ? 0
-                    : Mathf.Abs(dx) > 1.23f || (hit && session.Motor.Facing * dx < 0f) ? Math.Sign(dx) : 0;
+                    : Mathf.Abs(dx) > 1.85f || (hit && session.Motor.Facing * dx < 0f) ? Math.Sign(dx) : 0;
                 fixture.Step(new PlayerCommand(move, attackPressed: hit, abilityPressed: hit));
             }
             Require(sawBurrow && sawWarning && !boss.Damage.Health.Alive && run.Alive,

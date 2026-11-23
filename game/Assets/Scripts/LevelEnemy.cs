@@ -226,6 +226,8 @@ namespace Insectum.Game
             }
 
             UpdatePosition();
+            if (!Burrowing)
+                TryContact(target);
             UpdateArt();
         }
 
@@ -327,6 +329,17 @@ namespace Insectum.Game
             struck = true;
             var impulse = new Vector2((offset.x < 0f ? -1f : 1f) * (Boss ? 5.2f : 3.4f), 2.8f);
             target.Receive(new DamageHit(DamageSource.Melee, 1, impulse));
+        }
+
+        private void TryContact(DamageReceiver target)
+        {
+            Vector2 offset = target.Position - Position;
+            float reach = spec.Radius + target.Radius;
+            if (offset.sqrMagnitude > reach * reach)
+                return;
+
+            float push = offset.x < 0f ? -8f : 8f;
+            target.Receive(new DamageHit(DamageSource.Contact, 1, new Vector2(push, 2.8f)));
         }
 
         private void TickBurn()

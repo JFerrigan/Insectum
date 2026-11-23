@@ -164,14 +164,7 @@ namespace Insectum.Game
 #if DEVELOPMENT_BUILD
             position = terrainProfile?.Focus ?? position;
 #endif
-            float halfWidth = routeCamera.orthographicSize * routeCamera.aspect;
-            Rect bounds = session.LevelBounds;
-            float margin = Mathf.Min(halfWidth, bounds.width / 2f);
-            float yMargin = Mathf.Min(routeCamera.orthographicSize, bounds.height / 2f);
-            int direction = session.Layout?.RouteDirection ?? 1;
-            float x = Mathf.Clamp(position.x + direction * 1.2f, bounds.xMin + margin, bounds.xMax - margin);
-            float y = Mathf.Clamp(position.y - 1.2f, bounds.yMin + yMargin, bounds.yMax - yMargin);
-            Vector2 cameraCenter = PixelViewport.Snap(new Vector2(x, y));
+            Vector2 cameraCenter = PixelViewport.Snap(position);
             routeCamera.transform.position = new Vector3(cameraCenter.x, cameraCenter.y, -10f);
             float driftX = Mathf.Sin(cameraCenter.x * 0.033f) * 1.65f;
             float driftY = Mathf.Sin(cameraCenter.y * 0.045f) * 0.32f;
@@ -212,7 +205,7 @@ namespace Insectum.Game
             keyboard.Consume();
             editingSeed = false;
             int seed = int.TryParse(seedText, out int requestedSeed) ? requestedSeed : Random.Range(0, int.MaxValue);
-            session.StartGenerated(Character.Roster[selected], seed);
+            session.StartTunnelTrial(Character.Roster[selected], seed);
         }
 
         private void OnDestroy()

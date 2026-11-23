@@ -63,6 +63,13 @@ namespace Insectum.Game
         public void StartGenerated(Character character, int seed) =>
             StartRun(character, seed, RunWorlds.LevelCount, 1);
 
+        internal void StartTunnelTrial(Character character, int seed)
+        {
+            BeginRun(character, seed, true, 1);
+            lastLevel = RunWorlds.LevelCount;
+            LoadLevel(ForestTunnelLayout.Generate(seed));
+        }
+
         internal void StartForest(Character character, int seed) =>
             StartRun(character, seed, RunWorlds.LevelsPerWorld, 1);
 
@@ -107,22 +114,15 @@ namespace Insectum.Game
             }
             else
             {
-                Terrain = new HexTerrain(level.transform, layout.Tiles, TerrainMaterials.Load());
+                Terrain = new HexTerrain(level.transform, layout.Tiles, TerrainMaterials.Load(), layout.Tunnel);
                 if (pixel != null)
                 {
                     HexTerrainView.Attach(Terrain, layout.World);
                     exitArt = ForestRoute.MarkExit(level.transform, pixel, layout.Exit);
-                    foreach (LevelMarker marker in layout.Markers)
-                    {
-                        if (marker.Kind != LevelMarkerKind.Branch)
-                            continue;
-
-                        Vector2 pocket = marker.Position + Vector2.up * 0.32f;
-                        Vector2 firstStep = pocket - new Vector2(HexGrid.ColumnSpacing * layout.RouteDirection,
-                            2f * HexGrid.RowSpacing);
-                        ForestArt.Place(level.transform, "Side pocket approach", firstStep, ForestArt.Prop(ForestProp.SidePath), 1);
-                        ForestArt.Place(level.transform, "Side pocket", pocket, ForestArt.Prop(ForestProp.SidePath), 1);
-                    }
+                    if (layout.Tunnel != null)
+                        PlaceTunnelSigns(layout.Tunnel);
+                    else
+                        PlacePocketSigns(layout);
                 }
             }
             Combat = new CombatArena();
@@ -135,7 +135,8 @@ namespace Insectum.Game
             respawnPosition = layout?.Spawn ?? ForestRoute.Spawn;
             actor.transform.localPosition = respawnPosition + Vector2.up * (character.Radius + 0.06f);
             nextCheckpoint = 0;
-            Motor = new PlayerMotor(actor, character.Radius, surface, layout?.RouteDirection ?? 1);
+            Motor = new PlayerMotor(actor, character.Radius, surface, layout?.RouteDirection ?? 1,
+                followSlopes: layout?.Tunnel != null);
             Motor.Landed += ApplyFallDamage;
             Abilities = new PlayerAbilities(Run, Motor, Terrain, Combat);
             PlayerMotor player = Motor;
@@ -154,6 +155,47 @@ namespace Insectum.Game
             if (pixel != null)
                 InsectActorView.Attach(actor.transform, this);
             Phase = RunPhase.Playing;
+        }
+
+        private void PlacePocketSigns(LevelLayout layout)
+        {
+            foreach (LevelMarker marker in layout.Markers)
+            {
+                if (marker.Kind != LevelMarkerKind.Branch)
+                    continue;
+
+                Vector2 pocket = marker.Position + Vector2.up * 0.32f;
+                Vector2 firstStep = pocket - new Vector2(HexGrid.ColumnSpacing * layout.RouteDirection,
+                    2f * HexGrid.RowSpacing);
+                ForestArt.Place(level.transform, "Side pocket approach", firstStep, ForestArt.Prop(ForestProp.SidePath), 1);
+                ForestArt.Place(level.transform, "Side pocket", pocket, ForestArt.Prop(ForestProp.SidePath), 1);
+            }
+        }
+
+        private void PlaceTunnelSigns(ForestTunnelSpace tunnel)
+        {
+            for (int i = 1; i < tunnel.Route.Count; i++)
+            {
+                Vector2 from = tunnel.Route[i - 1];
+                Vector2 to = tunnel.Route[i];
+                if (tunnel.Jumps.TryGetValue((from, to), out Vector2 lip))
+                    PlaceSign(lip, from, new Color32(255, 223, 138, 255));
+            }
+
+            foreach (var branch in tunnel.Branches)
+            {
+                Vector2 from = tunnel.Route[branch.source];
+                PlaceSign(tunnel.Jumps[(from, branch.first)], from, Color.white);
+            }
+
+            void PlaceSign(Vector2 lip, Vector2 from, Color tint)
+            {
+                int direction = lip.x > from.x ? 1 : -1;
+                var sign = ForestArt.Place(level.transform, "Tunnel turn", lip + new Vector2(-direction * 0.35f, 0.7f),
+                    ForestArt.Prop(ForestProp.SidePath), 1);
+                sign.color = tint;
+                sign.transform.localRotation = Quaternion.Euler(0f, 0f, -direction * 38f);
+            }
         }
 
         public void Step(PlayerCommand command)
@@ -296,7 +338,7 @@ namespace Insectum.Game
 
         private void ApplyFallDamage(float impactSpeed)
         {
-            if (impactSpeed >= PlayerMotor.FallDamageSpeed)
+            if (Motor.LastFallDistance >= PlayerMotor.FallDamageDistance && impactSpeed >= PlayerMotor.FallDamageSpeed)
                 PlayerDamage.Receive(new DamageHit(DamageSource.Fall, 1));
         }
 

@@ -153,10 +153,12 @@ namespace Insectum.Game
         public float KillHeight => Bounds.yMin - 2f;
         public int RouteDirection { get; }
         public bool UsedFallback { get; }
+        internal ForestTunnelSpace Tunnel { get; }
 
         internal LevelLayout(int runSeed, int levelNumber, LevelSeeds seeds, Dictionary<Vector2Int, TerrainMaterial> tiles,
             List<MacroChunk> chunks, List<RouteCheckpoint> checkpoints, List<LevelMarker> markers,
-            Vector2 spawn, Vector2 exit, Rect bounds, int routeDirection, bool usedFallback, WorldId world = WorldId.Forest)
+            Vector2 spawn, Vector2 exit, Rect bounds, int routeDirection, bool usedFallback, WorldId world = WorldId.Forest,
+            ForestTunnelSpace tunnel = null)
         {
             RunSeed = runSeed;
             LevelNumber = levelNumber;
@@ -172,6 +174,7 @@ namespace Insectum.Game
             Bounds = bounds;
             RouteDirection = routeDirection;
             UsedFallback = usedFallback;
+            Tunnel = tunnel;
         }
     }
 }

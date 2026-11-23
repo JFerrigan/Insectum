@@ -40,7 +40,8 @@ namespace Insectum.Game
         Fall,
         Crush,
         Explosion,
-        Burn
+        Burn,
+        Contact
     }
 
     public readonly struct DamageHit

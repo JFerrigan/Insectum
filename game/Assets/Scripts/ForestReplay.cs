@@ -9,7 +9,8 @@ namespace Insectum.Game
     {
         Authored,
         Forest,
-        Run
+        Run,
+        Tunnel
     }
 
     internal static class ForestReplayFile
@@ -71,6 +72,7 @@ namespace Insectum.Game
                 case ReplayKind.Authored: session.Start(character, seed); break;
                 case ReplayKind.Forest: session.StartForest(character, seed); break;
                 case ReplayKind.Run: session.StartGenerated(character, seed); break;
+                case ReplayKind.Tunnel: session.StartTunnelTrial(character, seed); break;
             }
             level = session.Run.LevelNumber;
             UnityEngine.Application.runInBackground = true;

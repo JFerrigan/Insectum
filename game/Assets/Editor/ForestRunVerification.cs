@@ -176,13 +176,14 @@ namespace Insectum.Game.Editor
             RunState run = session.Run;
             fixture.Advance(8);
             LevelFeature shop = session.Content.Features.Single(feature => feature.Kind == LevelFeatureKind.Shop);
-            WalkUntil(fixture, () => run.Inventory.Nektar >= shop.Amount && Near(session, shop.Position, 1.2f), 350);
+            BiomeVerification.Walk(fixture, () => run.Inventory.Nektar >= shop.Amount && Near(session, shop.Position, 1.2f), 350);
+            int wallet = run.Inventory.Nektar;
             fixture.Step(new PlayerCommand(interactPressed: true));
-            Require(!shop.Available && run.Inventory.Active == shop.Item && run.Inventory.Nektar == 0,
+            Require(!shop.Available && run.Inventory.Active == shop.Item && run.Inventory.Nektar == wallet - shop.Amount,
                 "The route pickups did not fund the first shop purchase through E.");
             ItemId active = run.Inventory.Active;
 
-            WalkUntil(fixture, () => session.AtExit && session.Motor.Grounded, 500);
+            BiomeVerification.Walk(fixture, () => session.AtExit && session.Motor.Grounded, 500);
             LevelFeature chest = session.Content.Features.Single(feature => feature.Kind == LevelFeatureKind.Chest);
             if (session.Layout.Markers.Any(marker => marker.Kind == LevelMarkerKind.Branch))
                 ReachPocketChest(fixture);
@@ -209,7 +210,7 @@ namespace Insectum.Game.Editor
                 run.TrySpendEnergy(70f);
                 LevelFeature heart = session.Content.Features.Single(feature => feature.Kind == LevelFeatureKind.HeartSap);
                 LevelFeature sap = session.Content.Features.Single(feature => feature.Kind == LevelFeatureKind.EnergySap);
-                WalkUntil(fixture, () => session.AtExit && session.Motor.Grounded, 650);
+                BiomeVerification.Walk(fixture, () => session.AtExit && session.Motor.Grounded, 650);
                 if (level == 2)
                 {
                     Require(!heart.Available && !sap.Available && run.Energy > 31f,
@@ -229,7 +230,7 @@ namespace Insectum.Game.Editor
 
             Require(session.Content.HasBoss && !session.Content.ExitUnlocked, "Level four did not start with a boss gate.");
             LevelEnemy boss = session.Content.Enemies.Single(enemy => enemy.Boss);
-            WalkUntil(fixture, () => session.AtExit, 350);
+            BiomeVerification.Walk(fixture, () => session.AtExit, 350);
             fixture.Step(new PlayerCommand(interactPressed: true));
             Require(session.Phase == RunPhase.Playing && run.LevelNumber == 4 && boss.Damage.Health.Alive,
                 "The boss exit opened before victory.");
@@ -293,11 +294,13 @@ namespace Insectum.Game.Editor
                 float dx = boss.Position.x - session.Motor.Body.position.x;
                 warned |= boss.AttackPhase == LevelEnemy.Phase.Warning;
                 bool dodge = session.Motor.Grounded && jump == 0 && boss.AttackPhase == LevelEnemy.Phase.Attacking
-                    && Mathf.Abs(dx) < 3.0f;
+                    && Mathf.Abs(dx) < 3.4f;
                 if (dodge)
                     jump = 22;
-                bool hit = Mathf.Abs(dx) < 1.96f && jump == 0;
-                int move = Mathf.Abs(dx) > 1.20f || (hit && session.Motor.Facing * dx < 0f) ? Math.Sign(dx) : 0;
+                float reach = 1.3f + boss.Damage.Radius;
+                bool hit = Mathf.Abs(dx) < reach && jump == 0
+                    && Mathf.Abs(session.Motor.Body.position.y - boss.Position.y) < 0.38f + boss.Damage.Radius;
+                int move = Mathf.Abs(dx) > reach - 0.12f || (hit && session.Motor.Facing * dx < 0f) ? Math.Sign(dx) : 0;
                 if (jump > 0)
                     move = 0;
                 bool heavy = hit && session.Run.Character.Insect == Insect.FireAnt;
@@ -305,7 +308,7 @@ namespace Insectum.Game.Editor
                 jump = Mathf.Max(0, jump - 1);
             }
             Require(warned && !boss.Damage.Health.Alive && session.Run.Alive,
-                $"Barkback combat did not resolve through telegraphed attacks and ordinary commands. Boss health {boss.Damage.Health.Current}, player health {session.Run.Health}, position {session.Motor.Body.position}.");
+                $"Barkback combat for {session.Run.Character.Name} did not resolve through telegraphed attacks and ordinary commands. Boss health {boss.Damage.Health.Current}, player health {session.Run.Health}, position {session.Motor.Body.position}.");
         }
 
         private static void VerifyOtherCharacters(PhysicsFixture fixture)
@@ -324,7 +327,7 @@ namespace Insectum.Game.Editor
                 session.StartForest(character, seed);
                 for (int level = 1; level <= 3; level++)
                 {
-                    WalkUntil(fixture, () => session.AtExit && session.Motor.Grounded, 650);
+                    BiomeVerification.Walk(fixture, () => session.AtExit && session.Motor.Grounded, 650);
                     fixture.Step(new PlayerCommand(interactPressed: true));
                     Require(session.Run.LevelNumber == level + 1, $"{character.Name} did not advance to Forest {level + 1}.");
                 }
@@ -371,15 +374,6 @@ namespace Insectum.Game.Editor
             Require(session.Phase == RunPhase.Playing && session.Run != run && session.Run.LevelNumber == 1
                 && session.Run.Inventory.Nektar == 0 && session.Run.Inventory.Passives.Count == 0 && !session.Run.Inventory.ReviveUsed,
                 "Restart retained the old run's inventory or revive flag.");
-        }
-
-        private static void WalkUntil(PhysicsFixture fixture, Func<bool> reached, int limit)
-        {
-            GameSession session = fixture.Session;
-            int move = session.Layout.RouteDirection;
-            for (int tick = 0; tick < limit && session.Phase == RunPhase.Playing && !reached(); tick++)
-                fixture.Step(new PlayerCommand(move: move));
-            Require(reached(), $"Forest seed {session.Run.Seed}/{session.Run.LevelNumber} did not reach a route objective from {session.Motor.Body.position}, phase {session.Phase}, health {session.Run.Health}.");
         }
 
         private static void MoveTo(PhysicsFixture fixture, float x, Func<bool> reached, int limit)

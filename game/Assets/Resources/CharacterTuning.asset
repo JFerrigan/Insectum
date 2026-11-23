@@ -53,9 +53,8 @@ MonoBehaviour:
     tint:
       serializedVersion: 2
       rgba: 4288395507
+  spiderJumpHeightMultiplier: 2
   spiderLeapEnergy: 16
-  spiderClimbEnergyPerSecond: 3
-  spiderLeapSpeed: 16
   spiderClimbSpeed: 3.5
   beetleEnergyPerHeart: 25
   beetleCrushSpeed: 8

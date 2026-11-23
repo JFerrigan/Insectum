@@ -13,7 +13,7 @@ namespace Insectum.Game
         private static readonly Color Mint = new Color32(110, 213, 184, 255);
         private static readonly Color Pink = new Color32(244, 129, 153, 255);
         private static readonly string[] ShortNames = { "SPIDER", "BEETLE", "DRAGONFLY", "FIRE ANT", "WORM" };
-        private static readonly string[] AbilityNames = { "Leap and wall climb", "Momentum shell", "Directional flight", "Heavy mandible strike", "Excavate one hex" };
+        private static readonly string[] AbilityNames = { "High jump and auto wall climb", "Momentum shell", "Directional flight", "Heavy mandible strike", "Excavate one hex" };
 
         internal static Rect SeedField => new(23, 141, 124, 18);
         internal static Rect StartButton => new(168, 141, 129, 18);
@@ -150,8 +150,8 @@ namespace Insectum.Game
 
         private static string Controls(GameSession session) => session.Run.Character.Insect switch
         {
-            Insect.Spider when session.Abilities.Climbing => "W/S CLIMB   RELEASE K TO DROP",
-            Insect.Spider => "A/D MOVE   SPACE JUMP   J HIT   K LEAP   W+K CLIMB",
+            Insect.Spider when session.Abilities.Climbing => "RELEASE MOVE TO DROP   K HIGH JUMP",
+            Insect.Spider => "A/D MOVE   SPACE JUMP   J HIT   K HIGH JUMP",
             Insect.Beetle when session.Abilities.Shelled => "K OPEN SHELL",
             Insect.Beetle => "A/D MOVE   SPACE JUMP   J HIT   K SHELL",
             Insect.Dragonfly when session.Abilities.Flying => "A/D/W/S STEER   J HIT   K LAND",

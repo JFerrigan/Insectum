@@ -11,8 +11,11 @@ namespace Insectum.Game.Editor
     {
         public static void Mac()
         {
-            bool development = Array.IndexOf(Environment.GetCommandLineArgs(), "-insectum-development") >= 0;
-            string output = development ? "Builds/Insectum Dev.app" : "Builds/Insectum.app";
+            string[] args = Environment.GetCommandLineArgs();
+            bool development = Array.IndexOf(args, "-insectum-development") >= 0;
+            bool tunnelTrial = Array.IndexOf(args, "-insectum-tunnel-trial-build") >= 0;
+            string title = tunnelTrial ? "Insectum Tunnel Trial" : "Insectum";
+            string output = $"Builds/{title}{(development ? " Dev" : "")}.app";
             Directory.CreateDirectory("Builds");
             BuildReport report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {

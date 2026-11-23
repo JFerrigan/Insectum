@@ -46,6 +46,12 @@ namespace Insectum.Game.Editor
             {
                 Require(UnityEngine.Object.FindFirstObjectByType<GameBoot>() is GameBoot boot && boot.isActiveAndEnabled,
                     "GameBoot did not initialize in play mode.");
+                ForestTunnelVerification.Verify();
+                if (Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "-insectum-tunnel-only"))
+                {
+                    Finish(0);
+                    return;
+                }
                 BootstrapVerification.Verify();
                 TerrainVerification.Verify();
                 CombatVerification.Verify();

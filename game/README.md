@@ -7,16 +7,21 @@ levels, and ability energy refills on entry.
 Open this directory as a project in Unity 6000.3.11f1. Open
 `Assets/Scenes/Boot.unity` and press Play. Choose an insect with the mouse or
 A/D, then press Enter. Use A/D to walk, Space to jump, and E at the marked exit.
-Hold Space for a higher jump. Descend the Forest ledges toward the amber exit.
-If there is a green marker above the exit, three ordinary jumps reach the side
-pocket. Leave the seed field blank for a random layout, or enter the seed from
+Hold Space for a higher jump.
+Touching a live enemy costs one heart and knocks you back. Hard landings after
+a fall of about 7.4 world units cost one heart. Forest 1 is the tunnel trial.
+Its 37-chunk board has a 28-chunk main route and three side tunnels. Amber chevrons mark uphill
+turns on the main route, and green chevrons mark side entrances. One side
+tunnel leads to a shop and two lead to chests with diggable alcoves. The exit
+continues to Forest 2. Leave the seed field blank for a random layout, or enter the seed from
 the HUD to replay it. Click the seed field or press Tab to edit it. From the
 results screen, press Enter to restart or Esc to return to the roster.
 
 Press J to strike forward or W + J to strike up. K uses the selected insect's
-ability. As Spider, hold W + K while facing a wall to climb. As Beetle, K toggles
-the shell. As Dragonfly, K toggles flight and A/D/W/S steer. Fire Ant's K uses a
-heavier strike. Worm can hold K to dig ahead or S + K to dig down. Edit roster
+ability. As Spider, press K to jump twice as high for 16 energy. Walk into a
+wall to climb automatically for free. Release the move key to drop. As Beetle,
+K toggles the shell. As Dragonfly, K toggles flight and A/D/W/S steer. Fire Ant's
+K uses a heavier strike. Worm can hold K to dig ahead or S + K to dig down. Edit roster
 and ability values in `Assets/Resources/CharacterTuning.asset` and material
 values in `Assets/Resources/TerrainMaterials.asset`.
 
@@ -56,7 +61,9 @@ Run the production verification from this directory on macOS.
   -logFile /private/tmp/insectum-bootstrap.log
 ```
 
-The suite verifies the authored two-chunk crossing, the generated routes for
+Add `-insectum-tunnel-only` to run only the Forest 1 trial checks. The trial
+verification covers the regular route, side tunnels, fallback, and continuation
+to Forest 2. The full suite also verifies the authored two-chunk crossing, the generated routes for
 100 Forest seeds with all five insects, and the fallback. After changing Forest
 templates, add `-insectum-bake-forest` to run every candidate through Unity
 physics and regenerate `Assets/Resources/ForestCertificates.txt`. The Swamp
@@ -85,7 +92,8 @@ Install macOS Build Support for Unity 6000.3.11f1. Run this from `game/`.
   -logFile /private/tmp/insectum-mac-build.log
 ```
 
-The output is `Builds/Insectum.app`. The scene renders to 320×180 and scales
+The output is `Builds/Insectum.app`. Add `-insectum-tunnel-trial-build` to
+write `Builds/Insectum Tunnel Trial.app`. The scene renders to 320×180 and scales
 in whole pixels. Larger windows use letterboxing when needed. With Pillow
 installed, run the matching `*_pixels.py` script in `ArtSource` to
 regenerate that world's textures in `Assets/Resources/PixelArt`.

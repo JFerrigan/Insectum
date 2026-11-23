@@ -110,7 +110,7 @@ namespace Insectum.Game.Editor
                 if (dodge)
                     jump = 21;
                 bool hit = Mathf.Abs(dx) < 1.96f && sawQuake && jump == 0;
-                int move = jump == 0 && (Mathf.Abs(dx) > 1.24f || hit && session.Motor.Facing * dx < 0f)
+                int move = jump == 0 && (Mathf.Abs(dx) > 1.85f || hit && session.Motor.Facing * dx < 0f)
                     ? Math.Sign(dx) : 0;
                 fixture.Step(new PlayerCommand(move, jumpPressed: dodge, jumpHeld: jump > 0, attackPressed: hit, abilityPressed: hit));
                 jump = Mathf.Max(0, jump - 1);

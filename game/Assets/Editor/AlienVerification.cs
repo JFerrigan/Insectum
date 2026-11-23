@@ -112,19 +112,24 @@ namespace Insectum.Game.Editor
 
             bool sawWarning = false;
             bool sawSweep = false;
+            int beamSide = 0;
+            LevelEnemy.Phase last = LevelEnemy.Phase.Waiting;
             for (int tick = 0; tick < 950 && boss.Damage.Health.Alive && run.Alive; tick++)
             {
-                float dx = boss.Position.x - session.Motor.Body.position.x;
-                bool sweep = boss.AttackPhase == LevelEnemy.Phase.Attacking;
-                sawWarning |= boss.AttackPhase == LevelEnemy.Phase.Warning;
+                Vector2 body = session.Motor.Body.position;
+                float dx = boss.Position.x - body.x;
+                LevelEnemy.Phase phase = boss.AttackPhase;
+                bool sweep = phase == LevelEnemy.Phase.Attacking;
+                sawWarning |= phase == LevelEnemy.Phase.Warning;
                 sawSweep |= sweep;
-                bool hit = boss.AttackPhase == LevelEnemy.Phase.Recovery && Mathf.Abs(dx) < 1.96f;
-                bool crossBeam = sweep && Mathf.Abs(dx) < 2.8f;
-                int move = crossBeam || Mathf.Abs(dx) > 1.23f || (hit && session.Motor.Facing * dx < 0f)
-                    ? Math.Sign(dx) : 0;
-                if (crossBeam && Mathf.Abs(dx) < 0.24f)
-                    move = 0;
-                fixture.Step(new PlayerCommand(move, attackPressed: hit, abilityPressed: hit));
+                if (phase == LevelEnemy.Phase.Warning && last != phase)
+                    beamSide = Math.Sign(dx);
+                last = phase;
+                bool hit = phase == LevelEnemy.Phase.Recovery && Mathf.Abs(dx) < 1.96f;
+                int move = Mathf.Abs(dx) > 1.85f || hit && session.Motor.Facing * dx < 0f ? Math.Sign(dx) : 0;
+                fixture.Step(beamSide != 0 && phase is LevelEnemy.Phase.Warning or LevelEnemy.Phase.Attacking
+                    ? MoveBehindBeam(session, dx, beamSide)
+                    : new PlayerCommand(move, attackPressed: hit, abilityPressed: hit));
             }
             Require(sawWarning && sawSweep && !boss.Damage.Health.Alive && run.Alive,
                 $"Alien seed {seed}: Crown Relay did not warn, sweep and lose to ordinary commands. Boss health {boss.Damage.Health.Current}, player health {run.Health}.");
@@ -139,6 +144,14 @@ namespace Insectum.Game.Editor
             Require(session.Phase == RunPhase.Cleared && run.LevelNumber == FirstLevel + 3
                     && run.LevelNumber == RunWorlds.LevelCount && !session.Motor.Body.simulated,
                 "Alien's unlocked exit did not complete the run through normal interaction.");
+        }
+
+        internal static PlayerCommand MoveBehindBeam(GameSession session, float dx, int beamSide)
+        {
+            float behind = dx + beamSide * 1.8f;
+            int move = Mathf.Abs(behind) > 0.12f ? Math.Sign(behind) : 0;
+            bool jump = dx * beamSide > 0f && Mathf.Abs(dx) < 2.35f && session.Motor.Grounded;
+            return new PlayerCommand(move, jumpPressed: jump, jumpHeld: true);
         }
     }
 }

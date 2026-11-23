@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Insectum.Game
@@ -80,6 +81,13 @@ namespace Insectum.Game
                 Vector2 landing = checkpoint.Landing;
                 if ((layout.Spawn - landing).sqrMagnitude <= 9f || (layout.Exit - landing).sqrMagnitude <= 9f)
                     continue;
+
+                if (layout.Tunnel != null)
+                {
+                    if (!content.Enemies.Any(enemy => (enemy.Position - landing).sqrMagnitude < 4f))
+                        landings.Add(landing + Vector2.right * 0.98f);
+                    continue;
+                }
 
                 Vector2Int support = HexGrid.CellAt(landing - Vector2.up);
                 for (int sign = -1; sign <= 1; sign += 2)

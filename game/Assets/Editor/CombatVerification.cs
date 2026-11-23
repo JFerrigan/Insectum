@@ -13,6 +13,7 @@ namespace Insectum.Game.Editor
             using var fixture = new PhysicsFixture("Combat verification");
             VerifyCommonMelee(fixture);
             VerifySharedDamage(fixture);
+            VerifyEnemyContact(fixture);
             VerifySpider(fixture);
             VerifyBeetleMomentum(fixture);
             VerifyBeetleDamage(fixture);
@@ -20,7 +21,7 @@ namespace Insectum.Game.Editor
             VerifyDragonfly(fixture);
             VerifyFireAnt(fixture);
             VerifyDisabledAbilities();
-            Debug.Log("Insectum combat verified: melee and shared damage, Spider leap and climb, Beetle momentum/absorption/crush, Dragonfly flight, Fire Ant heavy strike, and ability-disabled simulation.");
+            Debug.Log("Insectum combat verified: melee, enemy contact and shared damage, Spider high jump and automatic wall climb, Beetle momentum/absorption/crush, Dragonfly flight, Fire Ant heavy strike, and ability-disabled simulation.");
         }
 
         private static void VerifyCommonMelee(PhysicsFixture fixture)
@@ -72,23 +73,74 @@ namespace Insectum.Game.Editor
         private static void VerifySpider(PhysicsFixture fixture)
         {
             GameSession session = fixture.Session;
-            session.Start(Character.Roster[0], 303);
+            Character spider = Character.Roster[(int)Insect.Spider];
+            session.Start(spider, 303);
             fixture.Advance(8);
-            fixture.Step(new PlayerCommand(move: -1, aim: 1, abilityPressed: true, abilityHeld: true));
-            Require(Near(session.Run.Energy, 100f - Tuning.spiderLeapEnergy)
-                && session.Motor.Body.linearVelocity.x < -9f && session.Motor.Body.linearVelocity.y > 9f,
-                "Spider did not spend the proposed cost for a directional leap.");
+            session.Run.TrySpendEnergy(session.Run.Energy);
+            fixture.Step(new PlayerCommand(abilityPressed: true));
+            Require(session.Run.Energy == 0f && session.Motor.Grounded && Mathf.Abs(session.Motor.Body.linearVelocity.y) < 0.1f,
+                "Spider high jumped without energy.");
+            fixture.Step(new PlayerCommand(move: -1, jumpPressed: true, jumpHeld: true));
+            Require(session.Run.Energy == 0f && session.Motor.Body.linearVelocity.x < 0f
+                && session.Motor.Body.linearVelocity.y > 12f, "Spider's regular jump lacked height, steering, or free use.");
 
-            session.Start(Character.Roster[0], 304);
-            Vector2 start = new(-16.00f, -0.04f);
-            session.Motor.Body.position = start;
-            int climbSteps = 6;
-            fixture.Advance(climbSteps, new PlayerCommand(move: -1, aim: 1, abilityHeld: true));
-            Require(session.Abilities.Climbing && session.Motor.Body.position.y > start.y + 0.20f
-                && Near(session.Run.Energy, 100f - Tuning.spiderClimbEnergyPerSecond * PlayerMotor.StepSeconds * climbSteps),
-                $"Spider failed to climb a real wall or spent the wrong energy. Position {session.Motor.Body.position}, energy {session.Run.Energy:F3}.");
-            fixture.Step(new PlayerCommand(move: -1, aim: 1));
-            Require(!session.Abilities.Climbing, "Spider kept climbing after the ability was released.");
+            session.Start(spider, 304);
+            session.Run.TrySpendEnergy(session.Run.Energy);
+            Vector2 start = new(-15.68f, -0.04f);
+            session.Motor.Warp(start);
+            Require(!session.Motor.HasWall(-1), "Spider started the climb fixture already against the wall.");
+            for (int step = 0; step < 20; step++)
+            {
+                fixture.Step(new PlayerCommand(move: -1));
+                if (session.Abilities.Climbing && session.Motor.Body.position.y > start.y + 0.15f)
+                    break;
+            }
+            Require(session.Abilities.Climbing && session.Motor.Body.position.y > start.y + 0.15f && session.Run.Energy == 0f,
+                $"Walking into a wall did not start a free climb. Position {session.Motor.Body.position}.");
+            fixture.Step();
+            Require(!session.Abilities.Climbing, "Spider kept climbing after movement was released.");
+
+            session.Start(spider, 305);
+            fixture.Advance(8);
+            fixture.Step(new PlayerCommand(move: 1, abilityPressed: true, abilityHeld: true));
+            fixture.Advance(8, new PlayerCommand(move: 1, abilityHeld: true));
+            Require(Near(session.Run.Energy, spider.MaxEnergy - Tuning.spiderLeapEnergy)
+                && session.Motor.Body.linearVelocity.x > 0f && session.Motor.Body.linearVelocity.y > 10f,
+                "Holding Spider's high jump spent energy more than once or disabled air steering.");
+        }
+
+        private static void VerifyEnemyContact(PhysicsFixture fixture)
+        {
+            GameSession session = fixture.Session;
+            Character character = Character.Roster[(int)Insect.FireAnt];
+            session.Start(character, 314);
+            fixture.Advance(8);
+            Vector2 enemyFeet = session.Motor.Body.position + new Vector2(1.7f, -character.Radius);
+            var enemy = new LevelEnemy(fixture.World.transform, null, ForestContent.BarkMite, enemyFeet, 0, null);
+            DamageSource? hitSource = null;
+            session.PlayerDamage.Resolved += (hit, outcome) =>
+            {
+                if (outcome == DamageOutcome.Applied)
+                    hitSource = hit.Source;
+            };
+            for (int step = 0; step < 35 && hitSource == null; step++)
+            {
+                fixture.Step(new PlayerCommand(move: 1));
+                enemy.Step(session.PlayerDamage);
+            }
+            Require(hitSource == DamageSource.Contact && session.Run.Health == character.MaxHealth - 1
+                && enemy.AttackPhase == LevelEnemy.Phase.Warning && session.Motor.Body.linearVelocity.x < 0f,
+                "Running into a live enemy should cost one heart and push the player back before any attack.");
+
+            session.Motor.Warp(enemy.Position);
+            enemy.Step(session.PlayerDamage);
+            Require(session.Run.Health == character.MaxHealth - 1, "Enemy contact ignored the player's invulnerability.");
+
+            fixture.Advance(Tuning.playerInvulnerabilitySteps);
+            enemy.Damage.Receive(new DamageHit(DamageSource.Melee, 2));
+            session.Motor.Warp(enemy.Position);
+            enemy.Step(session.PlayerDamage);
+            Require(session.Run.Health == character.MaxHealth - 1, "A defeated enemy dealt contact damage.");
         }
 
         private static void VerifyBeetleMomentum(PhysicsFixture fixture)
@@ -142,7 +194,7 @@ namespace Insectum.Game.Editor
                 "An unaffordable shell hit did not open the shell and apply full damage plus knockback.");
 
             session.Start(Character.Roster[1], 307);
-            session.Motor.Body.position = new Vector2(-0.2f, 2f);
+            session.Motor.Warp(new Vector2(-0.2f, 4f));
             DamageSource? absorbedSource = null;
             session.PlayerDamage.Resolved += (hit, outcome) =>
             {
@@ -157,7 +209,7 @@ namespace Insectum.Game.Editor
 
             session.Start(Character.Roster[1], 308);
             session.Run.TrySpendEnergy(100f - (Tuning.beetleEnergyPerHeart - 1f));
-            session.Motor.Body.position = new Vector2(-0.2f, 2f);
+            session.Motor.Warp(new Vector2(-0.2f, 4f));
             fixture.Step(new PlayerCommand(abilityPressed: true));
             fixture.Advance(60);
             Require(!session.Abilities.Shelled && session.Run.Health == startingHealth - 1

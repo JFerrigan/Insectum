@@ -12,6 +12,7 @@ namespace Insectum.Game
         private HexTerrain terrain;
         private Material surface;
         private Texture2D texture;
+        private Mesh liningMesh;
 
         public static void Attach(HexTerrain terrain, WorldId world = WorldId.Forest)
         {
@@ -22,6 +23,8 @@ namespace Insectum.Game
             terrain.RegionChanged += view.DrawRegion;
             foreach (Vector2Int region in terrain.Regions)
                 view.DrawRegion(region);
+            if (terrain.Tunnel != null)
+                view.DrawLining();
         }
 
         private void DrawRegion(Vector2Int region)
@@ -60,6 +63,14 @@ namespace Insectum.Game
             int row = (int)(material == TerrainMaterial.Sandstone ? TerrainMaterial.HardStone : material);
             Rect tile = Tile(variation, row);
             Vector2 center = HexGrid.Center(cell);
+            if (terrain.Tunnel?.TryGetPieces(cell, out List<Vector2[]> pieces) == true)
+            {
+                foreach (Vector2[] piece in pieces)
+                    for (int i = 1; i + 1 < piece.Length; i++)
+                        AddTriangle(piece[0], piece[i], piece[i + 1], RockUv(tile, piece[0] - center),
+                            RockUv(tile, piece[i] - center), RockUv(tile, piece[i + 1] - center));
+                return;
+            }
             for (int side = 0; side < HexGrid.SideCount; side++)
             {
                 Vector2 a = HexGrid.Vertex(HexGrid.Corner(cell, side));
@@ -79,6 +90,8 @@ namespace Insectum.Game
 
         private void AddGrowth(Vector2Int cell)
         {
+            if (terrain.Tunnel?.IsRock(cell) == true)
+                return;
             Vector2 top = HexGrid.Vertex(HexGrid.Corner(cell, 0));
             bool cap = terrain.HasShelfCap(cell);
             Rect moss = Tile(0, 10);
@@ -99,6 +112,31 @@ namespace Insectum.Game
             Vector2 right = root + Vector2.right * 0.45f;
             Vector2 height = Vector2.up * 0.94f;
             AddQuad(left + height, right + height, left, right, Tile(1 + variation % 3, 10));
+        }
+
+        private void DrawLining()
+        {
+            vertices.Clear();
+            uv.Clear();
+            indices.Clear();
+            Rect moss = Tile(0, 10);
+            foreach (var edge in terrain.Tunnel.Lining)
+            {
+                if (edge.to.x - edge.from.x < 0.01f)
+                    continue;
+                AddStrip(edge.from, edge.to, moss);
+            }
+
+            var art = new GameObject("Tunnel moss");
+            art.transform.SetParent(transform, false);
+            liningMesh = new Mesh { name = art.name };
+            liningMesh.SetVertices(vertices);
+            liningMesh.SetUVs(0, uv);
+            liningMesh.SetTriangles(indices, 0);
+            art.AddComponent<MeshFilter>().sharedMesh = liningMesh;
+            var renderer = art.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = surface;
+            renderer.sortingOrder = 1;
         }
 
         private void AddStrip(Vector2 a, Vector2 b, Rect tile)
@@ -146,6 +184,7 @@ namespace Insectum.Game
             terrain.RegionChanged -= DrawRegion;
             foreach (Mesh mesh in meshes.Values)
                 Destroy(mesh);
+            Destroy(liningMesh);
             Destroy(surface);
         }
     }

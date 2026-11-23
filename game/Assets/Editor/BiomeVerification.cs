@@ -145,12 +145,48 @@ namespace Insectum.Game.Editor
             Require(reached(), $"{session.Run.World} movement stopped at {session.Motor.Body.position}, targeting {x:F2}.");
         }
 
-        internal static void Walk(PhysicsFixture fixture, Func<bool> reached, int limit)
+        internal static void Walk(PhysicsFixture fixture, Func<bool> reached, int limit, bool useHeavy = false)
         {
             GameSession session = fixture.Session;
             for (int i = 0; i < limit && !reached() && session.Phase == RunPhase.Playing; i++)
-                fixture.Step(new PlayerCommand(move: session.Layout.RouteDirection));
+                fixture.Step(TrailCommand(session, useHeavy));
             Require(reached(), $"{session.Run.World} seed {session.Run.Seed}/{session.Run.LevelNumber} stopped at {session.Motor.Body.position} with {session.Run.Health} hearts.");
+        }
+
+        private static PlayerCommand TrailCommand(GameSession session, bool useHeavy)
+        {
+            int move = session.Layout.RouteDirection;
+            Vector2 position = session.Motor.Body.position;
+            bool heavy = useHeavy && session.Run.Energy >= CharacterTuning.Current.fireAntAttackEnergy;
+            float reach = heavy ? 2.1f : 1.3f;
+            float halfWidth = heavy ? 0.83f : 0.38f;
+            foreach (LevelEnemy enemy in session.Content.Enemies)
+            {
+                if (!enemy.Damage.Health.Alive)
+                    continue;
+
+                Vector2 offset = enemy.Position - position;
+                float ahead = move * offset.x;
+                float radius = enemy.Damage.Radius;
+                if (enemy.Boss)
+                {
+                    if (ahead > 0f && ahead < radius + 1.35f && Mathf.Abs(offset.y) < 0.85f
+                        && session.Motor.Grounded)
+                        return new PlayerCommand(move: move, jumpPressed: true, jumpHeld: true);
+                    continue;
+                }
+
+                if (ahead >= 0f && ahead < reach + radius && Mathf.Abs(offset.y) < halfWidth + radius)
+                    return new PlayerCommand(move: session.Motor.Facing == move ? 0 : move,
+                        attackPressed: true, abilityPressed: heavy);
+                if (Mathf.Abs(offset.x) < halfWidth + radius && offset.y > 0f && offset.y < reach + radius)
+                    return new PlayerCommand(aim: 1, attackPressed: true, abilityPressed: heavy);
+                if (session.Run.Character.Insect == Insect.Dragonfly && ahead > 0f && ahead < 3f
+                    && offset.y is < -0.65f and > -4.5f && session.Motor.Grounded)
+                    return new PlayerCommand(move: move, jumpPressed: true, jumpHeld: true);
+            }
+
+            return new PlayerCommand(move: move, jumpHeld: true);
         }
     }
 }

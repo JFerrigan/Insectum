@@ -70,9 +70,17 @@ namespace Insectum.Game
         public int Revision { get; private set; }
         public event Action<Vector2Int> RegionChanged;
         public event Action<IReadOnlyList<TerrainEdit>> Edited;
+        internal ForestTunnelSpace Tunnel { get; }
 
         public HexTerrain(Transform parent, IReadOnlyDictionary<Vector2Int, TerrainMaterial> layout, TerrainMaterials materials)
+            : this(parent, layout, materials, null)
         {
+        }
+
+        internal HexTerrain(Transform parent, IReadOnlyDictionary<Vector2Int, TerrainMaterial> layout, TerrainMaterials materials,
+            ForestTunnelSpace tunnel)
+        {
+            Tunnel = tunnel;
             Materials = materials;
             Cells = new System.Collections.ObjectModel.ReadOnlyDictionary<Vector2Int, TerrainMaterial>(cells);
             Root = new GameObject("Hex terrain");
@@ -92,13 +100,16 @@ namespace Insectum.Game
             }
 
             Rebuild(regions.Keys);
+            Tunnel?.BuildCollision(Root);
         }
 
         public IEnumerable<Vector2Int> CellsInRegion(Vector2Int region) =>
             regions.TryGetValue(region, out Region found) ? found.Cells : Array.Empty<Vector2Int>();
 
         public bool HasShelfCap(Vector2Int cell) => cells.ContainsKey(cell)
+            && Tunnel?.IsRock(cell) != true
             && cells.ContainsKey(HexGrid.Neighbor(cell, 1))
+            && Tunnel?.IsRock(HexGrid.Neighbor(cell, 1)) != true
             && !cells.ContainsKey(HexGrid.Neighbor(cell, 0));
 
         public ExcavationResult ExcavateAdjacent(Vector2 origin, Vector2 direction, float reach, Func<float, bool> spendEnergy)
@@ -113,7 +124,8 @@ namespace Insectum.Game
             for (int side = -1; side < HexGrid.SideCount; side++)
             {
                 Vector2Int cell = side < 0 ? originCell : HexGrid.Neighbor(originCell, side);
-                if (!cells.ContainsKey(cell) || HexGrid.RayEntry(cell, localOrigin, localDirection, reach) is not float hit)
+                if (!cells.ContainsKey(cell) || Tunnel?.IsRock(cell) == true
+                    || HexGrid.RayEntry(cell, localOrigin, localDirection, reach) is not float hit)
                     continue;
                 if (target.HasValue && hit == reach && HexGrid.Compare(cell, target.Value) >= 0)
                     continue;
@@ -225,9 +237,12 @@ namespace Insectum.Game
         {
             foreach (Vector2Int cell in region.Cells)
             {
+                if (Tunnel?.IsRock(cell) == true)
+                    continue;
                 for (int side = 0; side < HexGrid.SideCount; side++)
                 {
-                    if (cells.ContainsKey(HexGrid.Neighbor(cell, side)))
+                    Vector2Int neighbor = HexGrid.Neighbor(cell, side);
+                    if (cells.ContainsKey(neighbor) && Tunnel?.IsRock(neighbor) != true)
                         continue;
 
                     Vector2Int start = HexGrid.Corner(cell, side);

@@ -49,13 +49,19 @@ namespace Insectum.Game
                         break;
                     case LevelMarkerKind.Branch:
                         content.AddFeature(LevelFeatureKind.Chest, marker.Position + Vector2.up * 0.51f, item: chestItem);
-                        Vector2 buried = marker.Position - Vector2.up + trail * HexGrid.ColumnSpacing;
-                        content.BuryNektar(HexGrid.CellAt(buried), 2);
+                        if (layout.Tunnel == null)
+                        {
+                            Vector2 buried = marker.Position - Vector2.up + trail * HexGrid.ColumnSpacing;
+                            content.BuryNektar(HexGrid.CellAt(buried), 2);
+                        }
                         chestPlaced = true;
                         break;
                     case LevelMarkerKind.Trap:
                         content.AddTrap(marker.Position);
                         trapPlaced = true;
+                        break;
+                    case LevelMarkerKind.Shortcut when layout.Tunnel != null:
+                        content.BuryNektar(HexGrid.CellAt(marker.Position), 2);
                         break;
                     case LevelMarkerKind.Boss:
                         content.AddEnemy(Barkback, marker.Position, 0);
@@ -67,6 +73,19 @@ namespace Insectum.Game
             {
                 content.AddFeature(LevelFeatureKind.HeartSap, layout.Spawn + trail * 1.3f + Vector2.up * 0.46f, 1);
                 content.AddFeature(LevelFeatureKind.EnergySap, layout.Spawn + trail * 2.6f + Vector2.up * 0.46f, 35);
+                return;
+            }
+
+            if (layout.Tunnel != null)
+            {
+                content.AddFeature(LevelFeatureKind.Nektar, layout.Spawn + Vector2.up * 0.50f, 2);
+                for (int i = 0; i < layout.Checkpoints.Count; i += 4)
+                {
+                    Vector2 pickup = layout.Checkpoints[i].Landing + Vector2.up * 0.5f;
+                    content.AddFeature(LevelFeatureKind.Nektar, pickup, 2);
+                    if (i % 8 == 4)
+                        content.AddFeature(LevelFeatureKind.HeartSap, pickup + Vector2.up * 0.6f, 1);
+                }
                 return;
             }
 

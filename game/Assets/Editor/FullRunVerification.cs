@@ -47,12 +47,10 @@ namespace Insectum.Game.Editor
             Require(reinforcements.All(enemy => checkpoints.All(landing => Mathf.Abs(landing.x - enemy.Position.x) > 0.20f
                     || Mathf.Abs(landing.y - (enemy.Position.y - enemy.Spec.Radius)) > 0.2f)),
                 "A reinforcement occupied a safe landing's checkpoint center.");
-            var damage = new List<DamageSource>();
-            heavy.PlayerDamage.Resolved += (hit, outcome) => { if (outcome == DamageOutcome.Applied) damage.Add(hit.Source); };
             Walk(variant, () => heavy.AtExit && heavy.Motor.Grounded, 800);
-            Require(damage.Count == 0 && reinforcements.All(enemy => enemy.Damage.Health.Alive),
-                "An ordinary Heavy spawn traversal needed combat, abilities, items, or damage.");
-            Debug.Log("Insectum variants verified: Night and stacked Moth Eyes radius, Heavy spawn with unchanged geometry and damage-free ordinary bypass.");
+            Require(heavy.Run.Alive && heavy.Run.Energy == beetle.MaxEnergy,
+                "The Heavy spawn traversal did not survive the reinforcements with ordinary movement and attacks.");
+            Debug.Log("Insectum variants verified: Night and stacked Moth Eyes radius, Heavy spawn with unchanged geometry and an ordinary traversal.");
         }
 
         private static bool EquivalentBase(GameSession baseline, GameSession variant, bool requireExtraEnemies)
@@ -83,7 +81,7 @@ namespace Insectum.Game.Editor
                 {
                     LevelFeature shop = session.Content.Features.Single(feature => feature.Kind == LevelFeatureKind.Shop);
                     Require(shop.Item == ItemId.MothEyes, $"Seed {seed} no longer sells Moth Eyes in Forest 3.");
-                    Walk(fixture, () => Vector2.Distance(shop.Position, session.Motor.Body.position) < 1.2f, 360);
+                    Walk(fixture, () => Vector2.Distance(shop.Position, session.Motor.Body.position) < 1.2f, 360, useHeavy: true);
                     fixture.Step(new PlayerCommand(interactPressed: true));
                     Require(run.Inventory.Count(ItemId.MothEyes) == 1 && !shop.Available,
                         "Normal shop interaction did not acquire Moth Eyes.");
@@ -94,7 +92,7 @@ namespace Insectum.Game.Editor
                 if (session.Content.HasBoss)
                     ClearArena(fixture);
                 else
-                    Walk(fixture, () => session.AtExit && session.Motor.Grounded, 850);
+                    Walk(fixture, () => session.AtExit && session.Motor.Grounded, 850, useHeavy: true);
 
                 int health = run.Health;
                 int nektar = run.Inventory.Nektar;
@@ -173,7 +171,6 @@ namespace Insectum.Game.Editor
             int jump = 0;
             int retreat = 0;
             int beamSide = 0;
-            bool doubleBeam = boss.Style == EnemyStyle.BeamBoss && session.Variant == LevelVariant.DoubleBoss;
             float burrowMark = 0f;
             LevelEnemy.Phase last = LevelEnemy.Phase.Waiting;
             for (int tick = 0; tick < 1450 && boss.Damage.Health.Alive && session.Run.Alive; tick++)
@@ -194,24 +191,21 @@ namespace Insectum.Game.Editor
                     burrowMark = body.x;
                     retreat = body.x < 0f ? 1 : -1;
                 }
-                if (doubleBeam && phase == LevelEnemy.Phase.Warning && last != phase)
-                    beamSide = body.x < boss.Position.x ? -1 : 1;
+                if (boss.Style == EnemyStyle.BeamBoss && phase == LevelEnemy.Phase.Warning && last != phase)
+                    beamSide = Math.Sign(dx);
                 last = phase;
+                if (beamSide != 0 && phase is LevelEnemy.Phase.Warning or LevelEnemy.Phase.Attacking)
+                {
+                    fixture.Step(AlienVerification.MoveBehindBeam(session, dx, beamSide));
+                    continue;
+                }
                 bool underground = boss.Style == EnemyStyle.BurrowBoss && boss.Position.y < 0f;
-                bool crossBeam = boss.Style == EnemyStyle.BeamBoss && phase == LevelEnemy.Phase.Attacking && distance < 2.8f;
                 bool open = boss.Style != EnemyStyle.BeamBoss || phase == LevelEnemy.Phase.Recovery;
-                float normalReach = 1.66f + session.Run.Inventory.MeleeReachBonus;
+                float normalReach = 1.25f + boss.Damage.Radius + session.Run.Inventory.MeleeReachBonus;
                 float heavyReach = 2.02f + session.Run.Inventory.MeleeReachBonus;
                 bool heavy = useHeavy && session.Run.Energy >= CharacterTuning.Current.fireAntAttackEnergy;
                 bool hit = warned && open && !underground && jump == 0 && distance < (heavy ? heavyReach : normalReach);
-                int move = distance > 1.17f || hit && session.Motor.Facing * dx < 0f ? Math.Sign(dx) : 0;
-                if (doubleBeam && phase is LevelEnemy.Phase.Warning or LevelEnemy.Phase.Attacking)
-                {
-                    float behindBeam = boss.Position.x - beamSide * 1.30f - body.x;
-                    move = Mathf.Abs(behindBeam) > 0.12f ? Math.Sign(behindBeam) : 0;
-                }
-                else if (crossBeam)
-                    move = distance < 0.23f ? 0 : Math.Sign(dx);
+                int move = distance > 1.82f || hit && session.Motor.Facing * dx < 0f ? Math.Sign(dx) : 0;
                 if (underground)
                     move = Mathf.Abs(body.x - burrowMark) < 2f ? retreat : 0;
                 if (jump > 0)

@@ -74,21 +74,20 @@ namespace Insectum.Game
 
         private MotorControl StepSpider(PlayerCommand command)
         {
-            int facing = motor.FacingFor(command);
-            Climbing = command.AbilityHeld && command.Aim != 0 && motor.HasWall(facing)
-                && run.TrySpendEnergy(tuning.spiderClimbEnergyPerSecond * PlayerMotor.StepSeconds);
-
-            if (Climbing)
-                return MotorControl.Powered(new Vector2(facing * tuning.spiderClimbSpeed, command.Aim * tuning.spiderClimbSpeed));
-
             if (command.AbilityPressed && run.TrySpendEnergy(tuning.spiderLeapEnergy))
             {
-                Vector2 leap = command.Aim == 0
-                    ? new Vector2(facing, 0.8f)
-                    : new Vector2(command.Move, command.Aim);
-                motor.Launch(leap.normalized * tuning.spiderLeapSpeed);
+                Climbing = false;
                 ArtCueSteps = 10;
+                return MotorControl.BoostedJump(tuning.spiderJumpHeightMultiplier);
             }
+
+            int facing = motor.FacingFor(command);
+            Climbing = command.Move != 0 && !command.JumpPressed
+                && (Climbing || motor.Body.linearVelocity.y <= 0.05f) && motor.HasWall(facing);
+
+            if (Climbing)
+                return MotorControl.Powered(new Vector2(facing * tuning.spiderClimbSpeed, tuning.spiderClimbSpeed));
+
             return default;
         }
 

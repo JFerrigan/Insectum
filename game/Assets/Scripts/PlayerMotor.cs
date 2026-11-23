@@ -15,23 +15,29 @@ namespace Insectum.Game
         public MotorMode Mode { get; }
         public Vector2 TargetVelocity { get; }
         public float Acceleration { get; }
+        internal float JumpHeightMultiplier { get; }
 
-        private MotorControl(MotorMode mode, Vector2 targetVelocity, float acceleration)
+        private MotorControl(MotorMode mode, Vector2 targetVelocity, float acceleration, float jumpHeightMultiplier = 0f)
         {
             Mode = mode;
             TargetVelocity = targetVelocity;
             Acceleration = acceleration;
+            JumpHeightMultiplier = jumpHeightMultiplier;
         }
 
         public static MotorControl Momentum => new(MotorMode.Momentum, Vector2.zero, 0f);
         public static MotorControl Powered(Vector2 velocity, float acceleration = float.PositiveInfinity) =>
             new(MotorMode.Powered, velocity, acceleration);
+        internal static MotorControl BoostedJump(float heightMultiplier) =>
+            new(MotorMode.Normal, Vector2.zero, 0f, heightMultiplier);
     }
 
     public sealed class PlayerMotor
     {
         public const float StepSeconds = 1f / 60f;
         public const float FallDamageSpeed = 15f;
+        // The previous impact threshold was reached after about 3 units of free fall.
+        public const float FallDamageDistance = 2.5f * FallDamageSpeed * FallDamageSpeed / (2f * Gravity);
 
         private const float GroundSpeed = 6.5f;
         private const float JumpSpeed = 12.5f;
@@ -43,9 +49,11 @@ namespace Insectum.Game
 
         private readonly RaycastHit2D[] hits = new RaycastHit2D[8];
         private readonly ContactFilter2D terrainFilter = new() { useTriggers = false };
+        private readonly bool followSlopes;
         private float jumpBuffer;
         private float coyoteTime;
         private float previousVelocityY;
+        private float highestFallPoint;
         private bool jumping;
 
         public Rigidbody2D Body { get; }
@@ -53,15 +61,19 @@ namespace Insectum.Game
         public int Facing { get; private set; }
         public bool Grounded { get; private set; }
         public float LastVerticalSpeed => previousVelocityY;
+        internal float LastFallDistance { get; private set; }
         public event Action<float> Landed;
 
-        public PlayerMotor(GameObject actor, float radius, PhysicsMaterial2D surface, int initialFacing = 1)
+        public PlayerMotor(GameObject actor, float radius, PhysicsMaterial2D surface, int initialFacing = 1,
+            bool followSlopes = false)
         {
+            this.followSlopes = followSlopes;
             Facing = initialFacing < 0 ? -1 : 1;
             Body = actor.AddComponent<Rigidbody2D>();
             Body.gravityScale = 0f;
             Body.freezeRotation = true;
             Body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            highestFallPoint = Body.position.y;
 
             var circle = actor.AddComponent<CircleCollider2D>();
             circle.radius = radius;
@@ -91,6 +103,7 @@ namespace Insectum.Game
         {
             Body.position = position;
             Grounded = false;
+            highestFallPoint = position.y;
             Launch(Vector2.zero);
             Physics2D.SyncTransforms();
         }
@@ -100,13 +113,21 @@ namespace Insectum.Game
         public void Step(PlayerCommand command, MotorControl control = default)
         {
             Vector2 velocity = Body.linearVelocity;
-            bool grounded = velocity.y <= 0.05f && HasFloor();
+            Vector2 floor = Vector2.up;
+            bool grounded = (followSlopes || velocity.y <= 0.05f) && TryGetFloor(out floor)
+                && (!followSlopes || Vector2.Dot(velocity, floor) <= 0.05f);
             bool landed = grounded && !Grounded;
             float impactSpeed = Mathf.Max(0f, -previousVelocityY);
+            float height = Body.position.y;
+            highestFallPoint = Mathf.Max(highestFallPoint, height);
+            if (landed)
+                LastFallDistance = highestFallPoint - height;
+            if (grounded || control.Mode == MotorMode.Powered)
+                highestFallPoint = height;
             Grounded = grounded;
 
             if (control.Mode == MotorMode.Normal)
-                velocity = StepNormal(command, velocity, grounded);
+                velocity = StepNormal(command, velocity, grounded, floor, control.JumpHeightMultiplier);
             else
             {
                 ClearJump();
@@ -125,7 +146,8 @@ namespace Insectum.Game
                 Landed?.Invoke(impactSpeed);
         }
 
-        private Vector2 StepNormal(PlayerCommand command, Vector2 velocity, bool grounded)
+        private Vector2 StepNormal(PlayerCommand command, Vector2 velocity, bool grounded, Vector2 floor,
+            float boostedJumpHeight)
         {
             if (grounded)
             {
@@ -140,7 +162,17 @@ namespace Insectum.Game
             float horizontal = Mathf.Clamp(command.Move, -1, 1);
             float acceleration = grounded ? (horizontal == 0f ? 65f : 55f) : 28f;
             velocity.x = Mathf.MoveTowards(velocity.x, horizontal * GroundSpeed, acceleration * StepSeconds);
+            if (followSlopes && grounded)
+                velocity.y = -floor.x * velocity.x / floor.y;
             velocity.y = ApplyGravity(velocity.y);
+
+            if (boostedJumpHeight > 0f)
+            {
+                ClearJump();
+                highestFallPoint = Body.position.y;
+                velocity.y = JumpSpeed * Mathf.Sqrt(boostedJumpHeight);
+                return velocity;
+            }
 
             if (jumpBuffer > 0f && coyoteTime > 0f)
             {
@@ -150,8 +182,8 @@ namespace Insectum.Game
                 coyoteTime = 0f;
             }
 
-            if (jumping && !command.JumpHeld && velocity.y > ReleasedJumpSpeed)
-                velocity.y = ReleasedJumpSpeed;
+            if (jumping && !command.JumpHeld)
+                velocity.y = Mathf.Min(velocity.y, ReleasedJumpSpeed);
 
             jumpBuffer -= StepSeconds;
             coyoteTime -= StepSeconds;
@@ -167,13 +199,17 @@ namespace Insectum.Game
             jumping = false;
         }
 
-        private bool HasFloor()
+        private bool TryGetFloor(out Vector2 normal)
         {
             int count = Body.Cast(Vector2.down, terrainFilter, hits, 0.065f);
             for (int i = 0; i < count; i++)
                 if (hits[i].normal.y >= 0.68f)
+                {
+                    normal = hits[i].normal;
                     return true;
+                }
 
+            normal = Vector2.up;
             return false;
         }
     }
