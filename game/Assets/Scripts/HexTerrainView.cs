@@ -195,6 +195,46 @@ namespace Insectum.Game
 
         private bool LargeCandidate(Vector2Int cell) => Hash(cell) % 40 == 0;
 
+        private bool HugeCandidate(Vector2Int cell) => Hash(cell) % 70 == 7;
+
+        private static IEnumerable<Vector2Int> Within(Vector2Int cell, int radius)
+        {
+            int span = radius * 2;
+            for (int dx = -span; dx <= span; dx++)
+            for (int dy = -span; dy <= span; dy++)
+            {
+                var other = new Vector2Int(cell.x + dx, cell.y + dy);
+                if (other != cell && HexGrid.Distance(other, cell) <= radius)
+                    yield return other;
+            }
+        }
+
+        // A huge decal (6x4 units) needs every cell within two steps solid, interior and of one material,
+        // and yields to any earlier-sorting huge candidate within five cells.
+        private bool HasHuge(Vector2Int cell)
+        {
+            if (!HugeCandidate(cell) || !Interior(cell))
+                return false;
+            TerrainMaterial material = terrain.Cells[cell];
+            if (flavor.Huge[material].Count == 0)
+                return false;
+            foreach (Vector2Int other in Within(cell, 2))
+                if (!Interior(other) || terrain.Cells[other] != material)
+                    return false;
+            foreach (Vector2Int other in Within(cell, 5))
+                if (HugeCandidate(other) && HexGrid.Compare(other, cell) < 0)
+                    return false;
+            return true;
+        }
+
+        private bool CoveredByHuge(Vector2Int cell)
+        {
+            foreach (Vector2Int other in Within(cell, 3))
+                if (HugeCandidate(other) && HasHuge(other))
+                    return true;
+            return false;
+        }
+
         // A large decal needs its whole hex ring solid and of one material, and yields to any
         // candidate within two cells that sorts earlier, so big decals never overlap.
         private bool HasLarge(Vector2Int cell)
@@ -243,6 +283,15 @@ namespace Insectum.Game
             tint.a = 255;
             Vector2 center = HexGrid.Center(cell);
             bool flip = (hash >> 8 & 1) == 1;
+
+            if (HasHuge(cell))
+            {
+                List<Rect> huge = flavor.Huge[terrain.Cells[cell]];
+                AddDecal(center, FlavorArt.HugeWidth / 16f, FlavorArt.HugeHeight / 16f, huge[(hash >> 10) % huge.Count], flip, tint);
+                return;
+            }
+            if ((LargeCandidate(cell) || hash % 6 == 1) && CoveredByHuge(cell))
+                return;
 
             if (HasLarge(cell))
             {

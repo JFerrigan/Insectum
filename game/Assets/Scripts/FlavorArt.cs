@@ -11,6 +11,7 @@ namespace Insectum.Game
         public Texture2D Texture;
         public readonly Dictionary<TerrainMaterial, List<Rect>> Small = new();
         public readonly Dictionary<TerrainMaterial, List<Rect>> Large = new();
+        public readonly Dictionary<TerrainMaterial, List<Rect>> Huge = new();
     }
 
     internal static class FlavorArt
@@ -18,7 +19,9 @@ namespace Insectum.Game
         public const int SmallSize = 16;
         public const int LargeWidth = 48;
         public const int LargeHeight = 32;
-        private const int AtlasSize = 512;
+        public const int HugeWidth = 96;
+        public const int HugeHeight = 64;
+        private const int AtlasSize = 1024;
 
         private static readonly Dictionary<WorldId, FlavorSet> Sets = new();
 
@@ -451,6 +454,30 @@ namespace Insectum.Game
             p.Ellipse(24, 16, 2, 1.5f, Fungus);
         }
 
+        // A sprawling fungal network spanning a whole patch of wall, with knotted hubs and fruiting nubs.
+        private static void HugeMycelium(Painter p)
+        {
+            var hubs = new List<Vector2> { new(p.W / 2f + p.R(-8, 8), p.H / 2f + p.R(-5, 5)) };
+            for (int i = 0; i < 3; i++)
+                hubs.Add(new Vector2(p.R(16, p.W - 16), p.R(12, p.H - 12)));
+            for (int i = 1; i < hubs.Count; i++)
+                p.Jagged(hubs[0].x, hubs[0].y, hubs[i].x, hubs[i].y, 6, 6, Fungus);
+            foreach (Vector2 hub in hubs)
+            {
+                int strands = (int)p.R(6, 10);
+                for (int i = 0; i < strands; i++)
+                    p.Walk(hub.x, hub.y, i / (float)strands * Mathf.PI * 2 + p.R(-0.3f, 0.3f), (int)p.R(18, 34), 0.8f, 0.12f,
+                        i % 3 == 0 ? Fungus : FungusDim);
+                p.Ellipse(hub.x, hub.y, 2.5f, 2f, Fungus);
+                p.Set((int)hub.x - 1, (int)hub.y + 1, Quartz);
+            }
+            for (int i = 0; i < 6; i++)
+            {
+                float x = p.R(8, p.W - 8), y = p.R(8, p.H - 8);
+                p.Ellipse(x, y, 1.4f, 1.4f, new Color32(236, 226, 196, 230));
+            }
+        }
+
         private static void TreeRoot(Painter p)
         {
             p.Walk(24, 31, -Mathf.PI / 2, 28, 0.6f, 0.08f, Root);
@@ -701,6 +728,13 @@ namespace Insectum.Game
             return (small.ToArray(), large.ToArray());
         }
 
+        private static bool HasHugeMycelium(WorldId world, TerrainMaterial m) => world switch
+        {
+            WorldId.Forest => m is TerrainMaterial.Reinforced or TerrainMaterial.SoftDirt or TerrainMaterial.PackedDirt,
+            WorldId.Swamp => m is TerrainMaterial.Reinforced or TerrainMaterial.SoftDirt or TerrainMaterial.Mud,
+            _ => m == TerrainMaterial.SoftDirt
+        };
+
         private static FlavorSet Build(WorldId world)
         {
             var pixels = new Color32[AtlasSize * AtlasSize];
@@ -726,6 +760,12 @@ namespace Insectum.Game
 
             foreach (TerrainMaterial m in Enum.GetValues(typeof(TerrainMaterial)))
             {
+                var hugeRects = new List<Rect>();
+                if (HasHugeMycelium(world, m))
+                    for (int i = 0; i < 2; i++)
+                        hugeRects.Add(Place(HugeWidth, HugeHeight, HugeMycelium));
+                set.Huge[m] = hugeRects;
+
                 (Design[] small, Design[] large) = Catalog(world, m);
                 var smallRects = new List<Rect>();
                 var largeRects = new List<Rect>();
