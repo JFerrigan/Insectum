@@ -52,12 +52,11 @@ namespace Insectum.Game
         internal static Rect Prev(int row) => new(PanelX + 36, PanelY + row * RowHeight, 10, 10);
         internal static Rect Next(int row) => new(PanelX + 150, PanelY + row * RowHeight, 10, 10);
         internal static Rect Go(int row) => new(PanelX + 163, PanelY + row * RowHeight, 20, 10);
-        internal static Rect Action(int index) => new(PanelX + 3 + index * 46, PanelY + 3 * RowHeight, 43, 10);
-        internal static Rect Action2(int index) => new(PanelX + 3 + index * 46, PanelY + 4 * RowHeight, 43, 10);
+        // Two rows of three, wide enough for 8-character labels (47px).
+        internal static Rect Action(int index) => new(PanelX + 3 + index % 3 * 61, PanelY + (3 + index / 3) * RowHeight, 58, 10);
         internal static readonly string[] RowLabels = { "LEVEL", "ENEMY", "ITEM" };
 
-        internal static string[] Actions => new[] { Invincible ? "GOD ON" : "GOD OFF", "HEAL", "+50 NEK", "ALL ITEM" };
-        internal static readonly string[] Actions2 = { "NEXT LVL", "BOSS LVL", "", "" };
+        internal static string[] Actions => new[] { Invincible ? "GOD ON" : "GOD OFF", "HEAL", "+50 NEK", "ALL ITEM", "NEXT LVL", "BOSS LVL" };
 
         internal static string RowValue(GameSession session, int row) => row switch
         {
@@ -109,9 +108,9 @@ namespace Insectum.Game
             else if (Action(3).Contains(pointer))
                 foreach (ItemId item in ItemList)
                     session.DevGive(item);
-            else if (Action2(0).Contains(pointer))
+            else if (Action(4).Contains(pointer))
                 session.DevJump(Math.Min(session.Run.LevelNumber + 1, RunWorlds.LevelCount));
-            else if (Action2(1).Contains(pointer))
+            else if (Action(5).Contains(pointer))
             {
                 int world = (session.Run.LevelNumber - 1) / RunWorlds.LevelsPerWorld;
                 session.DevJump(world * RunWorlds.LevelsPerWorld + RunWorlds.LevelsPerWorld);

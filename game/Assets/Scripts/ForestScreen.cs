@@ -297,8 +297,6 @@ namespace Insectum.Game
             string[] actions = DevMode.Actions;
             for (int i = 0; i < actions.Length; i++)
                 DevButton(DevMode.Action(i), actions[i], i == 0 && DevMode.Invincible ? Mint : Gold);
-            for (int i = 0; i < DevMode.Actions2.Length; i++)
-                DevButton(DevMode.Action2(i), DevMode.Actions2[i], Gold);
         }
 
         private static void DrawWorldPrompt(Camera camera, Vector2 point, string prompt, Color color, float alpha = 1f)
