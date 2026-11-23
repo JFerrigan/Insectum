@@ -340,21 +340,8 @@ namespace Insectum.Game
                 space.AddPassage(landing + Vector2.left * RoomHalfWidth, landing + Vector2.right * RoomHalfWidth,
                     roomHeight, roomHeight);
 
-                if (chunk != shop.end && branches.Exists(branch => branch.end == chunk))
-                {
-                    int outward = right == 0 ? 1 : -1;
-                    Vector2 inner = landing + Vector2.right * (outward * RoomHalfWidth);
-                    Vector2 shoulder = landing + new Vector2(outward * 2.8f, 0.3f);
-                    Vector2 outer = landing + new Vector2(outward * 6.25f, 0.3f);
-                    if (outward > 0)
-                        space.AddPassage(inner, shoulder, 2.65f, 2.35f);
-                    else
-                        space.AddPassage(shoulder, inner, 2.35f, 2.65f);
-                    space.AddPassage(outward > 0 ? shoulder : outer, outward > 0 ? outer : shoulder, 2.35f, 2.35f);
-                    Vector2Int plug = HexGrid.CellAt(landing + new Vector2(outward * 3.9f, 1.5f));
-                    plugs.Add(plug);
-                    markers.Add(new LevelMarker(LevelMarkerKind.Shortcut, HexGrid.Center(plug), chunk));
-                }
+                if (chunk == route[0] || (chunk != shop.end && branches.Exists(branch => branch.end == chunk)))
+                    CarveDigPocket(chunk, landing, right == 0 ? 1 : -1);
 
                 foreach (int side in Sides)
                 {
@@ -367,6 +354,26 @@ namespace Insectum.Game
                     arms.Add((chunk, side), new Arm(new Vector2(x, floor + (upper ? TurnStep : 0f)),
                         split && !upper ? LowerDoor : Height));
                 }
+            }
+
+            void CarveDigPocket(Vector2Int chunk, Vector2 landing, int outward)
+            {
+                Vector2 inner = landing + Vector2.right * (outward * RoomHalfWidth);
+                Vector2 shoulder = landing + new Vector2(outward * 2.8f, 0.3f);
+                Vector2 outer = landing + new Vector2(outward * 6.25f, 0.3f);
+                if (outward > 0)
+                {
+                    space.AddPassage(inner, shoulder, 2.65f, 2.35f);
+                    space.AddPassage(shoulder, outer, 2.35f, 2.35f);
+                }
+                else
+                {
+                    space.AddPassage(outer, shoulder, 2.35f, 2.35f);
+                    space.AddPassage(shoulder, inner, 2.35f, 2.65f);
+                }
+                Vector2Int plug = HexGrid.CellAt(landing + new Vector2(outward * 3.9f, 1.5f));
+                plugs.Add(plug);
+                markers.Add(new LevelMarker(LevelMarkerKind.Shortcut, HexGrid.Center(plug), chunk));
             }
 
             void CarveLink(Vector2Int from, Vector2Int to)

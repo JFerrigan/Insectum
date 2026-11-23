@@ -45,7 +45,9 @@ namespace Insectum.Game
                 if (paused)
                     Fill(new Rect(0, 0, PixelViewport.Width, PixelViewport.Height), new Color32(15, 9, 27, 172));
                 else if (session.Content?.ClosestInteractable() is { Kind: LevelFeatureKind.Shop } shop)
-                    DrawShopPrompt(camera, shop);
+                    DrawWorldPrompt(camera, shop.Position + Vector2.up * 1.25f, shop.InteractPrompt);
+                else if (session.Run.Character.Insect == Insect.Worm)
+                    DrawDigPrompt(camera, session);
                 DrawHud(session.Run);
                 if (paused)
                     DrawPause(session);
@@ -148,10 +150,39 @@ namespace Insectum.Game
                 ForestArt.TexCoords(pickup.texture, 12, 9, 9, 16));
         }
 
-        private static void DrawShopPrompt(Camera camera, LevelFeature shop)
+        private static void DrawDigPrompt(Camera camera, GameSession session)
         {
-            Vector3 anchor = camera.WorldToViewportPoint(shop.Position + Vector2.up * 1.25f);
-            string prompt = shop.InteractPrompt;
+            Vector2 position = session.Motor.Body.position;
+            if (session.Abilities.DigFeedback is string feedback)
+            {
+                DrawWorldPrompt(camera, position + Vector2.up * 1.2f, feedback);
+                return;
+            }
+
+            if (session.Layout?.Tunnel == null)
+                return;
+            Vector2? nearestDirt = null;
+            float distanceSquared = 5.5f * 5.5f;
+            foreach (LevelMarker marker in session.Layout.Markers)
+            {
+                float distance = (marker.Position - position).sqrMagnitude;
+                if (marker.Kind != LevelMarkerKind.Shortcut || distance >= distanceSquared
+                    || !session.Terrain.Cells.ContainsKey(HexGrid.CellAt(marker.Position)))
+                    continue;
+                distanceSquared = distance;
+                nearestDirt = marker.Position;
+            }
+
+            if (nearestDirt is Vector2 dirt)
+            {
+                float cost = session.Terrain.Materials.Get(TerrainMaterial.SoftDirt).excavationEnergy;
+                DrawWorldPrompt(camera, dirt + Vector2.up * 1.2f, $"K  Dig soft dirt  ({cost:0} energy)");
+            }
+        }
+
+        private static void DrawWorldPrompt(Camera camera, Vector2 point, string prompt)
+        {
+            Vector3 anchor = camera.WorldToViewportPoint(point);
             int halfWidth = (TextWidth(prompt) + 1) / 2;
             int x = Mathf.Clamp(Mathf.RoundToInt(anchor.x * PixelViewport.Width), halfWidth + 2,
                 PixelViewport.Width - halfWidth - 2);
@@ -180,7 +211,7 @@ namespace Insectum.Game
                 Insect.Beetle => "K  TOGGLE SHELL",
                 Insect.Dragonfly => "K  FLY  /  WASD  STEER",
                 Insect.FireAnt => "K  HEAVY HIT",
-                _ => "K  DIG  /  S+K  DIG DOWN"
+                _ => "K  DIG AHEAD  /  S+K  DIG DOWN"
             }, 24, 102, Mint);
 
             if (run.Character.Insect == Insect.Spider)

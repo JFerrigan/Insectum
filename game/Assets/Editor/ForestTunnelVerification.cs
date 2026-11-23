@@ -114,7 +114,7 @@ namespace Insectum.Game.Editor
             ForestTunnelSpace tunnel = layout.Tunnel;
             var plugs = layout.Markers.Where(marker => marker.Kind == LevelMarkerKind.Shortcut).ToArray();
             Require(tunnel.Route.Zip(tunnel.Route.Skip(1), (from, to) => (from, to)).Count(tunnel.Jumps.ContainsKey) >= 2
-                && plugs.Length == 2 && plugs.All(plug => layout.Tiles[HexGrid.CellAt(plug.Position)] == TerrainMaterial.SoftDirt),
+                && plugs.Length == 3 && plugs.All(plug => layout.Tiles[HexGrid.CellAt(plug.Position)] == TerrainMaterial.SoftDirt),
                 $"Forest tunnel seed {layout.RunSeed} is missing uphill turns or diggable alcoves.");
         }
 
@@ -150,9 +150,37 @@ namespace Insectum.Game.Editor
             using var fixture = new PhysicsFixture("Forest tunnel excavation");
             GameSession session = fixture.Session;
             var worm = Character.Roster[(int)Insect.Worm];
+            foreach (int seed in Enumerable.Range(-16, 40).Append(1051))
+            {
+                session.StartTunnelTrial(worm, seed);
+                Vector2 spawn = session.Layout.Spawn;
+                int directionToDirt = -session.Layout.RouteDirection;
+                LevelMarker entrancePlug = session.Layout.Markers.FirstOrDefault(marker => marker.Kind == LevelMarkerKind.Shortcut
+                    && Mathf.Abs(marker.Position.x - spawn.x) < 5f && Mathf.Abs(marker.Position.y - spawn.y) < 2.5f);
+                Require(entrancePlug.Kind == LevelMarkerKind.Shortcut,
+                    $"Forest tunnel seed {seed} has no diggable pocket by the entrance.");
+                Vector2Int entranceCell = HexGrid.CellAt(entrancePlug.Position);
+                fixture.Advance(8);
+                fixture.Step(new PlayerCommand(abilityPressed: true));
+                Require(session.Terrain.Revision == 0 && session.Run.Energy == 100f && session.Abilities.DigFeedback != null,
+                    "Digging out of reach must give feedback without changing terrain or spending energy.");
+                int before = session.Run.Inventory.Nektar;
+                for (int step = 0; step < 85 && session.Run.Inventory.Nektar == before; step++)
+                    fixture.Step(new PlayerCommand(move: directionToDirt, abilityHeld: true));
+                Require(!session.Terrain.Cells.ContainsKey(entranceCell) && session.Terrain.Revision == 1
+                    && session.Run.Energy == 96f && session.Run.Inventory.Nektar == before + 2
+                    && session.Abilities.DigFeedback == null,
+                    $"Forest tunnel seed {seed}: entrance pocket at {entrancePlug.Position}, spawn {spawn}, player {session.Motor.Body.position}, "
+                    + $"direction {directionToDirt}, terrain revision {session.Terrain.Revision}, energy {session.Run.Energy}, Nektar {before} to {session.Run.Inventory.Nektar}.");
+                var beyondPlug = new Vector2(entrancePlug.Position.x + directionToDirt * 1.15f, spawn.y + 0.3f);
+                Walk(fixture, spawn, beyondPlug, attack: false);
+                Walk(fixture, beyondPlug, spawn, attack: false);
+            }
+
             session.StartTunnelTrial(worm, 1051);
             ForestTunnelSpace tunnel = session.Layout.Tunnel;
-            LevelMarker plug = session.Layout.Markers.First(marker => marker.Kind == LevelMarkerKind.Shortcut);
+            LevelMarker plug = session.Layout.Markers.First(marker => marker.Kind == LevelMarkerKind.Shortcut
+                && tunnel.Branches.Any(path => Vector2.Distance(path.end, marker.Position) < 6f));
             var branch = tunnel.Branches.Single(path => Vector2.Distance(path.end, plug.Position) < 6f);
             fixture.Advance(8);
             for (int i = 1; i <= branch.source; i++)

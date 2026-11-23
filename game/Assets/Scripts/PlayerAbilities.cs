@@ -11,10 +11,12 @@ namespace Insectum.Game
         private readonly CombatArena combat;
         private readonly CharacterTuning tuning;
         private int digCooldown;
+        private int digFeedbackSteps;
         private Vector2 previousShellPosition;
         private bool hasShellHistory;
 
         internal int ArtCueSteps { get; private set; }
+        internal string DigFeedback { get; private set; }
 
         public bool Shelled { get; private set; }
         public bool Flying { get; private set; }
@@ -57,6 +59,9 @@ namespace Insectum.Game
             Flying = false;
             Climbing = false;
             hasShellHistory = false;
+            digCooldown = 0;
+            digFeedbackSteps = 0;
+            DigFeedback = null;
         }
 
         internal bool AbsorbDamage(DamageHit hit)
@@ -125,15 +130,32 @@ namespace Insectum.Game
 
         private void StepExcavation(PlayerCommand command)
         {
+            if (digFeedbackSteps > 0 && --digFeedbackSteps == 0)
+                DigFeedback = null;
             if (digCooldown > 0)
                 digCooldown--;
             if ((!command.AbilityPressed && !command.AbilityHeld) || digCooldown > 0)
                 return;
 
             Vector2 direction = command.Aim < 0 ? Vector2.down : Vector2.right * motor.FacingFor(command);
-            if (terrain.ExcavateAdjacent(motor.Body.position, direction, run.Character.Radius + 0.76f, run.TrySpendEnergy)
-                == ExcavationResult.Removed)
+            ExcavationResult result = terrain.ExcavateAdjacent(motor.Body.position, direction,
+                run.Character.Radius + 0.76f, run.TrySpendEnergy);
+            if (result == ExcavationResult.Removed)
+            {
                 ArtCueSteps = 8;
+                DigFeedback = null;
+                digFeedbackSteps = 0;
+            }
+            else if (command.AbilityPressed || result == ExcavationResult.InsufficientEnergy)
+            {
+                DigFeedback = result switch
+                {
+                    ExcavationResult.Reinforced => "Reinforced rock",
+                    ExcavationResult.InsufficientEnergy => "Need more energy to dig",
+                    _ => "No diggable dirt in reach"
+                };
+                digFeedbackSteps = 60;
+            }
             digCooldown = DigIntervalSteps;
         }
     }

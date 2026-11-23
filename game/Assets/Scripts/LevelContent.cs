@@ -319,7 +319,13 @@ namespace Insectum.Game
                 case ItemEventKind.TileRemoved:
                     Vector2Int cell = itemEvent.Tile.Cell;
                     if (buriedNektar.Remove(cell, out int amount))
-                        AddFeature(LevelFeatureKind.Nektar, HexGrid.Center(cell), amount);
+                    {
+                        Vector2 pickup = HexGrid.Center(cell);
+                        // Tunnel plugs sit above the walking line. Drop their Nektar into reach.
+                        if (session.Layout?.Tunnel != null)
+                            pickup += Vector2.down * 0.65f;
+                        AddFeature(LevelFeatureKind.Nektar, pickup, amount);
+                    }
                     if (buriedArt.Remove(cell, out SpriteRenderer art))
                         art.gameObject.SetActive(false);
                     break;
