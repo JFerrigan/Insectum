@@ -19,6 +19,7 @@ namespace Insectum.Game
 
         internal static Rect SeedField => new(23, 141, 124, 18);
         internal static Rect StartButton => new(168, 141, 129, 18);
+        internal static Rect DevCheckbox => new(250, 163, 62, 10);
         internal static Rect RetryButton => new(57, 132, 97, 19);
         internal static Rect RosterButton => new(166, 132, 97, 19);
         internal static Rect ResumeButton => new(100, 145, 120, 19);
@@ -64,6 +65,8 @@ namespace Insectum.Game
                     DrawVariantBanner(session);
                 }
                 DrawHud(session.Run);
+                if (DevMode.Enabled && !paused)
+                    DrawDevPanel(session);
                 if (paused)
                     DrawPause(session);
             }
@@ -146,6 +149,11 @@ namespace Insectum.Game
             Write(string.IsNullOrEmpty(seed) ? "RANDOM" : seed, 58, 147, editingSeed ? Light : Muted);
             Button(StartButton, "ENTER FOREST");
             Center("A/D OR ARROW KEYS TO SELECT", 160, 166, Muted);
+            Rect dev = DevCheckbox;
+            Frame(new Rect(dev.x, dev.y, 10, 10), DevMode.Enabled ? Gold : Edge, Panel);
+            if (DevMode.Enabled)
+                Fill(new Rect(dev.x + 3, dev.y + 3, 4, 4), Gold);
+            Write("DEV MODE", (int)dev.x + 14, (int)dev.y + 2, DevMode.Enabled ? Gold : Muted);
         }
 
         private static void DrawResults(GameSession session)
@@ -256,6 +264,41 @@ namespace Insectum.Game
             color.a = alpha;
             Center(banner, 160, y + 2, ink, 2);
             Center(banner, 160, y, color, 2);
+        }
+
+        private static void DevButton(Rect rect, string text, Color color)
+        {
+            if (text.Length == 0)
+                return;
+            bool hover = rect.Contains(PixelViewport.Pointer);
+            Frame(rect, hover ? Light : color, hover ? new Color32(94, 60, 62, 255) : new Color32(64, 41, 55, 255));
+            Center(text, (int)rect.center.x, (int)rect.y + 2, Light);
+        }
+
+        private static void DrawDevPanel(GameSession session)
+        {
+            DevButton(DevMode.Toggle, "DEV", Mint);
+            if (!DevMode.PanelOpen)
+                return;
+            Rect panel = DevMode.Panel;
+            Frame(panel, Mint, new Color32(18, 13, 29, 220));
+            for (int row = 0; row < 3; row++)
+            {
+                int y = DevMode.PanelY + row * DevMode.RowHeight;
+                Write(DevMode.RowLabels[row], DevMode.PanelX + 4, y + 2, Mint);
+                DevButton(DevMode.Prev(row), "<", Edge);
+                DevButton(DevMode.Next(row), ">", Edge);
+                DevButton(DevMode.Go(row), "GO", Gold);
+                string value = DevMode.RowValue(session, row);
+                if (value.Length > 17)
+                    value = value[..17];
+                Center(value, DevMode.PanelX + 98, y + 2, Light);
+            }
+            string[] actions = DevMode.Actions;
+            for (int i = 0; i < actions.Length; i++)
+                DevButton(DevMode.Action(i), actions[i], i == 0 && DevMode.Invincible ? Mint : Gold);
+            for (int i = 0; i < DevMode.Actions2.Length; i++)
+                DevButton(DevMode.Action2(i), DevMode.Actions2[i], Gold);
         }
 
         private static void DrawWorldPrompt(Camera camera, Vector2 point, string prompt, Color color, float alpha = 1f)

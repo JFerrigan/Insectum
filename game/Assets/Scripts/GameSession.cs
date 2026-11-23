@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Insectum.Game
@@ -286,11 +287,52 @@ namespace Insectum.Game
 
         private bool AbsorbDamage(DamageHit hit)
         {
+            if (DevMode.Enabled && DevMode.Invincible)
+                return true;
             if (hit.Source != DamageSource.Trap || !Run.Inventory.TryBlockTrap())
                 return Abilities.AbsorbDamage(hit);
 
             Content?.ShowStatus("Dune Mantle blocked a trap");
             return true;
+        }
+
+        // ---------- dev mode hooks ----------
+        internal void DevJump(int levelNumber)
+        {
+            if (Run == null)
+                return;
+            RunInventory old = Run.Inventory;
+            var passives = new List<KeyValuePair<ItemId, int>>(old.Passives);
+            ItemId active = old.Active;
+            int nektar = old.Nektar;
+            StartGenerated(Run.Character, Run.Seed, Mathf.Clamp(levelNumber, 1, RunWorlds.LevelCount));
+            foreach (var passive in passives)
+                for (int i = 0; i < passive.Value; i++)
+                    Run.Inventory.Acquire(passive.Key);
+            if (active != ItemId.None)
+                Run.Inventory.Acquire(active);
+            Run.Inventory.AddNektar(nektar);
+            Run.RestoreHealth(Run.MaxHealth);
+        }
+
+        internal void DevSpawn(EnemySpec spec)
+        {
+            if (Content == null || Motor == null)
+                return;
+            Content.AddEnemy(spec, Motor.Body.position + new Vector2(2.5f, 1f), 0);
+            Content.ShowStatus($"Spawned {spec.Name}");
+        }
+
+        internal void DevGive(ItemId item)
+        {
+            if (Run?.Inventory.Acquire(item) == true)
+                Content?.ShowStatus($"Gave {Items.Name(item)}");
+        }
+
+        internal void DevHeal()
+        {
+            Run.RestoreHealth(Run.MaxHealth);
+            Run.RestoreEnergy(Run.Character.MaxEnergy);
         }
 
         private void ApplyFallDamage(float impactSpeed)

@@ -82,6 +82,9 @@ namespace Insectum.Game
             {
                 if (Input.GetKeyDown(KeyCode.Escape))
                     SetPaused(!paused);
+                else if (!paused && DevMode.Enabled && Input.GetMouseButtonDown(0)
+                    && DevMode.HandleClick(session, PixelViewport.Pointer))
+                    keyboard.Sample();
                 else if (paused)
                 {
                     if (Input.GetKeyDown(KeyCode.Return) || Click(ForestScreen.ResumeButton))
@@ -141,6 +144,8 @@ namespace Insectum.Game
             if (Input.GetMouseButtonDown(0))
             {
                 editingSeed = ForestScreen.SeedField.Contains(PixelViewport.Pointer);
+                if (ForestScreen.DevCheckbox.Contains(PixelViewport.Pointer))
+                    DevMode.Enabled = !DevMode.Enabled;
                 for (int i = 0; i < Character.Roster.Length; i++)
                     if (ForestScreen.RosterCard(i).Contains(PixelViewport.Pointer))
                         selected = i;
