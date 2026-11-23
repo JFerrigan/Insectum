@@ -176,11 +176,16 @@ namespace Insectum.Game.Editor
             RunState run = session.Run;
             fixture.Advance(8);
             LevelFeature shop = session.Content.Features.Single(feature => feature.Kind == LevelFeatureKind.Shop);
+            Require(session.Content.ClosestInteractable() != shop, "The shop prompt appeared outside interaction range.");
             BiomeVerification.Walk(fixture, () => run.Inventory.Nektar >= shop.Amount && Near(session, shop.Position, 1.2f), 350);
+            Require(session.Content.ClosestInteractable() == shop &&
+                session.InteractionPrompt == $"E  Buy {Items.Name(shop.Item)}  ({shop.Amount} Nektar)",
+                "The shop prompt did not identify the item, price, and purchase key in range.");
             int wallet = run.Inventory.Nektar;
             fixture.Step(new PlayerCommand(interactPressed: true));
             Require(!shop.Available && run.Inventory.Active == shop.Item && run.Inventory.Nektar == wallet - shop.Amount,
                 "The route pickups did not fund the first shop purchase through E.");
+            Require(session.Content.ClosestInteractable() != shop, "The shop prompt remained after purchase.");
             ItemId active = run.Inventory.Active;
 
             BiomeVerification.Walk(fixture, () => session.AtExit && session.Motor.Grounded, 500);

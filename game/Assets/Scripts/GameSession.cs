@@ -39,7 +39,7 @@ namespace Insectum.Game
         public PlayerAbilities Abilities { get; private set; }
         internal LevelContent Content { get; private set; }
         public string Status => Content?.Status;
-        public string InteractionPrompt => Content?.InteractPrompt() ?? (AtExit
+        public string InteractionPrompt => Content?.ClosestInteractable()?.InteractPrompt ?? (AtExit
             ? Content?.ExitUnlocked == false ? Content.BossGatePrompt : $"E  Enter {Run.World} exit"
             : null);
         public LevelLayout Layout { get; private set; }

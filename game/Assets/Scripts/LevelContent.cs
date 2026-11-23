@@ -24,6 +24,14 @@ namespace Insectum.Game
         public bool Interactable => Kind >= LevelFeatureKind.Shop;
         private readonly SpriteRenderer art;
 
+        internal string InteractPrompt => Kind switch
+        {
+            LevelFeatureKind.Shop => $"E  Buy {Items.Name(Item)}  ({Amount} Nektar)",
+            LevelFeatureKind.Chest => "E  Open chest",
+            LevelFeatureKind.BossReward => $"E  Claim {Items.Name(Item)}",
+            _ => null
+        };
+
         public LevelFeature(LevelFeatureKind kind, Vector2 position, ItemId item, int amount, SpriteRenderer art)
         {
             Kind = kind;
@@ -193,19 +201,6 @@ namespace Insectum.Game
 
         internal void ShowStatus(string message) => Status = message;
 
-        internal string InteractPrompt()
-        {
-            LevelFeature feature = ClosestInteractable();
-            if (feature == null)
-                return null;
-            return feature.Kind switch
-            {
-                LevelFeatureKind.Shop => $"E  Buy {Items.Name(feature.Item)}  ({feature.Amount} Nektar)",
-                LevelFeatureKind.Chest => "E  Open chest",
-                _ => $"E  Claim {Items.Name(feature.Item)}"
-            };
-        }
-
         internal bool TryInteract()
         {
             LevelFeature feature = ClosestInteractable();
@@ -230,7 +225,7 @@ namespace Insectum.Game
             return true;
         }
 
-        private LevelFeature ClosestInteractable()
+        internal LevelFeature ClosestInteractable()
         {
             float best = 1.32f * 1.32f;
             LevelFeature closest = null;

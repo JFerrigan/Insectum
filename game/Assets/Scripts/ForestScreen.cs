@@ -24,8 +24,8 @@ namespace Insectum.Game
         internal static Rect RosterCard(int index) => index == (int)Insect.Dragonfly
             ? new Rect(132, 59, 56, 49) : new Rect(23 + index * 56, 59, 50, 49);
 
-        internal static void Draw(RenderTexture world, GameSession session, int selected, string seed, bool editingSeed,
-            bool paused)
+        internal static void Draw(RenderTexture world, Camera camera, GameSession session, int selected, string seed,
+            bool editingSeed, bool paused)
         {
             if (Event.current.type != EventType.Repaint)
                 return;
@@ -44,6 +44,8 @@ namespace Insectum.Game
             {
                 if (paused)
                     Fill(new Rect(0, 0, PixelViewport.Width, PixelViewport.Height), new Color32(15, 9, 27, 172));
+                else if (session.Content?.ClosestInteractable() is { Kind: LevelFeatureKind.Shop } shop)
+                    DrawShopPrompt(camera, shop);
                 DrawHud(session.Run);
                 if (paused)
                     DrawPause(session);
@@ -144,6 +146,21 @@ namespace Insectum.Game
             // Crop the transparent margins of the pickup's atlas cell.
             GUI.DrawTextureWithTexCoords(new Rect(nektarX - 12, 5, 9, 16), pickup.texture,
                 ForestArt.TexCoords(pickup.texture, 12, 9, 9, 16));
+        }
+
+        private static void DrawShopPrompt(Camera camera, LevelFeature shop)
+        {
+            Vector3 anchor = camera.WorldToViewportPoint(shop.Position + Vector2.up * 1.25f);
+            string prompt = shop.InteractPrompt;
+            int halfWidth = (TextWidth(prompt) + 1) / 2;
+            int x = Mathf.Clamp(Mathf.RoundToInt(anchor.x * PixelViewport.Width), halfWidth + 2,
+                PixelViewport.Width - halfWidth - 2);
+            int y = Mathf.RoundToInt((1f - anchor.y) * PixelViewport.Height) - 7;
+            Center(prompt, x - 1, y, Ink);
+            Center(prompt, x + 1, y, Ink);
+            Center(prompt, x, y - 1, Ink);
+            Center(prompt, x, y + 1, Ink);
+            Center(prompt, x, y, Gold);
         }
 
         private static void DrawPause(GameSession session)

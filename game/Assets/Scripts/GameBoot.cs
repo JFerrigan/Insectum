@@ -214,7 +214,7 @@ namespace Insectum.Game
                 RenderTexture.active = previous;
                 display = nightView;
             }
-            ForestScreen.Draw(display, session, selected, seedText, editingSeed, paused);
+            ForestScreen.Draw(display, routeCamera, session, selected, seedText, editingSeed, paused);
         }
 
         private static RenderTexture CreateNativeTarget(string label) =>
