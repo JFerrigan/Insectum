@@ -29,5 +29,24 @@ namespace Insectum.Game.Editor
 
             Debug.Log($"Insectum macOS build succeeded. {Path.GetFullPath(output)}");
         }
+
+        [MenuItem("Insectum/Build WebGL")]
+        public static void WebGL()
+        {
+            const string output = "Builds/WebGL";
+            Directory.CreateDirectory("Builds");
+            PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
+            BuildReport report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
+            {
+                scenes = EditorBuildSettings.scenes.Where(scene => scene.enabled).Select(scene => scene.path).ToArray(),
+                locationPathName = output,
+                target = BuildTarget.WebGL,
+                options = BuildOptions.None
+            });
+            if (report.summary.result != BuildResult.Succeeded)
+                throw new InvalidOperationException($"WebGL build {report.summary.result} with {report.summary.totalErrors} errors.");
+
+            Debug.Log($"Insectum WebGL build succeeded. {Path.GetFullPath(output)}");
+        }
     }
 }
