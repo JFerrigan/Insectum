@@ -46,6 +46,8 @@ namespace Insectum.Game
                     Fill(new Rect(0, 0, PixelViewport.Width, PixelViewport.Height), new Color32(15, 9, 27, 172));
                 else if (session.Content?.NearbyShop() is LevelFeature shop)
                     DrawShopOffer(camera, session, shop);
+                else if (session.Content?.ClosestInteractable() is LevelFeature feature)
+                    DrawWorldPrompt(camera, feature.Position + Vector2.up * 1.4f, feature.InteractPrompt, Gold);
                 else if (session.Abilities.DigFeedback is string feedback)
                     DrawWorldPrompt(camera, session.Motor.Body.position + Vector2.up * 1.2f, feedback, Gold);
                 DrawHud(session.Run);
