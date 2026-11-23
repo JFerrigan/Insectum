@@ -324,7 +324,7 @@ namespace Insectum.Game
             Write("CONTROLS", 24, 55, Gold);
             Write("A/D  MOVE", 24, 66, Light);
             Write("SPACE  JUMP (HOLD HIGHER)", 24, 75, Light);
-            Write("J  HIT  /  W+J  HIT UP", 24, 84, Light);
+            Write("J HIT / W+J UP / AIR S+J DOWN", 24, 84, Light);
             Write("E  INTERACT  /  L  ITEM", 24, 93, Light);
             Write(run.Character.Insect switch
             {

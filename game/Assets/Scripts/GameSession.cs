@@ -273,7 +273,9 @@ namespace Insectum.Game
             if (!heavy && !command.AttackPressed)
                 return;
 
-            Vector2 direction = command.Aim > 0 ? Vector2.up : Vector2.right * Motor.FacingFor(command);
+            Vector2 direction = command.Aim > 0 ? Vector2.up
+                : command.Aim < 0 && !Motor.Grounded ? Vector2.down
+                : Vector2.right * Motor.FacingFor(command);
             Vector2 origin = Motor.Body.position;
             MeleePoseSteps = heavy ? 10 : 7;
             MeleeAim = direction;
