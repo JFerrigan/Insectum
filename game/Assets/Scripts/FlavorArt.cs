@@ -639,6 +639,22 @@ namespace Insectum.Game
 
         private static (Design[] small, Design[] large) Catalog(WorldId world, TerrainMaterial m)
         {
+            // Tunnel levels fill every wall with Reinforced, so it reads as the world's bedrock,
+            // not as metal: give it each world's natural inclusions.
+            if (m == TerrainMaterial.Reinforced)
+                return world switch
+                {
+                    WorldId.Swamp => (new Design[] { Bubbles, RottingLeaf, BogWoodChip, ReedStems, Pebble, Rootlets },
+                        new Design[] { SunkenBranch, ClamBed, RootBall }),
+                    WorldId.Caves => (new Design[] { QuartzVein, MicaFlecks, GarnetCrystal, GlowCrystal, StalactiteStub, Cracks },
+                        new Design[] { OreVein, Geode, CrystalCluster }),
+                    WorldId.Desert => (new Design[] { CrossBedding, ShellFragment, Scarab, BoneShard, IronConcretion },
+                        new Design[] { BigBone, DinoFootprint, Skull, Ripples }),
+                    WorldId.Alien => (new Design[] { Veins, Nodules, Eggs }, new Design[] { Ribcage, Membrane }),
+                    _ => (new Design[] { Mycelium, Rootlets, WormBurrow, Pebbles, Seed, Ammonite, Cracks },
+                        new Design[] { MyceliumWeb, TreeRoot, Boulder, FishFossil })
+                };
+
             (Design[] small, Design[] large) baseSet = m switch
             {
                 TerrainMaterial.Sand => (new Design[] { ShellFragment, Pebbles, BeetleHusk }, new Design[] { BigBone, Ripples }),
