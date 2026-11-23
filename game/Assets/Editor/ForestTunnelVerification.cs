@@ -11,6 +11,7 @@ namespace Insectum.Game.Editor
         internal static void Verify()
         {
             using var fixture = new PhysicsFixture("Forest tunnel trial", enableAbilities: false, enableVariants: true);
+            VerifySlopeRest(fixture);
             var layouts = new HashSet<string>();
             var times = new List<float>();
             int branches = 0;
@@ -55,6 +56,41 @@ namespace Insectum.Game.Editor
             VerifyDigging();
             Debug.Log($"Insectum tunnel trial verified. {times.Count + branches / 3} damage-free baseline traversals, {layouts.Count} distinct layouts, "
                 + $"{branches} side-tunnel round trips, a playable fallback for all five insects, and main routes of {times.Min():F1}–{times.Max():F1}s.");
+        }
+
+        private static void VerifySlopeRest(PhysicsFixture fixture)
+        {
+            const int seed = 12;
+            LevelLayout layout = ForestTunnelLayout.Generate(seed);
+            Character character = Character.Roster[(int)Insect.Beetle];
+            foreach (int uphill in new[] { -1, 1 })
+            {
+                var (from, to) = layout.Tunnel.Lining.First(segment =>
+                {
+                    Vector2 span = segment.to - segment.from;
+                    return span.x > 3f && span.y * uphill > 1.5f && span.y * uphill < span.x;
+                });
+                Vector2 tangent = (to - from).normalized;
+                Vector2 normal = new(-tangent.y, tangent.x);
+                fixture.Session.Start(character, seed, layout);
+                PlayerMotor motor = fixture.Session.Motor;
+                motor.Warp((from + to) / 2f + normal * (character.Radius + 0.04f));
+                fixture.Advance(8);
+                Vector2 start = motor.Body.position;
+                fixture.Advance(11, new PlayerCommand(move: uphill));
+                Require(motor.Grounded && motor.Body.position.y > start.y + 0.2f,
+                    $"The player could not walk uphill toward {uphill}.");
+
+                fixture.Advance(20);
+                Vector2 stopped = motor.Body.position;
+                fixture.Advance(180);
+                Require(motor.Grounded && Vector2.Distance(stopped, motor.Body.position) < 0.01f,
+                    $"The idle player slid on the slope facing uphill toward {uphill}: {stopped} to {motor.Body.position}.");
+                fixture.Step(new PlayerCommand(jumpPressed: true, jumpHeld: true));
+                Require(motor.Body.position.y > stopped.y + 0.1f,
+                    $"The player could not jump from rest on the slope facing uphill toward {uphill}.");
+            }
+            Debug.Log("Insectum slope rest verified: walked uphill, stood still for three seconds, and jumped on both inclines.");
         }
 
         private static void VerifyGeometry(LevelLayout layout)

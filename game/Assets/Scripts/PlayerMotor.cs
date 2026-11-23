@@ -164,7 +164,8 @@ namespace Insectum.Game
             velocity.x = Mathf.MoveTowards(velocity.x, horizontal * GroundSpeed, acceleration * StepSeconds);
             if (followSlopes && grounded)
                 velocity.y = -floor.x * velocity.x / floor.y;
-            velocity.y = ApplyGravity(velocity.y);
+            else
+                velocity.y = ApplyGravity(velocity.y);
 
             if (boostedJumpHeight > 0f)
             {
@@ -180,6 +181,11 @@ namespace Insectum.Game
                 jumping = true;
                 jumpBuffer = 0f;
                 coyoteTime = 0f;
+            }
+            else if (followSlopes && grounded)
+            {
+                // Maintain floor contact without adding downhill speed.
+                velocity -= floor * (Gravity * StepSeconds);
             }
 
             if (jumping && !command.JumpHeld)
