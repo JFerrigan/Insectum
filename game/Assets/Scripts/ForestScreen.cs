@@ -19,11 +19,13 @@ namespace Insectum.Game
         internal static Rect StartButton => new(168, 141, 129, 18);
         internal static Rect RetryButton => new(57, 132, 97, 19);
         internal static Rect RosterButton => new(166, 132, 97, 19);
+        internal static Rect ResumeButton => new(100, 145, 120, 19);
 
         internal static Rect RosterCard(int index) => index == (int)Insect.Dragonfly
             ? new Rect(132, 59, 56, 49) : new Rect(23 + index * 56, 59, 50, 49);
 
-        internal static void Draw(RenderTexture world, GameSession session, int selected, string seed, bool editingSeed)
+        internal static void Draw(RenderTexture world, GameSession session, int selected, string seed, bool editingSeed,
+            bool paused)
         {
             if (Event.current.type != EventType.Repaint)
                 return;
@@ -39,7 +41,13 @@ namespace Insectum.Game
             float scale = viewport.width / PixelViewport.Width;
             GUI.matrix = Matrix4x4.TRS(new Vector3(viewport.x, viewport.y, 0f), Quaternion.identity, new Vector3(scale, scale, 1f));
             if (session.Phase == RunPhase.Playing)
-                DrawHud(session);
+            {
+                if (paused)
+                    Fill(new Rect(0, 0, PixelViewport.Width, PixelViewport.Height), new Color32(15, 9, 27, 172));
+                DrawHud(session.Run);
+                if (paused)
+                    DrawPause(session);
+            }
             else if (session.Phase == RunPhase.Selection)
                 DrawSelection(selected, seed, editingSeed);
             else
@@ -104,12 +112,73 @@ namespace Insectum.Game
             Button(RosterButton, "ESC ROSTER");
         }
 
-        private static void DrawHud(GameSession session)
+        private static void DrawHud(RunState run)
+        {
+            const int heartsPerRow = 18;
+            for (int i = 0; i < run.MaxHealth; i++)
+            {
+                int x = 8 + i % heartsPerRow * 9;
+                int y = 9 + i / heartsPerRow * 8;
+                Heart(x - 1, y, Ink);
+                Heart(x + 1, y, Ink);
+                Heart(x, y - 1, Ink);
+                Heart(x, y + 1, Ink);
+                Heart(x, y, i < run.Health ? Pink : Edge);
+            }
+
+            int barY = 17 + (run.MaxHealth - 1) / heartsPerRow * 8;
+            Frame(new Rect(7, barY, 53, 7), Ink, Edge);
+            Fill(new Rect(8, barY + 1, Mathf.Round(51f * run.Energy / run.Character.MaxEnergy), 5), Mint);
+
+            string nektar = run.Inventory.Nektar.ToString();
+            int nektarX = 312 - TextWidth(nektar);
+            int levelX = nektarX - 20;
+            string level = $"{run.World} {run.WorldLevel}/{RunWorlds.LevelsPerWorld}";
+            Right(level, levelX + 1, 10, Ink);
+            Right(level, levelX, 9, Light);
+            Write(nektar, nektarX + 1, 10, Ink);
+            Write(nektar, nektarX, 9, Gold);
+
+            Sprite pickup = ForestArt.Prop(ForestProp.Nektar);
+            GUI.color = Color.white;
+            // Crop the transparent margins of the pickup's atlas cell.
+            GUI.DrawTextureWithTexCoords(new Rect(nektarX - 12, 5, 9, 16), pickup.texture,
+                ForestArt.TexCoords(pickup.texture, 12, 9, 9, 16));
+        }
+
+        private static void DrawPause(GameSession session)
         {
             RunState run = session.Run;
-            Frame(new Rect(5, 5, 310, 26), Edge, new Color32(29, 21, 41, 242));
-            Write($"{run.World} {run.WorldLevel}/{RunWorlds.LevelsPerWorld}", 11, 9, Gold);
-            Write(run.Character.Name, 83, 9, Light);
+            Frame(new Rect(14, 26, 292, 144), Edge, Panel);
+            Center("PAUSED", 160, 33, Light, 2);
+
+            Write("CONTROLS", 24, 55, Gold);
+            Write("A/D  MOVE", 24, 66, Light);
+            Write("SPACE  JUMP (HOLD HIGHER)", 24, 75, Light);
+            Write("J  HIT  /  W+J  HIT UP", 24, 84, Light);
+            Write("E  INTERACT  /  L  ITEM", 24, 93, Light);
+            Write(run.Character.Insect switch
+            {
+                Insect.Spider => "K  HIGH JUMP",
+                Insect.Beetle => "K  TOGGLE SHELL",
+                Insect.Dragonfly => "K  FLY  /  WASD  STEER",
+                Insect.FireAnt => "K  HEAVY HIT",
+                _ => "K  DIG  /  S+K  DIG DOWN"
+            }, 24, 102, Mint);
+
+            if (run.Character.Insect == Insect.Spider)
+            {
+                Write("WALK INTO WALL TO CLIMB", 24, 111, Muted);
+                Write("RELEASE MOVE TO DROP", 176, 111, Muted);
+            }
+
+            Write(run.Character.Name, 176, 55, Gold);
+            Write($"SEED {run.Seed}", 176, 66, Light);
+            Write($"ITEM  {Items.Name(run.Inventory.Active)}", 176, 75, Light);
+            int cooldown = run.Inventory.ActiveCooldownSteps;
+            if (cooldown > 0)
+                Write($"RECHARGE  {cooldown * PlayerMotor.StepSeconds:0.0}S", 176, 84, Muted);
+
             string variant = session.Variant switch
             {
                 LevelVariant.Night => "NIGHT",
@@ -118,47 +187,14 @@ namespace Insectum.Game
                 _ => null
             };
             if (variant != null)
-                Write(variant, 174, 9, Mint);
-            Right($"NEKTAR {run.Inventory.Nektar}", 308, 9, Gold);
-            for (int i = 0; i < Mathf.Min(run.MaxHealth, 8); i++)
-                Heart(11 + i * 8, 20, i < run.Health ? Pink : Edge);
-            if (run.MaxHealth > 8)
-                Write($"{run.Health}/{run.MaxHealth}", 77, 20, Light);
+                Write(variant, 176, 93, Mint);
 
-            Write("K", 118, 20, Mint);
-            Fill(new Rect(127, 20, 51, 7), Edge);
-            Fill(new Rect(128, 21, 49, 5), Ink);
-            Fill(new Rect(128, 21, Mathf.Round(49f * run.Energy / run.Character.MaxEnergy), 5), Mint);
-            if (run.Inventory.Active != ItemId.None)
-            {
-                int cooldown = run.Inventory.ActiveCooldownSteps;
-                string recharge = cooldown > 0 ? $" {cooldown * PlayerMotor.StepSeconds:0.0}S" : string.Empty;
-                Right($"L {Items.Name(run.Inventory.Active)}{recharge}", 308, 20, cooldown == 0 ? Light : Muted);
-            }
-            else
-                Right($"SEED {run.Seed}", 308, 20, Muted);
-
-            string prompt = session.InteractionPrompt;
+            if (session.InteractionPrompt is string prompt)
+                Center(prompt, 160, 122, Gold);
             if (session.Status is string status)
-                Toast(status, prompt == null ? 140 : 128, Mint);
-            if (prompt != null)
-                Toast(prompt, 144, Gold);
-
-            Fill(new Rect(5, 164, 310, 11), new Color32(27, 17, 38, 226));
-            Center(Controls(session), 160, 166, Muted);
+                Center(status, 160, 133, Muted);
+            Button(ResumeButton, "ESC  RESUME");
         }
-
-        private static string Controls(GameSession session) => session.Run.Character.Insect switch
-        {
-            Insect.Spider when session.Abilities.Climbing => "RELEASE MOVE TO DROP   K HIGH JUMP",
-            Insect.Spider => "A/D MOVE   SPACE JUMP   J HIT   K HIGH JUMP",
-            Insect.Beetle when session.Abilities.Shelled => "K OPEN SHELL",
-            Insect.Beetle => "A/D MOVE   SPACE JUMP   J HIT   K SHELL",
-            Insect.Dragonfly when session.Abilities.Flying => "A/D/W/S STEER   J HIT   K LAND",
-            Insect.Dragonfly => "A/D MOVE   SPACE JUMP   J HIT   K FLY",
-            Insect.FireAnt => "A/D MOVE   SPACE JUMP   J HIT   K HEAVY HIT",
-            _ => "A/D MOVE   SPACE JUMP   J HIT   K DIG   S+K BELOW"
-        };
 
         private static void Shade() =>
             Fill(new Rect(0, 0, PixelViewport.Width, PixelViewport.Height), new Color32(15, 9, 27, 83));
@@ -168,13 +204,6 @@ namespace Insectum.Game
             bool hover = rect.Contains(PixelViewport.Pointer);
             Frame(rect, hover ? Light : Gold, hover ? new Color32(94, 60, 62, 255) : new Color32(64, 41, 55, 255));
             Center(text, (int)rect.center.x, (int)rect.y + 6, Light);
-        }
-
-        private static void Toast(string text, int y, Color color)
-        {
-            int width = Mathf.Min(306, TextWidth(text) + 12);
-            Frame(new Rect((320 - width) / 2, y, width, 13), Edge, Panel);
-            Center(text, 160, y + 3, color);
         }
 
         private static void Heart(int x, int y, Color color)

@@ -117,7 +117,7 @@ namespace Insectum.Game
             body.flipX = motor.Facing < 0;
             bool attack = session.MeleePoseSteps > 0;
             body.sprite = ForestArt.Actor((int)insect, Pose(motor, insect, attack));
-            body.color = session.PlayerDamage.InvulnerabilitySteps > 0 && Time.frameCount % 6 < 3
+            body.color = session.PlayerDamage.InvulnerabilitySteps > 0 && Mathf.FloorToInt(Time.time * 20f) % 2 == 0
                 ? new Color32(255, 162, 173, 255) : Color.white;
             slash.enabled = attack;
             if (!attack)

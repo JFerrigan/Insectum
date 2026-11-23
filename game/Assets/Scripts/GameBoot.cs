@@ -19,6 +19,8 @@ namespace Insectum.Game
         private int selected;
         private string seedText = string.Empty;
         private bool editingSeed;
+        private bool paused;
+        private float timeScaleBeforePause;
 
 #if DEVELOPMENT_BUILD
         private ForestReplay replay;
@@ -76,7 +78,15 @@ namespace Insectum.Game
 #endif
             if (session.Phase == RunPhase.Playing)
             {
-                keyboard.Sample();
+                if (Input.GetKeyDown(KeyCode.Escape))
+                    SetPaused(!paused);
+                else if (paused)
+                {
+                    if (Input.GetKeyDown(KeyCode.Return) || Click(ForestScreen.ResumeButton))
+                        SetPaused(false);
+                }
+                else
+                    keyboard.Sample();
                 return;
             }
 
@@ -128,6 +138,22 @@ namespace Insectum.Game
         }
 
         private static bool Click(Rect region) => Input.GetMouseButtonDown(0) && region.Contains(PixelViewport.Pointer);
+
+        private void SetPaused(bool value)
+        {
+            paused = value;
+            if (paused)
+            {
+                timeScaleBeforePause = Time.timeScale;
+                Time.timeScale = 0f;
+            }
+            else
+            {
+                keyboard.Sample();
+                keyboard.Consume();
+                Time.timeScale = timeScaleBeforePause;
+            }
+        }
 
         private void FixedUpdate()
         {
@@ -187,7 +213,7 @@ namespace Insectum.Game
                 RenderTexture.active = previous;
                 display = nightView;
             }
-            ForestScreen.Draw(display, session, selected, seedText, editingSeed);
+            ForestScreen.Draw(display, session, selected, seedText, editingSeed, paused);
         }
 
         private static RenderTexture CreateNativeTarget(string label) =>
@@ -210,6 +236,8 @@ namespace Insectum.Game
 
         private void OnDestroy()
         {
+            if (paused)
+                Time.timeScale = timeScaleBeforePause;
             view.Release();
             nightView.Release();
             Destroy(nightView);

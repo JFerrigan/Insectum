@@ -57,7 +57,6 @@ namespace Insectum.Game
         private readonly SpriteRenderer blastArt;
         private float blastUntil;
         private int tick;
-        private int statusUntil;
         private bool rewardPlaced;
 
         internal IReadOnlyList<LevelEnemy> Enemies => enemies;
@@ -156,8 +155,6 @@ namespace Insectum.Game
         internal void Step(PlayerCommand command)
         {
             tick++;
-            if (tick >= statusUntil)
-                Status = null;
             Run.Inventory.Step();
             if (command.ItemPressed)
                 UseActive(command);
@@ -194,11 +191,7 @@ namespace Insectum.Game
                 blastArt.enabled = false;
         }
 
-        internal void ShowStatus(string message)
-        {
-            Status = message;
-            statusUntil = tick + 145;
-        }
+        internal void ShowStatus(string message) => Status = message;
 
         internal string InteractPrompt()
         {

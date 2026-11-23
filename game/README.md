@@ -13,8 +13,10 @@ a fall of about 7.4 world units cost one heart. Forest 1 is the tunnel trial.
 Its 37-chunk board has a 28-chunk main route and three side tunnels. Amber chevrons mark uphill
 turns on the main route, and green chevrons mark side entrances. One side
 tunnel leads to a shop and two lead to chests with diggable alcoves. The exit
-continues to Forest 2. Leave the seed field blank for a random layout, or enter the seed from
-the HUD to replay it. Click the seed field or press Tab to edit it. From the
+continues to Forest 2. Press Esc during a run to pause and see the controls,
+current item, and seed. Press Esc again or click Resume to continue. Leave
+the seed field blank for a random layout, or enter a seed to replay it. Click
+the seed field or press Tab to edit it. From the
 results screen, press Enter to restart or Esc to return to the roster.
 
 Press J to strike forward or W + J to strike up. K uses the selected insect's
