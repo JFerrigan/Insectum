@@ -168,9 +168,9 @@ namespace Insectum.Game.Editor
 
                 Vector2 dug = session.Motor.Body.position;
                 Require((dug.x - wall.x) * outward >= 4.5f && session.Terrain.Revision >= 3
-                    && session.Run.Energy == worm.MaxEnergy,
+                    && Mathf.Approximately(session.Run.Energy, worm.MaxEnergy - 10f * session.Terrain.Revision),
                     $"Forest tunnel seed {seed}: Worm did not advance through reinforced rock from {wall} to {dug}, "
-                    + $"after {session.Terrain.Revision} digs. Health {session.Run.Health}.");
+                    + $"after {session.Terrain.Revision} digs, energy {session.Run.Energy}. Health {session.Run.Health}.");
 
                 session.StartTunnelTrial(worm, seed);
                 fixture.Advance(8);

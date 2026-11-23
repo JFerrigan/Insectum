@@ -67,7 +67,7 @@ MonoBehaviour:
       serializedVersion: 2
       rgba: 4289635730
   reinforced:
-    excavationEnergy: 0
+    excavationEnergy: 10
     blastResistance: 0
     tint:
       serializedVersion: 2

@@ -76,8 +76,8 @@ namespace Insectum.Game.Editor
                 "Aiming into air must stay silent and preserve terrain and energy.");
             fixture.Advance(9);
             fixture.Step(new PlayerCommand(aim: -1, abilityPressed: true));
-            Require(session.Terrain.Revision == 1 && session.Run.Energy == 100f,
-                "Worm did not remove the reinforced terrain beneath the authored spawn.");
+            Require(session.Terrain.Revision == 1 && session.Run.Energy == 90f,
+                "Worm did not remove the reinforced terrain beneath the authored spawn for 10 energy.");
 
             session.Start(worm, 554);
             Require(session.Run.TrySpendEnergy(94f), "The insufficient-energy fixture could not spend 94 energy.");
