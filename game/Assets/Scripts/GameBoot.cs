@@ -89,6 +89,12 @@ namespace Insectum.Game
                 {
                     if (Input.GetKeyDown(KeyCode.Return) || Click(ForestScreen.ResumeButton))
                         SetPaused(false);
+                    else if (Input.GetKeyDown(KeyCode.Q) || Click(ForestScreen.QuitToRosterButton))
+                    {
+                        SetPaused(false);
+                        menu = MenuPage.Roster;
+                        session.ReturnToSelection();
+                    }
                 }
                 else
                     keyboard.Sample();

@@ -22,7 +22,8 @@ namespace Insectum.Game
         internal static Rect DevCheckbox => new(250, 163, 62, 10);
         internal static Rect RetryButton => new(57, 132, 97, 19);
         internal static Rect RosterButton => new(166, 132, 97, 19);
-        internal static Rect ResumeButton => new(100, 145, 120, 19);
+        internal static Rect ResumeButton => new(38, 145, 118, 19);
+        internal static Rect QuitToRosterButton => new(164, 145, 118, 19);
         internal static Rect PlayButton => new(110, 80, 100, 19);
         internal static Rect SettingsButton => new(110, 105, 100, 19);
         internal static Rect QuitButton => new(110, 130, 100, 19);
@@ -375,6 +376,7 @@ namespace Insectum.Game
             if (session.Status is string status)
                 Center(status, 160, 133, Muted);
             Button(ResumeButton, "ESC  RESUME");
+            Button(QuitToRosterButton, "Q  CHARACTERS");
         }
 
         private static void Shade() =>
