@@ -46,8 +46,8 @@ namespace Insectum.Game
                     Fill(new Rect(0, 0, PixelViewport.Width, PixelViewport.Height), new Color32(15, 9, 27, 172));
                 else if (session.Content?.ClosestInteractable() is { Kind: LevelFeatureKind.Shop } shop)
                     DrawWorldPrompt(camera, shop.Position + Vector2.up * 1.25f, shop.InteractPrompt);
-                else if (session.Run.Character.Insect == Insect.Worm)
-                    DrawDigPrompt(camera, session);
+                else if (session.Abilities.DigFeedback is string feedback)
+                    DrawWorldPrompt(camera, session.Motor.Body.position + Vector2.up * 1.2f, feedback);
                 DrawHud(session.Run);
                 if (paused)
                     DrawPause(session);
@@ -148,36 +148,6 @@ namespace Insectum.Game
             // Crop the transparent margins of the pickup's atlas cell.
             GUI.DrawTextureWithTexCoords(new Rect(nektarX - 12, 5, 9, 16), pickup.texture,
                 ForestArt.TexCoords(pickup.texture, 12, 9, 9, 16));
-        }
-
-        private static void DrawDigPrompt(Camera camera, GameSession session)
-        {
-            Vector2 position = session.Motor.Body.position;
-            if (session.Abilities.DigFeedback is string feedback)
-            {
-                DrawWorldPrompt(camera, position + Vector2.up * 1.2f, feedback);
-                return;
-            }
-
-            if (session.Layout?.Tunnel == null)
-                return;
-            Vector2? nearestDirt = null;
-            float distanceSquared = 5.5f * 5.5f;
-            foreach (LevelMarker marker in session.Layout.Markers)
-            {
-                float distance = (marker.Position - position).sqrMagnitude;
-                if (marker.Kind != LevelMarkerKind.Shortcut || distance >= distanceSquared
-                    || !session.Terrain.Cells.ContainsKey(HexGrid.CellAt(marker.Position)))
-                    continue;
-                distanceSquared = distance;
-                nearestDirt = marker.Position;
-            }
-
-            if (nearestDirt is Vector2 dirt)
-            {
-                float cost = session.Terrain.Materials.Get(TerrainMaterial.SoftDirt).excavationEnergy;
-                DrawWorldPrompt(camera, dirt + Vector2.up * 1.2f, $"K  Dig soft dirt  ({cost:0} energy)");
-            }
         }
 
         private static void DrawWorldPrompt(Camera camera, Vector2 point, string prompt)

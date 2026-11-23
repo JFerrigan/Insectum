@@ -60,9 +60,6 @@ namespace Insectum.Game
                         content.AddTrap(marker.Position);
                         trapPlaced = true;
                         break;
-                    case LevelMarkerKind.Shortcut when layout.Tunnel != null:
-                        content.BuryNektar(HexGrid.CellAt(marker.Position), 2);
-                        break;
                     case LevelMarkerKind.Boss:
                         content.AddEnemy(Barkback, marker.Position, 0);
                         break;

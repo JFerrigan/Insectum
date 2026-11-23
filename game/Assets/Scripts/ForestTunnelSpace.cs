@@ -29,22 +29,31 @@ namespace Insectum.Game
             {
                 from = 0f;
                 to = 1f;
-                for (int i = 0; i < Outline.Length; i++)
-                {
-                    Vector2 edge = Outline[(i + 1) % Outline.Length] - Outline[i];
-                    float a = Cross(edge, start - Outline[i]);
-                    float b = Cross(edge, end - Outline[i]);
-                    if (a < 0f && b < 0f)
-                        return false;
-                    if (a < 0f)
-                        from = Mathf.Max(from, a / (a - b));
-                    else if (b < 0f)
-                        to = Mathf.Min(to, a / (a - b));
-                    if (from >= to)
-                        return false;
-                }
-                return true;
+                return Mathf.Max(start.x, end.x) >= Bounds.xMin && Mathf.Min(start.x, end.x) <= Bounds.xMax
+                    && Mathf.Max(start.y, end.y) >= Bounds.yMin && Mathf.Min(start.y, end.y) <= Bounds.yMax
+                    && Clip(Outline, start, end, 1f, out from, out to);
             }
+        }
+
+        private static bool Clip(Vector2[] outline, Vector2 start, Vector2 end, float winding, out float from, out float to)
+        {
+            from = 0f;
+            to = 1f;
+            for (int i = 0; i < outline.Length; i++)
+            {
+                Vector2 edge = outline[(i + 1) % outline.Length] - outline[i];
+                float a = winding * Cross(edge, start - outline[i]);
+                float b = winding * Cross(edge, end - outline[i]);
+                if (a < 0f && b < 0f)
+                    return false;
+                if (a < 0f)
+                    from = Mathf.Max(from, a / (a - b));
+                else if (b < 0f)
+                    to = Mathf.Min(to, a / (a - b));
+                if (from >= to)
+                    return false;
+            }
+            return true;
         }
 
         internal void AddPassage(Vector2 left, Vector2 right, float leftHeight, float rightHeight)
@@ -82,6 +91,23 @@ namespace Insectum.Game
 
         internal bool TryGetPieces(Vector2Int cell, out List<Vector2[]> pieces) =>
             rock.TryGetValue(cell, out pieces) && pieces != null;
+
+        internal float? RayEntry(Vector2Int cell, Vector2 origin, Vector2 direction, float reach)
+        {
+            if (!TryGetPieces(cell, out List<Vector2[]> pieces))
+                return HexGrid.RayEntry(cell, origin, direction, reach);
+
+            float? hit = null;
+            foreach (Vector2[] piece in pieces)
+            {
+                if (Clip(piece, origin, origin + direction * reach, -1f, out float start, out _))
+                {
+                    reach *= start;
+                    hit = reach;
+                }
+            }
+            return hit;
+        }
 
         private static Vector2[] Hexagon(Vector2Int cell)
         {
@@ -137,6 +163,7 @@ namespace Insectum.Game
         private List<(Vector2 from, Vector2 to)> BuildLining()
         {
             var segments = new List<(Vector2 from, Vector2 to)>();
+            var overlaps = new List<(float start, float end)>();
             foreach (Passage passage in passages)
             {
                 Vector2[] outline = passage.Outline;
@@ -146,53 +173,110 @@ namespace Insectum.Game
                     Vector2 to = outline[(index + 1) % outline.Length];
                     Vector2 direction = to - from;
                     Vector2 outward = new Vector2(direction.y, -direction.x).normalized * Epsilon;
-                    var overlaps = new List<(float start, float end)>();
                     foreach (Passage other in passages)
                     {
                         if (other != passage && other.Covers(from + outward, to + outward, out float start, out float end))
                             overlaps.Add((start, end));
                     }
 
-                    overlaps.Sort((a, b) => a.start.CompareTo(b.start));
-                    float cursor = 0f;
-                    foreach (var clip in overlaps)
-                    {
-                        AddSegment(cursor, clip.start);
-                        cursor = Mathf.Max(cursor, clip.end);
-                    }
-                    AddSegment(cursor, 1f);
-
-                    void AddSegment(float start, float end)
-                    {
-                        if ((end - start) * direction.magnitude > 0.002f)
-                            segments.Add((Vector2.LerpUnclamped(from, to, start), Vector2.LerpUnclamped(from, to, end)));
-                    }
+                    AddUncovered(segments, overlaps, from, to);
                 }
             }
             return segments;
         }
 
-        internal void BuildCollision(GameObject owner)
+        internal List<(Vector2 from, Vector2 to)> DigLining(IReadOnlyCollection<Vector2Int> dugCells,
+            IReadOnlyDictionary<Vector2Int, TerrainMaterial> remaining)
+        {
+            var segments = new List<(Vector2 from, Vector2 to)>(Lining.Count);
+            var dugOutlines = new List<Vector2[]>(dugCells.Count);
+            foreach (Vector2Int cell in dugCells)
+                dugOutlines.Add(Hexagon(cell));
+
+            var overlaps = new List<(float start, float end)>();
+            // Keep the original smooth tunnel edges wherever the new hole has not cut into them.
+            foreach (var (from, to) in Lining)
+            {
+                Vector2 span = to - from;
+                Vector2 outward = new Vector2(span.y, -span.x).normalized * Epsilon;
+                foreach (Vector2[] hex in dugOutlines)
+                    if (Clip(hex, from + outward, to + outward, -1f, out float start, out float end))
+                        overlaps.Add((start, end));
+                AddUncovered(segments, overlaps, from, to);
+            }
+
+            // Add the rock-facing edges of each new hole, clipping away portions already in the tunnel.
+            foreach (Vector2Int cell in dugCells)
+            {
+                for (int side = 0; side < HexGrid.SideCount; side++)
+                {
+                    if (!remaining.ContainsKey(HexGrid.Neighbor(cell, side)))
+                        continue;
+                    Vector2 from = HexGrid.Vertex(HexGrid.Corner(cell, (side + 1) % HexGrid.SideCount));
+                    Vector2 to = HexGrid.Vertex(HexGrid.Corner(cell, side));
+                    Vector2 span = to - from;
+                    Vector2 outward = new Vector2(span.y, -span.x).normalized * Epsilon;
+                    foreach (Passage passage in passages)
+                        if (passage.Covers(from + outward, to + outward, out float start, out float end))
+                            overlaps.Add((start, end));
+                    AddUncovered(segments, overlaps, from, to);
+                }
+            }
+            return segments;
+        }
+
+        private static void AddUncovered(List<(Vector2 from, Vector2 to)> segments,
+            List<(float start, float end)> overlaps, Vector2 from, Vector2 to)
+        {
+            float length = Vector2.Distance(from, to);
+            overlaps.Sort((a, b) => a.start.CompareTo(b.start));
+            float cursor = 0f;
+            foreach (var (start, end) in overlaps)
+            {
+                AddSegment(cursor, start);
+                cursor = Mathf.Max(cursor, end);
+            }
+            AddSegment(cursor, 1f);
+            overlaps.Clear();
+
+            void AddSegment(float start, float end)
+            {
+                if ((end - start) * length > 0.002f)
+                    segments.Add((Vector2.LerpUnclamped(from, to, start), Vector2.LerpUnclamped(from, to, end)));
+            }
+        }
+
+        internal static void BuildCollision(GameObject owner, IReadOnlyList<(Vector2 from, Vector2 to)> edges,
+            List<EdgeCollider2D> colliders)
         {
             // The air polygons share ports. Their outer contour is the rock surface.
             var starts = new Dictionary<Vector2Int, Vector2>();
             var ends = new Dictionary<Vector2Int, Vector2>();
-            foreach (var segment in Lining)
+            foreach (var segment in edges)
             {
                 starts[Key(segment.from)] = segment.to;
                 ends[Key(segment.to)] = segment.from;
             }
-            foreach (var segment in Lining)
+            var points = new List<Vector2>(2) { default, default };
+            for (int i = 0; i < edges.Count; i++)
             {
-                var collider = owner.AddComponent<EdgeCollider2D>();
-                collider.SetPoints(new List<Vector2> { segment.from, segment.to });
+                var segment = edges[i];
+                if (i == colliders.Count)
+                    colliders.Add(owner.AddComponent<EdgeCollider2D>());
+                EdgeCollider2D collider = colliders[i];
+                points[0] = segment.from;
+                points[1] = segment.to;
+                collider.SetPoints(points);
                 collider.useAdjacentStartPoint = ends.TryGetValue(Key(segment.from), out Vector2 previous);
                 collider.useAdjacentEndPoint = starts.TryGetValue(Key(segment.to), out Vector2 next);
                 if (collider.useAdjacentStartPoint)
                     collider.adjacentStartPoint = previous;
                 if (collider.useAdjacentEndPoint)
                     collider.adjacentEndPoint = next;
+                collider.enabled = true;
             }
+            for (int i = edges.Count; i < colliders.Count; i++)
+                colliders[i].enabled = false;
         }
 
         private static Vector2Int Key(Vector2 position) => Vector2Int.RoundToInt(position * 500f);

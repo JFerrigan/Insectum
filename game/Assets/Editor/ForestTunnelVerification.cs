@@ -112,10 +112,10 @@ namespace Insectum.Game.Editor
             }
 
             ForestTunnelSpace tunnel = layout.Tunnel;
-            var plugs = layout.Markers.Where(marker => marker.Kind == LevelMarkerKind.Shortcut).ToArray();
             Require(tunnel.Route.Zip(tunnel.Route.Skip(1), (from, to) => (from, to)).Count(tunnel.Jumps.ContainsKey) >= 2
-                && plugs.Length == 3 && plugs.All(plug => layout.Tiles[HexGrid.CellAt(plug.Position)] == TerrainMaterial.SoftDirt),
-                $"Forest tunnel seed {layout.RunSeed} is missing uphill turns or diggable alcoves.");
+                && !layout.Markers.Any(marker => marker.Kind == LevelMarkerKind.Shortcut)
+                && layout.Tiles.Values.All(material => material == TerrainMaterial.Reinforced),
+                $"Forest tunnel seed {layout.RunSeed} is missing uphill turns or still includes soft-dirt pockets.");
         }
 
         private static void VerifyTrialRun(PhysicsFixture fixture)
@@ -154,50 +154,29 @@ namespace Insectum.Game.Editor
             {
                 session.StartTunnelTrial(worm, seed);
                 Vector2 spawn = session.Layout.Spawn;
-                int directionToDirt = -session.Layout.RouteDirection;
-                LevelMarker entrancePlug = session.Layout.Markers.FirstOrDefault(marker => marker.Kind == LevelMarkerKind.Shortcut
-                    && Mathf.Abs(marker.Position.x - spawn.x) < 5f && Mathf.Abs(marker.Position.y - spawn.y) < 2.5f);
-                Require(entrancePlug.Kind == LevelMarkerKind.Shortcut,
-                    $"Forest tunnel seed {seed} has no diggable pocket by the entrance.");
-                Vector2Int entranceCell = HexGrid.CellAt(entrancePlug.Position);
+                int outward = -session.Layout.RouteDirection;
                 fixture.Advance(8);
-                fixture.Step(new PlayerCommand(abilityPressed: true));
-                Require(session.Terrain.Revision == 0 && session.Run.Energy == 100f && session.Abilities.DigFeedback != null,
-                    "Digging out of reach must give feedback without changing terrain or spending energy.");
-                int before = session.Run.Inventory.Nektar;
-                for (int step = 0; step < 85 && session.Run.Inventory.Nektar == before; step++)
-                    fixture.Step(new PlayerCommand(move: directionToDirt, abilityHeld: true));
-                Require(!session.Terrain.Cells.ContainsKey(entranceCell) && session.Terrain.Revision == 1
-                    && session.Run.Energy == 96f && session.Run.Inventory.Nektar == before + 2
-                    && session.Abilities.DigFeedback == null,
-                    $"Forest tunnel seed {seed}: entrance pocket at {entrancePlug.Position}, spawn {spawn}, player {session.Motor.Body.position}, "
-                    + $"direction {directionToDirt}, terrain revision {session.Terrain.Revision}, energy {session.Run.Energy}, Nektar {before} to {session.Run.Inventory.Nektar}.");
-                var beyondPlug = new Vector2(entrancePlug.Position.x + directionToDirt * 1.15f, spawn.y + 0.3f);
-                Walk(fixture, spawn, beyondPlug, attack: false);
-                Walk(fixture, beyondPlug, spawn, attack: false);
+                fixture.Advance(35, new PlayerCommand(move: outward));
+                Vector2 wall = session.Motor.Body.position;
+                Require(Mathf.Abs(wall.x - spawn.x) < 1.85f && session.Terrain.Revision == 0,
+                    $"Forest tunnel seed {seed}: the entrance is missing its solid wall.");
+                for (int step = 0; step < 100 && (session.Motor.Body.position.x - wall.x) * outward < 4.5f; step++)
+                    fixture.Step(new PlayerCommand(move: outward, abilityHeld: true));
+
+                Vector2 dug = session.Motor.Body.position;
+                Require((dug.x - wall.x) * outward >= 4.5f && session.Terrain.Revision >= 3
+                    && session.Run.Energy == worm.MaxEnergy,
+                    $"Forest tunnel seed {seed}: Worm did not advance through reinforced rock from {wall} to {dug}, "
+                    + $"after {session.Terrain.Revision} digs. Health {session.Run.Health}.");
+
+                session.StartTunnelTrial(worm, seed);
+                fixture.Advance(8);
+                float height = session.Motor.Body.position.y;
+                fixture.Step(new PlayerCommand(aim: -1, abilityPressed: true));
+                fixture.Advance(18);
+                Require(session.Terrain.Revision == 1 && session.Motor.Body.position.y < height - 0.4f,
+                    $"Forest tunnel seed {seed}: one downward dig did not remove the ground collider.");
             }
-
-            session.StartTunnelTrial(worm, 1051);
-            ForestTunnelSpace tunnel = session.Layout.Tunnel;
-            LevelMarker plug = session.Layout.Markers.First(marker => marker.Kind == LevelMarkerKind.Shortcut
-                && tunnel.Branches.Any(path => Vector2.Distance(path.end, marker.Position) < 6f));
-            var branch = tunnel.Branches.Single(path => Vector2.Distance(path.end, plug.Position) < 6f);
-            fixture.Advance(8);
-            for (int i = 1; i <= branch.source; i++)
-                Walk(fixture, tunnel.Route[i - 1], tunnel.Route[i], attack: true);
-            Walk(fixture, tunnel.Route[branch.source], branch.first, attack: false);
-            Walk(fixture, branch.first, branch.end, attack: false);
-            int direction = Math.Sign(plug.Position.x - branch.end.x);
-            Vector2 approach = new(plug.Position.x - direction * 0.94f, branch.end.y + 0.3f);
-            Walk(fixture, branch.end, approach, attack: false);
-
-            float energy = session.Run.Energy;
-            Vector2Int cell = HexGrid.CellAt(plug.Position);
-            for (int i = 0; i < 25 && session.Terrain.Cells.ContainsKey(cell); i++)
-                fixture.Step(new PlayerCommand(move: direction, abilityHeld: true));
-            Require(!session.Terrain.Cells.ContainsKey(cell) && session.Terrain.Revision == 1
-                && Mathf.Approximately(energy - session.Run.Energy, 4f), "Worm did not excavate the alcove with ordinary ability input.");
-            Walk(fixture, approach, new Vector2(plug.Position.x + direction * 1.15f, approach.y), attack: false);
         }
 
         private static int Cross(PhysicsFixture fixture, bool attack = false, bool explore = false)

@@ -24,7 +24,10 @@ namespace Insectum.Game
             foreach (Vector2Int region in terrain.Regions)
                 view.DrawRegion(region);
             if (terrain.Tunnel != null)
+            {
+                terrain.TunnelLiningChanged += view.DrawLining;
                 view.DrawLining();
+            }
         }
 
         private void DrawRegion(Vector2Int region)
@@ -120,23 +123,28 @@ namespace Insectum.Game
             uv.Clear();
             indices.Clear();
             Rect moss = Tile(0, 10);
-            foreach (var edge in terrain.Tunnel.Lining)
+            foreach (var edge in terrain.TunnelLining)
             {
                 if (edge.to.x - edge.from.x < 0.01f)
                     continue;
                 AddStrip(edge.from, edge.to, moss);
             }
 
-            var art = new GameObject("Tunnel moss");
-            art.transform.SetParent(transform, false);
-            liningMesh = new Mesh { name = art.name };
+            if (liningMesh == null)
+            {
+                var art = new GameObject("Tunnel moss");
+                art.transform.SetParent(transform, false);
+                liningMesh = new Mesh { name = art.name };
+                liningMesh.MarkDynamic();
+                art.AddComponent<MeshFilter>().sharedMesh = liningMesh;
+                var renderer = art.AddComponent<MeshRenderer>();
+                renderer.sharedMaterial = surface;
+                renderer.sortingOrder = 1;
+            }
+            liningMesh.Clear();
             liningMesh.SetVertices(vertices);
             liningMesh.SetUVs(0, uv);
             liningMesh.SetTriangles(indices, 0);
-            art.AddComponent<MeshFilter>().sharedMesh = liningMesh;
-            var renderer = art.AddComponent<MeshRenderer>();
-            renderer.sharedMaterial = surface;
-            renderer.sortingOrder = 1;
         }
 
         private void AddStrip(Vector2 a, Vector2 b, Rect tile)
@@ -182,6 +190,7 @@ namespace Insectum.Game
         private void OnDestroy()
         {
             terrain.RegionChanged -= DrawRegion;
+            terrain.TunnelLiningChanged -= DrawLining;
             foreach (Mesh mesh in meshes.Values)
                 Destroy(mesh);
             Destroy(liningMesh);

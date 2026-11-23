@@ -139,7 +139,7 @@ namespace Insectum.Game
 
             Vector2 direction = command.Aim < 0 ? Vector2.down : Vector2.right * motor.FacingFor(command);
             ExcavationResult result = terrain.ExcavateAdjacent(motor.Body.position, direction,
-                run.Character.Radius + 0.76f, run.TrySpendEnergy);
+                run.Character.Radius + 0.76f, run.TrySpendEnergy, allowReinforced: true);
             if (result == ExcavationResult.Removed)
             {
                 ArtCueSteps = 8;
@@ -150,9 +150,8 @@ namespace Insectum.Game
             {
                 DigFeedback = result switch
                 {
-                    ExcavationResult.Reinforced => "Reinforced rock",
                     ExcavationResult.InsufficientEnergy => "Need more energy to dig",
-                    _ => "No diggable dirt in reach"
+                    _ => "No terrain in reach"
                 };
                 digFeedbackSteps = 60;
             }

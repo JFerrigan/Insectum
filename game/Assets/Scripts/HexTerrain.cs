@@ -62,6 +62,8 @@ namespace Insectum.Game
         private readonly Dictionary<Vector2Int, Region> regions = new();
         private readonly Dictionary<Vector2Int, Edge> startEdges = new();
         private readonly Dictionary<Vector2Int, Edge> endEdges = new();
+        private readonly List<Vector2Int> dugTunnelCells = new();
+        private readonly List<EdgeCollider2D> tunnelColliders = new();
 
         public GameObject Root { get; }
         public IReadOnlyDictionary<Vector2Int, TerrainMaterial> Cells { get; }
@@ -71,6 +73,8 @@ namespace Insectum.Game
         public event Action<Vector2Int> RegionChanged;
         public event Action<IReadOnlyList<TerrainEdit>> Edited;
         internal ForestTunnelSpace Tunnel { get; }
+        internal IReadOnlyList<(Vector2 from, Vector2 to)> TunnelLining { get; private set; }
+        internal event Action TunnelLiningChanged;
 
         public HexTerrain(Transform parent, IReadOnlyDictionary<Vector2Int, TerrainMaterial> layout, TerrainMaterials materials)
             : this(parent, layout, materials, null)
@@ -100,7 +104,11 @@ namespace Insectum.Game
             }
 
             Rebuild(regions.Keys);
-            Tunnel?.BuildCollision(Root);
+            if (Tunnel != null)
+            {
+                TunnelLining = Tunnel.Lining;
+                ForestTunnelSpace.BuildCollision(Root, TunnelLining, tunnelColliders);
+            }
         }
 
         public IEnumerable<Vector2Int> CellsInRegion(Vector2Int region) =>
@@ -112,7 +120,8 @@ namespace Insectum.Game
             && Tunnel?.IsRock(HexGrid.Neighbor(cell, 1)) != true
             && !cells.ContainsKey(HexGrid.Neighbor(cell, 0));
 
-        public ExcavationResult ExcavateAdjacent(Vector2 origin, Vector2 direction, float reach, Func<float, bool> spendEnergy)
+        public ExcavationResult ExcavateAdjacent(Vector2 origin, Vector2 direction, float reach, Func<float, bool> spendEnergy,
+            bool allowReinforced = false)
         {
             Vector2 localOrigin = Root.transform.InverseTransformPoint(origin);
             Vector2 localDirection = Root.transform.InverseTransformVector(direction).normalized;
@@ -124,8 +133,11 @@ namespace Insectum.Game
             for (int side = -1; side < HexGrid.SideCount; side++)
             {
                 Vector2Int cell = side < 0 ? originCell : HexGrid.Neighbor(originCell, side);
-                if (!cells.ContainsKey(cell) || Tunnel?.IsRock(cell) == true
-                    || HexGrid.RayEntry(cell, localOrigin, localDirection, reach) is not float hit)
+                if (!cells.ContainsKey(cell))
+                    continue;
+                float? entry = Tunnel == null ? HexGrid.RayEntry(cell, localOrigin, localDirection, reach)
+                    : Tunnel.RayEntry(cell, localOrigin, localDirection, reach);
+                if (entry is not float hit)
                     continue;
                 if (target.HasValue && hit == reach && HexGrid.Compare(cell, target.Value) >= 0)
                     continue;
@@ -134,14 +146,14 @@ namespace Insectum.Game
                 target = cell;
             }
 
-            return target.HasValue ? Excavate(target.Value, spendEnergy) : ExcavationResult.Empty;
+            return target.HasValue ? Excavate(target.Value, spendEnergy, allowReinforced) : ExcavationResult.Empty;
         }
 
-        public ExcavationResult Excavate(Vector2Int cell, Func<float, bool> spendEnergy = null)
+        public ExcavationResult Excavate(Vector2Int cell, Func<float, bool> spendEnergy = null, bool allowReinforced = false)
         {
             if (!cells.TryGetValue(cell, out TerrainMaterial material))
                 return ExcavationResult.Empty;
-            if (material == TerrainMaterial.Reinforced)
+            if (material == TerrainMaterial.Reinforced && !allowReinforced)
                 return ExcavationResult.Reinforced;
             if (spendEnergy != null && !spendEnergy(Materials.Get(material).excavationEnergy))
                 return ExcavationResult.InsufficientEnergy;
@@ -176,10 +188,16 @@ namespace Insectum.Game
         {
             var dirty = new HashSet<Vector2Int>();
             var edits = new TerrainEdit[targets.Count];
+            bool tunnelChanged = false;
             for (int i = 0; i < targets.Count; i++)
             {
                 Vector2Int cell = targets[i];
                 edits[i] = new TerrainEdit(cell, cells[cell], cause);
+                if (Tunnel?.IsRock(cell) == true)
+                {
+                    dugTunnelCells.Add(cell);
+                    tunnelChanged = true;
+                }
                 Vector2Int region = HexGrid.RegionAt(cell);
                 cells.Remove(cell);
                 regions[region].Cells.Remove(cell);
@@ -189,7 +207,14 @@ namespace Insectum.Game
             }
 
             Revision++;
+            if (tunnelChanged)
+            {
+                TunnelLining = Tunnel.DigLining(dugTunnelCells, Cells);
+                ForestTunnelSpace.BuildCollision(Root, TunnelLining, tunnelColliders);
+            }
             Rebuild(dirty);
+            if (tunnelChanged)
+                TunnelLiningChanged?.Invoke();
             Edited?.Invoke(edits);
         }
 

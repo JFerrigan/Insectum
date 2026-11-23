@@ -72,10 +72,12 @@ namespace Insectum.Game.Editor
             session.Start(worm, 553);
             fixture.Advance(8);
             fixture.Step(new PlayerCommand(abilityPressed: true));
+            Require(session.Terrain.Revision == 0 && session.Run.Energy == 100f && session.Abilities.DigFeedback != null,
+                "Aiming into air must give feedback without changing terrain or spending energy.");
             fixture.Advance(9);
             fixture.Step(new PlayerCommand(aim: -1, abilityPressed: true));
-            Require(session.Terrain.Revision == 0 && session.Run.Energy == 100f,
-                "Aiming into air or reinforced terrain changed Worm energy or occupancy.");
+            Require(session.Terrain.Revision == 1 && session.Run.Energy == 100f,
+                "Worm did not remove the reinforced terrain beneath the authored spawn.");
 
             session.Start(worm, 554);
             Require(session.Run.TrySpendEnergy(94f), "The insufficient-energy fixture could not spend 94 energy.");
@@ -174,6 +176,8 @@ namespace Insectum.Game.Editor
             Require(terrain.Cells.ContainsKey(floatingHardStone) && terrain.Cells.ContainsKey(floatingReinforced)
                 && !terrain.Cells.ContainsKey(looseDirt) && !terrain.Cells.ContainsKey(looseSand),
                 "Blast resistance or reinforcement was ignored.");
+            Require(terrain.Excavate(floatingReinforced) == ExcavationResult.Reinforced,
+                "Ordinary excavation gained Worm's ability to dig reinforced terrain.");
             Require(terrain.Explode(HexGrid.Center(floatingReinforced), 0.1f, int.MaxValue) == 0,
                 "Reinforced terrain survived only because of its blast resistance.");
 
