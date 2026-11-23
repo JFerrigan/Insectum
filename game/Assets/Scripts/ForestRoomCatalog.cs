@@ -32,15 +32,15 @@ namespace Insectum.Game
     // under 42 degrees, and drops stay under 5 units.
     internal static class ForestRoomCatalog
     {
-        private const float Clearance = ForestTunnelLayout.Height;
-        private const float LedgeStep = 1.4f;
-        private const float HubFloor = -LedgeStep / 2f;
-        private const float HubHalfWidth = 1.2f;
-        private const float HubTop = HubFloor + LedgeStep + Clearance;
+        internal const float Clearance = ForestTunnelLayout.Height;
+        internal const float LedgeStep = 1.4f;
+        internal const float HubFloor = -LedgeStep / 2f;
+        internal const float HubHalfWidth = 1.2f;
+        internal const float HubTop = HubFloor + LedgeStep + Clearance;
         private const float PocketDepth = 1.8f;
         private const float LowerDoor = 1.33f;
-        private const float DoorX = ForestRoomBuilder.DoorX;
-        private const float DoorY = ForestRoomBuilder.DoorY;
+        internal const float DoorX = ForestRoomBuilder.DoorX;
+        internal const float DoorY = ForestRoomBuilder.DoorY;
 
         private static readonly RoomDoor[] DoorOrder =
         {
@@ -58,15 +58,20 @@ namespace Insectum.Game
             new("Forest.Open.TumblingGlade", 1, Shape("Main.Descent"), CarveTumblingGlade),
             new("Forest.Open.MossyBasin", 1, Shape("Main.Span"), CarveMossyBasin),
             new("Forest.Open.RootCathedral", 1, Shape("Main.Crossing", "SideTunnel.Crossing"), CarveRootCathedral),
-            new("Forest.Open.SunlitRise", 1, Shape("Main.Ascent", "SideTunnel.Ascent"), CarveSunlitRise)
+            new("Forest.Open.SunlitRise", 1, Shape("Main.Ascent", "SideTunnel.Ascent"), CarveSunlitRise),
+            new("Forest.Open.RootBridge", 1, Shape("Main.Span"), CarveRootBridge),
+            new("Forest.Open.BracketFungi", 1, Shape("Main.Descent"), CarveBracketFungi),
+            new("Forest.Open.ThornHollow", 1, Shape("Main.Switchback", "Main.ClimbBack", "SideTunnel.ClimbBack"), CarveThornHollow),
+            new("Forest.Open.CanopyLoft", 1, Shape("Main.Ascent", "SideTunnel.Ascent"), CarveCanopyLoft)
         };
-
-        private static readonly ForestRoomTemplate[] GenericOnly = { Generic };
 
         internal static IReadOnlyList<ForestRoomTemplate> For(WorldId world) => world switch
         {
-            WorldId.Forest => ForestTemplates,
-            _ => GenericOnly
+            WorldId.Swamp => SwampRooms.Templates,
+            WorldId.Caves => CavesRooms.Templates,
+            WorldId.Desert => DesertRooms.Templates,
+            WorldId.Alien => AlienRooms.Templates,
+            _ => ForestTemplates
         };
 
         internal static ForestRoomTemplate Choose(WorldId world, ForestRoomProfile profile, ref SeededRandom random)
@@ -91,7 +96,7 @@ namespace Insectum.Game
             return Generic;
         }
 
-        private static Func<ForestRoomProfile, bool> Shape(params string[] shapes) =>
+        internal static Func<ForestRoomProfile, bool> Shape(params string[] shapes) =>
             profile => Array.IndexOf(shapes, profile.Shape) >= 0;
 
         private static void CarveGeneric(ForestRoomBuilder room)
@@ -174,7 +179,7 @@ namespace Insectum.Game
 
         // High doors start from a jump ledge above the hub floor and low doors leave from the floor, so a high
         // and a low door can share one side without their ramps meeting.
-        private static void CarveHubRamps(ForestRoomBuilder room)
+        internal static void CarveHubRamps(ForestRoomBuilder room)
         {
             foreach (RoomDoor door in DoorOrder)
             {
@@ -215,7 +220,7 @@ namespace Insectum.Game
         }
 
         // A floating rock with a flat, walkable top and a rounded underside.
-        private static (float x, float bottom, float top)[] Islet(float left, float right, float top, float depth)
+        internal static (float x, float bottom, float top)[] Islet(float left, float right, float top, float depth)
         {
             float width = right - left;
             return new[]
@@ -224,6 +229,32 @@ namespace Insectum.Game
                 (right - width * 0.2f, top - depth * 0.8f, top), (right, top - 0.35f, top)
             };
         }
+
+        // A pointed crystal: thickest in the middle, tapering to points at both ends.
+        internal static (float x, float bottom, float top)[] Crystal(float left, float right, float middle, float half) =>
+            new[] { (left, middle, middle), ((left + right) / 2f, middle - half, middle + half), (right, middle, middle) };
+
+        // A round pod sampled around its rim.
+        internal static (float x, float bottom, float top)[] Pod(float x, float y, float radius)
+        {
+            var outline = new (float x, float bottom, float top)[9];
+            for (int i = 0; i < outline.Length; i++)
+            {
+                float angle = Mathf.PI * i / (outline.Length - 1);
+                float dx = -Mathf.Cos(angle) * radius;
+                float dy = Mathf.Sin(angle) * radius;
+                outline[i] = (x + dx, y - dy, y + dy);
+            }
+            return outline;
+        }
+
+        // A squared block, such as a fallen lintel or a ruin step.
+        internal static (float x, float bottom, float top)[] Slab(float left, float right, float bottom, float top) =>
+            new[] { (left, bottom, top), (right, bottom, top) };
+
+        // A thin flat pad, such as a lily pad or a fungus shelf.
+        internal static (float x, float bottom, float top)[] Pad(float left, float right, float top) =>
+            new[] { (left, top - 0.25f, top), (left + 0.3f, top - 0.4f, top), (right - 0.3f, top - 0.4f, top), (right, top - 0.25f, top) };
 
         // Switchback. A tall hollow: walk the upper shelf, drop onto a floating island, drop again into the
         // chamber, then leave along the floor beneath the island and the overhanging shelf.
@@ -306,6 +337,68 @@ namespace Insectum.Game
                 (0.7f, HubFloor + LedgeStep, 7.0f), (3.4f, 2.75f, 6.9f), (DoorX, DoorY, 7.2f)
             }, Islet(-3.0f, -1.0f, 3.0f, 0.7f));
             room.SetLanding(new Vector2(0f, HubFloor));
+            room.Door(RoomDoor.LowLeft, Clearance);
+            room.Door(RoomDoor.HighRight, Clearance, new Vector2(0.7f, HubFloor + LedgeStep));
+        }
+
+        // Span. The route crosses a root bridge at door height over a wide chasm of toadstools. The chasm is
+        // sealed, so its Nektar is a digger's find.
+        private static void CarveRootBridge(ForestRoomBuilder room)
+        {
+            room.Cave(new[] { (-DoorX, DoorY, 7.2f), (-2.6f, DoorY, 7.0f), (0f, DoorY, 6.6f), (2.6f, DoorY, 7.0f), (DoorX, DoorY, 7.2f) });
+            room.Cave(new[]
+            {
+                (-6.4f, -2.6f, 1.4f), (-5.6f, -3.8f, 2.8f), (-4.4f, -4.6f, 3.1f), (-2.0f, -5.2f, 3.1f), (0f, -5.4f, 3.1f),
+                (2.0f, -5.2f, 3.1f), (4.4f, -4.6f, 3.1f), (5.6f, -3.8f, 2.8f), (6.4f, -2.6f, 1.4f)
+            }, Islet(-3.6f, -1.8f, -2.6f, 1.0f), Islet(1.0f, 2.8f, -1.4f, 1.0f), Islet(-0.6f, 0.6f, 0.4f, 0.6f));
+            room.SetLanding(new Vector2(0f, DoorY));
+            room.Treasure(new Vector2(0f, 0.4f));
+            room.Treasure(new Vector2(-2.7f, -2.6f));
+            room.Door(RoomDoor.HighLeft, Clearance);
+            room.Door(RoomDoor.HighRight, Clearance);
+        }
+
+        // Descent. Bracket fungi jut from the back wall as steps down into a deep, open hollow. A thorn nest
+        // waits on the hollow floor for anyone who misses a step.
+        private static void CarveBracketFungi(ForestRoomBuilder room)
+        {
+            room.Cave(new[]
+            {
+                (-DoorX, DoorY, 7.2f), (-3.6f, DoorY, 7.2f), (-3.6f, -DoorY, 7.2f), (-1.0f, -DoorY, 7.0f), (1.6f, -DoorY, 6.6f),
+                (3.4f, -DoorY, 5.4f), (4.6f, -DoorY, 3.8f), (DoorX, -DoorY, 2.0f)
+            }, Pad(-3.4f, -1.2f, 2.6f), Pad(-0.6f, 1.8f, 1.0f));
+            room.SetLanding(new Vector2(3.6f, -DoorY));
+            room.Trap(new Vector2(-1.0f, -DoorY));
+            room.Treasure(new Vector2(-2.6f, -DoorY));
+            room.Door(RoomDoor.HighLeft, Clearance);
+            room.Door(RoomDoor.LowRight, Clearance);
+        }
+
+        // Switchback or climb. A landing with both ramps on the left that opens onto a thorn pit, with Nektar on
+        // an island above the thorns.
+        private static void CarveThornHollow(ForestRoomBuilder room)
+        {
+            room.Cave(new[]
+            {
+                (-HubHalfWidth, HubFloor, HubTop), (0.2f, HubFloor, 5.4f), (1.8f, HubFloor, 6.6f), (2.4f, HubFloor, 6.8f),
+                (3.4f, -2.0f, 6.4f), (4.6f, -2.0f, 5.6f), (5.6f, -1.2f, 4.2f), (6.2f, -0.8f, 2.4f)
+            }, Islet(3.2f, 4.8f, 0.6f, 0.7f));
+            room.SetLanding(new Vector2(0f, HubFloor));
+            room.Trap(new Vector2(4.0f, -2.0f));
+            room.Treasure(new Vector2(4.0f, 0.6f));
+            CarveHubRamps(room);
+        }
+
+        // Ascent. A climb under the canopy with a high loft island holding Nektar for climbers and fliers.
+        private static void CarveCanopyLoft(ForestRoomBuilder room)
+        {
+            room.Cave(new[]
+            {
+                (-DoorX, -DoorY, 2.2f), (-3.4f, -2.8f, 4.6f), (-3.0f, -2.5f, 4.6f), (-1.4f, -1.25f, 6.4f), (-0.7f, HubFloor, 6.4f),
+                (0.7f, HubFloor, 7.1f), (0.7f, HubFloor + LedgeStep, 7.1f), (3.0f, 2.4f, 7.0f), (DoorX, DoorY, 7.2f)
+            }, Islet(-3.6f, -1.4f, 2.4f, 0.7f));
+            room.SetLanding(new Vector2(0f, HubFloor));
+            room.Treasure(new Vector2(-2.5f, 2.4f));
             room.Door(RoomDoor.LowLeft, Clearance);
             room.Door(RoomDoor.HighRight, Clearance, new Vector2(0.7f, HubFloor + LedgeStep));
         }
