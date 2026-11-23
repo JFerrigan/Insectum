@@ -47,7 +47,7 @@ namespace Insectum.Game
                 else if (session.Content?.NearbyShop() is LevelFeature shop)
                     DrawShopOffer(camera, session, shop);
                 else if (session.Abilities.DigFeedback is string feedback)
-                    DrawWorldPrompt(camera, session.Motor.Body.position + Vector2.up * 1.2f, feedback);
+                    DrawWorldPrompt(camera, session.Motor.Body.position + Vector2.up * 1.2f, feedback, Gold);
                 DrawHud(session.Run);
                 if (paused)
                     DrawPause(session);
@@ -152,28 +152,18 @@ namespace Insectum.Game
 
         private static void DrawShopOffer(Camera camera, GameSession session, LevelFeature shop)
         {
-            Vector3 anchor = camera.WorldToViewportPoint(shop.Position + Vector2.up * 1.4f);
-            if (!shop.Available)
-            {
-                DrawOutlinedPrompt(anchor, "SOLD OUT", 0, Muted);
-                return;
-            }
-
-            string price = $"{shop.Amount} NEKTAR";
-            bool canInteract = session.Content.ClosestInteractable() == shop;
-            DrawOutlinedPrompt(anchor, Items.Name(shop.Item), -10, Gold);
-            DrawOutlinedPrompt(anchor, canInteract ? $"E  BUY  ({price})" : price, 0, Light);
+            string label = !shop.Available ? "SOLD OUT"
+                : session.Content.ClosestInteractable() == shop ? shop.InteractPrompt : shop.ShopOffer;
+            DrawWorldPrompt(camera, shop.Position + Vector2.up * 1.4f, label, shop.Available ? Gold : Muted);
         }
 
-        private static void DrawWorldPrompt(Camera camera, Vector2 point, string prompt) =>
-            DrawOutlinedPrompt(camera.WorldToViewportPoint(point), prompt, 0, Gold);
-
-        private static void DrawOutlinedPrompt(Vector3 anchor, string prompt, int yOffset, Color color)
+        private static void DrawWorldPrompt(Camera camera, Vector2 point, string prompt, Color color)
         {
+            Vector3 anchor = camera.WorldToViewportPoint(point);
             int halfWidth = (TextWidth(prompt) + 1) / 2;
             int x = Mathf.Clamp(Mathf.RoundToInt(anchor.x * PixelViewport.Width), halfWidth + 2,
                 PixelViewport.Width - halfWidth - 2);
-            int y = Mathf.RoundToInt((1f - anchor.y) * PixelViewport.Height) - 7 + yOffset;
+            int y = Mathf.RoundToInt((1f - anchor.y) * PixelViewport.Height) - 7;
             Center(prompt, x - 1, y, Ink);
             Center(prompt, x + 1, y, Ink);
             Center(prompt, x, y - 1, Ink);

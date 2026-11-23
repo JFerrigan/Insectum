@@ -24,9 +24,11 @@ namespace Insectum.Game
         public bool Interactable => Kind >= LevelFeatureKind.Shop;
         private readonly SpriteRenderer art;
 
+        internal string ShopOffer => $"{Items.Name(Item)}  ({Amount} Nektar)";
+
         internal string InteractPrompt => Kind switch
         {
-            LevelFeatureKind.Shop => $"E  Buy {Items.Name(Item)}  ({Amount} Nektar)",
+            LevelFeatureKind.Shop => $"E  Buy {ShopOffer}",
             LevelFeatureKind.Chest => "E  Open chest",
             LevelFeatureKind.BossReward => $"E  Claim {Items.Name(Item)}",
             _ => null
