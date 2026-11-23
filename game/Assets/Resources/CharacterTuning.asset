@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f81cc8dd368346d1a48610c0e907da59, type: 3}
+  m_Name: CharacterTuning
+  m_EditorClassIdentifier:
+  roster:
+  - insect: 0
+    displayName: Jumping Spider
+    maxHealth: 3
+    maxEnergy: 100
+    radius: 0.43
+    tint:
+      serializedVersion: 2
+      rgba: 4294091993
+  - insect: 1
+    displayName: Beetle
+    maxHealth: 6
+    maxEnergy: 100
+    radius: 0.43
+    tint:
+      serializedVersion: 2
+      rgba: 4289186416
+  - insect: 2
+    displayName: Dragonfly
+    maxHealth: 2
+    maxEnergy: 100
+    radius: 0.43
+    tint:
+      serializedVersion: 2
+      rgba: 4294955149
+  - insect: 3
+    displayName: Fire Ant
+    maxHealth: 4
+    maxEnergy: 100
+    radius: 0.43
+    tint:
+      serializedVersion: 2
+      rgba: 4285828858
+  - insect: 4
+    displayName: Worm
+    maxHealth: 4
+    maxEnergy: 100
+    radius: 0.34
+    tint:
+      serializedVersion: 2
+      rgba: 4288395507
+  spiderLeapEnergy: 16
+  spiderClimbEnergyPerSecond: 3
+  spiderLeapSpeed: 16
+  spiderClimbSpeed: 3.5
+  beetleEnergyPerHeart: 25
+  beetleCrushSpeed: 8
+  beetleCrushDamage: 2
+  dragonflyEnergyPerSecond: 14
+  dragonflyFlightSpeed: 8
+  dragonflyFlightAcceleration: 42
+  fireAntAttackEnergy: 15
+  fireAntAttackDamage: 2
+  playerInvulnerabilitySteps: 36
+  meleeRecoverySteps: 16
+  heavyRecoverySteps: 24

@@ -1,0 +1,10 @@
+/Library/
+/Temp/
+/Logs/
+/Obj/
+/UserSettings/
+/Builds/
+/MemoryCaptures/
+/*.csproj
+/*.sln
+/*.slnx
