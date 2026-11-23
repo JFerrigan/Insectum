@@ -44,6 +44,7 @@ namespace Insectum.Game
             : null);
         public LevelLayout Layout { get; private set; }
         public LevelVariant Variant { get; private set; }
+        internal float LevelStartTime { get; private set; }
         internal float NightVisionRadius => Variant == LevelVariant.Night ? Run.Inventory.NightVisionRadius : 0f;
         public Rect LevelBounds => Layout?.Bounds ?? ForestRoute.Bounds;
         private Vector2 Exit => Layout?.Exit ?? ForestRoute.Exit;
@@ -104,6 +105,7 @@ namespace Insectum.Game
         {
             ReleaseLevel();
             Layout = layout;
+            LevelStartTime = Time.time;
             Variant = fullRun && enableVariants && lastLevel == RunWorlds.LevelCount
                 ? layout.Variant : LevelVariant.Standard;
             level = new GameObject($"{layout?.World ?? WorldId.Forest} {layout?.WorldLevel ?? 1}");

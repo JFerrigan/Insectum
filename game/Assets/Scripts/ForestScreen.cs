@@ -59,7 +59,10 @@ namespace Insectum.Game
                 else if (session.Abilities.DigFeedback is string feedback)
                     DrawWorldPrompt(camera, session.Motor.Body.position + Vector2.up * 1.2f, feedback, Gold);
                 if (!paused)
+                {
                     DrawPickupName(camera, session);
+                    DrawVariantBanner(session);
+                }
                 DrawHud(session.Run);
                 if (paused)
                     DrawPause(session);
@@ -226,6 +229,33 @@ namespace Insectum.Game
             Color color = Gold;
             color.a = alpha;
             DrawWorldPrompt(camera, point, name, color, alpha);
+        }
+
+        private const float BannerSeconds = 2.4f;
+
+        // Announces a level modifier: rises from screen center and fades out.
+        private static void DrawVariantBanner(GameSession session)
+        {
+            string banner = session.Variant switch
+            {
+                LevelVariant.Night => "NIGHTFALL",
+                LevelVariant.HeavySpawn => "THE SWARM",
+                LevelVariant.DoubleBoss => "TWIN TERROR",
+                _ => null
+            };
+            if (banner == null)
+                return;
+            float t = (Time.time - session.LevelStartTime) / BannerSeconds;
+            if (t < 0f || t >= 1f)
+                return;
+            float alpha = t < 0.15f ? t / 0.15f : t < 0.55f ? 1f : 1f - (t - 0.55f) / 0.45f;
+            int y = Mathf.RoundToInt(PixelViewport.Height / 2f - 10 - t * 18f);
+            Color ink = Ink;
+            ink.a = alpha;
+            Color color = session.Variant == LevelVariant.Night ? Mint : session.Variant == LevelVariant.DoubleBoss ? Pink : Gold;
+            color.a = alpha;
+            Center(banner, 160, y + 2, ink, 2);
+            Center(banner, 160, y, color, 2);
         }
 
         private static void DrawWorldPrompt(Camera camera, Vector2 point, string prompt, Color color, float alpha = 1f)
