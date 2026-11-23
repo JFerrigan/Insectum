@@ -13,6 +13,11 @@ namespace Insectum.Game
         private Material surface;
         private Texture2D texture;
         private Mesh liningMesh;
+        private readonly Dictionary<Vector2Int, Mesh> flavorMeshes = new();
+        private readonly List<Color32> colors = new();
+        private FlavorSet flavor;
+        private Material flavorSurface;
+        private int worldSalt;
 
         public static void Attach(HexTerrain terrain, WorldId world = WorldId.Forest)
         {
@@ -20,14 +25,29 @@ namespace Insectum.Game
             view.terrain = terrain;
             view.texture = WorldArt.Terrain(world);
             view.surface = new Material(Shader.Find("Sprites/Default")) { mainTexture = view.texture };
-            terrain.RegionChanged += view.DrawRegion;
+            view.flavor = FlavorArt.Get(world);
+            view.flavorSurface = new Material(Shader.Find("Sprites/Default")) { mainTexture = view.flavor.Texture };
+            view.worldSalt = (int)world * 104729;
+            terrain.RegionChanged += view.OnRegionChanged;
             foreach (Vector2Int region in terrain.Regions)
                 view.DrawRegion(region);
+            foreach (Vector2Int region in terrain.Regions)
+                view.DrawFlavor(region);
             if (terrain.Tunnel != null)
             {
                 terrain.TunnelLiningChanged += view.DrawLining;
                 view.DrawLining();
             }
+        }
+
+        private void OnRegionChanged(Vector2Int region)
+        {
+            DrawRegion(region);
+            // Multi-cell decals and the "not touching air" rule read neighbouring cells,
+            // so edits on a region border must refresh the decals next door as well.
+            for (int dx = -1; dx <= 1; dx++)
+            for (int dy = -1; dy <= 1; dy++)
+                DrawFlavor(region + new Vector2Int(dx, dy));
         }
 
         private void DrawRegion(Vector2Int region)
@@ -117,6 +137,148 @@ namespace Insectum.Game
             AddQuad(left + height, right + height, left, right, Tile(1 + variation % 3, 10));
         }
 
+        private void DrawFlavor(Vector2Int region)
+        {
+            vertices.Clear();
+            uv.Clear();
+            indices.Clear();
+            colors.Clear();
+            foreach (Vector2Int cell in terrain.CellsInRegion(region))
+                AddFlavor(cell);
+
+            if (!flavorMeshes.TryGetValue(region, out Mesh mesh))
+            {
+                if (vertices.Count == 0)
+                    return;
+                var art = new GameObject($"Terrain flavor {region.x}, {region.y}");
+                art.transform.SetParent(transform, false);
+                art.transform.localPosition = new Vector3(0f, 0f, -0.01f);
+                mesh = new Mesh { name = art.name };
+                mesh.MarkDynamic();
+                art.AddComponent<MeshFilter>().sharedMesh = mesh;
+                art.AddComponent<MeshRenderer>().sharedMaterial = flavorSurface;
+                flavorMeshes.Add(region, mesh);
+            }
+
+            mesh.Clear();
+            mesh.SetVertices(vertices);
+            mesh.SetUVs(0, uv);
+            mesh.SetColors(colors);
+            mesh.SetTriangles(indices, 0);
+        }
+
+        private int Hash(Vector2Int cell)
+        {
+            unchecked
+            {
+                int h = cell.x * 73856093 ^ cell.y * 19349663 ^ worldSalt;
+                h ^= h >> 13;
+                h *= 1274126177;
+                h ^= h >> 16;
+                return h & 0x7fffffff;
+            }
+        }
+
+        // Fully intact solid cell: present and not partially carved by a tunnel.
+        private bool Solid(Vector2Int cell) =>
+            terrain.Cells.ContainsKey(cell) && terrain.Tunnel?.TryGetPieces(cell, out _) != true;
+
+        private bool Interior(Vector2Int cell)
+        {
+            if (!Solid(cell))
+                return false;
+            for (int side = 0; side < HexGrid.SideCount; side++)
+                if (!Solid(HexGrid.Neighbor(cell, side)))
+                    return false;
+            return true;
+        }
+
+        private bool LargeCandidate(Vector2Int cell) => Hash(cell) % 40 == 0;
+
+        // A large decal needs its whole hex ring solid and of one material, and yields to any
+        // candidate within two cells that sorts earlier, so big decals never overlap.
+        private bool HasLarge(Vector2Int cell)
+        {
+            if (!LargeCandidate(cell) || !Interior(cell))
+                return false;
+            TerrainMaterial material = terrain.Cells[cell];
+            if (flavor.Large[material].Count == 0)
+                return false;
+            for (int side = 0; side < HexGrid.SideCount; side++)
+            {
+                Vector2Int ring = HexGrid.Neighbor(cell, side);
+                if (terrain.Cells[ring] != material)
+                    return false;
+            }
+            foreach (Vector2Int other in Nearby(cell))
+                if (LargeCandidate(other) && HexGrid.Compare(other, cell) < 0)
+                    return false;
+            return true;
+        }
+
+        private static IEnumerable<Vector2Int> Nearby(Vector2Int cell)
+        {
+            var seen = new HashSet<Vector2Int> { cell };
+            for (int a = 0; a < HexGrid.SideCount; a++)
+            {
+                Vector2Int n = HexGrid.Neighbor(cell, a);
+                if (seen.Add(n))
+                    yield return n;
+                for (int b = 0; b < HexGrid.SideCount; b++)
+                {
+                    Vector2Int m = HexGrid.Neighbor(n, b);
+                    if (seen.Add(m))
+                        yield return m;
+                }
+            }
+        }
+
+        private void AddFlavor(Vector2Int cell)
+        {
+            if (!Interior(cell))
+                return;
+            TerrainMaterial material = terrain.Cells[cell];
+            int hash = Hash(cell);
+            Color32 tint = Color32.Lerp(new Color32(255, 255, 255, 255), terrain.Materials.Get(material).tint, 0.3f);
+            tint.a = 255;
+            Vector2 center = HexGrid.Center(cell);
+            bool flip = (hash >> 8 & 1) == 1;
+
+            if (HasLarge(cell))
+            {
+                List<Rect> large = flavor.Large[material];
+                Rect rect = large[(hash >> 10) % large.Count];
+                float w = FlavorArt.LargeWidth / 16f, h = FlavorArt.LargeHeight / 16f;
+                AddDecal(center, w, h, rect, flip, tint);
+                return;
+            }
+
+            if (hash % 6 != 1)
+                return;
+            foreach (Vector2Int n in Nearby(cell))
+                if (n == cell || HexGrid.Distance(n, cell) <= 1)
+                    if (LargeCandidate(n) && HasLarge(n))
+                        return;
+            List<Rect> small = flavor.Small[material];
+            if (small.Count == 0)
+                return;
+            Rect tile = small[(hash >> 10) % small.Count];
+            Vector2 jitter = new(((hash >> 4) & 7) / 7f - 0.5f, ((hash >> 12) & 7) / 7f - 0.5f);
+            AddDecal(center + jitter * 0.3f, 1f, 1f, tile, flip, tint);
+        }
+
+        private void AddDecal(Vector2 center, float width, float height, Rect rect, bool flip, Color32 tint)
+        {
+            float l = flip ? rect.xMax : rect.xMin, r = flip ? rect.xMin : rect.xMax;
+            Vector2 half = new(width / 2f, height / 2f);
+            Vector2 tl = center + new Vector2(-half.x, half.y), tr = center + half;
+            Vector2 bl = center - half, br = center + new Vector2(half.x, -half.y);
+            AddTriangle(tl, tr, bl, new Vector2(l, rect.yMax), new Vector2(r, rect.yMax), new Vector2(l, rect.yMin));
+            AddTriangle(tr, br, bl, new Vector2(r, rect.yMax), new Vector2(r, rect.yMin), new Vector2(l, rect.yMin));
+            for (int i = 0; i < 6; i++)
+                colors.Add(tint);
+        }
+
         private void DrawLining()
         {
             vertices.Clear();
@@ -189,11 +351,14 @@ namespace Insectum.Game
 
         private void OnDestroy()
         {
-            terrain.RegionChanged -= DrawRegion;
+            terrain.RegionChanged -= OnRegionChanged;
             terrain.TunnelLiningChanged -= DrawLining;
             foreach (Mesh mesh in meshes.Values)
                 Destroy(mesh);
             Destroy(liningMesh);
+            foreach (Mesh mesh in flavorMeshes.Values)
+                Destroy(mesh);
+            Destroy(flavorSurface);
             Destroy(surface);
         }
     }
