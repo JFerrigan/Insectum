@@ -122,8 +122,14 @@ namespace Insectum.Game.Editor
             Require(plugs.Length == 1 && rooms[plugs[0].Chunk].Role == RoomRole.Vault
                     && layout.Tiles.TryGetValue(HexGrid.CellAt(plugs[0].Position), out TerrainMaterial plug)
                     && plug == ForestTunnelLayout.PlugMaterial(layout.World)
-                    && layout.Tiles.Values.Count(material => material != TerrainMaterial.Reinforced) == 1,
+                    && layout.Tiles.Values.Count(material => material is not (TerrainMaterial.Reinforced or TerrainMaterial.Boundary)) == 1,
                 $"{level} does not have exactly one {ForestTunnelLayout.PlugMaterial(layout.World)} plug under a chest vault.");
+
+            float[] walls = layout.Tiles.Where(tile => tile.Value == TerrainMaterial.Boundary)
+                .Select(tile => HexGrid.Center(tile.Key).x).ToArray();
+            float west = tunnel.Route.Min(landing => landing.x) - 5f, east = tunnel.Route.Max(landing => landing.x) + 5f;
+            Require(walls.Any(x => x < west) && walls.Any(x => x > east) && walls.All(x => x < west || x > east),
+                $"{level} is missing its indestructible side walls or has wall inside the map.");
 
             CheckSpacing(level, tunnel, ref closest, ref steepest);
         }

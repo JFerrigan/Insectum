@@ -115,7 +115,7 @@ namespace Insectum.Game.Editor
             ForestTunnelSpace tunnel = layout.Tunnel;
             Require(tunnel.Route.Zip(tunnel.Route.Skip(1), (from, to) => (from, to)).Count(tunnel.Jumps.ContainsKey) >= 2
                 && layout.Markers.Count(marker => marker.Kind == LevelMarkerKind.Shortcut) == 1
-                && layout.Tiles.Values.Count(material => material != TerrainMaterial.Reinforced) == 1
+                && layout.Tiles.Values.Count(material => material is not (TerrainMaterial.Reinforced or TerrainMaterial.Boundary)) == 1
                 && layout.Tiles[HexGrid.CellAt(layout.Markers.Single(marker => marker.Kind == LevelMarkerKind.Shortcut).Position)]
                     == TerrainMaterial.PackedDirt,
                 $"Forest tunnel seed {layout.RunSeed} is missing uphill turns or its single packed-dirt plug under a chest vault.");

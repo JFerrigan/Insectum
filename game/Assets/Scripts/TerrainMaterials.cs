@@ -15,7 +15,9 @@ namespace Insectum.Game
         HardStone,
         Metal,
         Reinforced,
-        Sandstone
+        Sandstone,
+        // The map's side walls: nothing can dig or blast it.
+        Boundary
     }
 
     [Serializable]
@@ -39,6 +41,7 @@ namespace Insectum.Game
         [SerializeField] private TerrainMaterialTuning metal;
         [SerializeField] private TerrainMaterialTuning reinforced;
         [SerializeField] private TerrainMaterialTuning sandstone;
+        [SerializeField] private TerrainMaterialTuning boundary;
 
         public TerrainMaterialTuning Get(TerrainMaterial material) => material switch
         {
@@ -53,6 +56,7 @@ namespace Insectum.Game
             TerrainMaterial.Metal => metal,
             TerrainMaterial.Reinforced => reinforced,
             TerrainMaterial.Sandstone => sandstone,
+            TerrainMaterial.Boundary => boundary,
             _ => throw new ArgumentOutOfRangeException(nameof(material))
         };
 

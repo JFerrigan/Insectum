@@ -153,7 +153,7 @@ namespace Insectum.Game
         {
             if (!cells.TryGetValue(cell, out TerrainMaterial material))
                 return ExcavationResult.Empty;
-            if (material == TerrainMaterial.Reinforced && !allowReinforced)
+            if (material == TerrainMaterial.Boundary || material == TerrainMaterial.Reinforced && !allowReinforced)
                 return ExcavationResult.Reinforced;
             if (spendEnergy != null && !spendEnergy(Materials.Get(material).excavationEnergy))
                 return ExcavationResult.InsufficientEnergy;
@@ -172,7 +172,7 @@ namespace Insectum.Game
             float radiusSquared = radius * radius;
             foreach (var tile in cells)
             {
-                if (tile.Value != TerrainMaterial.Reinforced && Materials.Get(tile.Value).blastResistance <= power
+                if (tile.Value != TerrainMaterial.Reinforced && tile.Value != TerrainMaterial.Boundary && Materials.Get(tile.Value).blastResistance <= power
                     && (HexGrid.Center(tile.Key) - localOrigin).sqrMagnitude <= radiusSquared)
                     targets.Add(tile.Key);
             }

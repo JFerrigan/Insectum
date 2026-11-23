@@ -9,6 +9,8 @@ namespace Insectum.Game
         private readonly List<Vector3> vertices = new();
         private readonly List<Vector2> uv = new();
         private readonly List<int> indices = new();
+        private readonly List<Color32> shades = new();
+        private Color32 shade = new(255, 255, 255, 255);
         private HexTerrain terrain;
         private Material surface;
         private Texture2D texture;
@@ -73,8 +75,10 @@ namespace Insectum.Game
             vertices.Clear();
             uv.Clear();
             indices.Clear();
+            shades.Clear();
             foreach (Vector2Int cell in terrain.CellsInRegion(region))
                 AddRock(cell);
+            shade = new Color32(255, 255, 255, 255);
             foreach (Vector2Int cell in terrain.CellsInRegion(region))
                 AddGrowth(cell);
 
@@ -94,6 +98,7 @@ namespace Insectum.Game
             mesh.Clear();
             mesh.SetVertices(vertices);
             mesh.SetUVs(0, uv);
+            mesh.SetColors(shades);
             mesh.SetTriangles(indices, 0);
         }
 
@@ -101,7 +106,13 @@ namespace Insectum.Game
         {
             int variation = (cell.x * 17 + cell.y * 31) & 3;
             TerrainMaterial material = terrain.Cells[cell];
-            int row = (int)(material == TerrainMaterial.Sandstone ? TerrainMaterial.HardStone : material);
+            int row = (int)(material switch
+            {
+                TerrainMaterial.Sandstone => TerrainMaterial.HardStone,
+                TerrainMaterial.Boundary => TerrainMaterial.Reinforced,
+                _ => material
+            });
+            shade = material == TerrainMaterial.Boundary ? new Color32(96, 88, 100, 255) : new Color32(255, 255, 255, 255);
             Rect tile = Tile(variation, row);
             Vector2 center = HexGrid.Center(cell);
             if (terrain.Tunnel?.TryGetPieces(cell, out List<Vector2[]> pieces) == true)
@@ -158,6 +169,7 @@ namespace Insectum.Game
         private void DrawFlavor(Vector2Int region)
         {
             vertices.Clear();
+            shades.Clear();
             uv.Clear();
             indices.Clear();
             colors.Clear();
@@ -296,6 +308,8 @@ namespace Insectum.Game
             if (!Interior(cell))
                 return;
             TerrainMaterial material = terrain.Cells[cell];
+            if (material == TerrainMaterial.Boundary)
+                return;
             int hash = Hash(cell);
             Color32 tint = Color32.Lerp(new Color32(255, 255, 255, 255), terrain.Materials.Get(material).tint, 0.3f);
             tint.a = 255;
@@ -423,6 +437,7 @@ namespace Insectum.Game
         private void DrawLining()
         {
             vertices.Clear();
+            shades.Clear();
             uv.Clear();
             indices.Clear();
             Rect moss = Tile(0, 10);
@@ -488,6 +503,9 @@ namespace Insectum.Game
             uv.Add(uvA);
             uv.Add(uvB);
             uv.Add(uvC);
+            shades.Add(shade);
+            shades.Add(shade);
+            shades.Add(shade);
         }
 
         private void OnDestroy()

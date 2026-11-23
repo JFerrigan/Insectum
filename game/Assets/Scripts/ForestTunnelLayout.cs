@@ -304,6 +304,16 @@ namespace Insectum.Game
                 }
             }
 
+            // Indestructible walls close both sides of the map just past the board's outermost chunks, so nothing
+            // can dig out past its edge.
+            float leftWall = bounds.xMin, rightWall = bounds.xMax;
+            foreach (Vector2Int cell in tiles.Keys.ToList())
+            {
+                float x = HexGrid.Center(cell).x;
+                if (x < leftWall || x > rightWall)
+                    tiles[cell] = TerrainMaterial.Boundary;
+            }
+
             for (int index = 1; index < route.Count; index++)
             {
                 Vector2Int chunk = route[index];

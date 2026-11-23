@@ -668,6 +668,8 @@ namespace Insectum.Game
         {
             // Tunnel levels fill every wall with Reinforced, so it reads as the world's bedrock,
             // not as metal: give it each world's natural inclusions.
+            if (m == TerrainMaterial.Boundary)
+                return (Array.Empty<Design>(), Array.Empty<Design>());
             if (m == TerrainMaterial.Reinforced)
                 return world switch
                 {
