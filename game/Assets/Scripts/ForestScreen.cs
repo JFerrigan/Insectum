@@ -149,7 +149,6 @@ namespace Insectum.Game
             Write("SEED", 29, 147, Gold);
             Write(string.IsNullOrEmpty(seed) ? "RANDOM" : seed, 58, 147, editingSeed ? Light : Muted);
             Button(StartButton, "ENTER FOREST");
-            Center("A/D OR ARROW KEYS TO SELECT", 160, 166, Muted);
             Rect dev = DevCheckbox;
             Frame(new Rect(dev.x, dev.y, 10, 10), DevMode.Enabled ? Gold : Edge, Panel);
             if (DevMode.Enabled)
