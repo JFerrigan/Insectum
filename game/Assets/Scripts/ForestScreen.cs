@@ -2,6 +2,8 @@ using UnityEngine;
 
 namespace Insectum.Game
 {
+    internal enum MenuPage { Main, Settings, Roster }
+
     internal static class ForestScreen
     {
         private static readonly Color Ink = new Color32(18, 13, 29, 255);
@@ -20,11 +22,17 @@ namespace Insectum.Game
         internal static Rect RetryButton => new(57, 132, 97, 19);
         internal static Rect RosterButton => new(166, 132, 97, 19);
         internal static Rect ResumeButton => new(100, 145, 120, 19);
+        internal static Rect PlayButton => new(110, 80, 100, 19);
+        internal static Rect SettingsButton => new(110, 105, 100, 19);
+        internal static Rect QuitButton => new(110, 130, 100, 19);
+        internal static Rect BackButton => new(110, 140, 100, 19);
+        internal static Rect LevelDown(int row) => new(150, 72 + row * 26, 15, 15);
+        internal static Rect LevelUp(int row) => new(262, 72 + row * 26, 15, 15);
 
         internal static Rect RosterCard(int index) => index == (int)Insect.Dragonfly
             ? new Rect(132, 59, 56, 49) : new Rect(23 + index * 56, 59, 50, 49);
 
-        internal static void Draw(RenderTexture world, Camera camera, GameSession session, int selected, string seed,
+        internal static void Draw(RenderTexture world, Camera camera, GameSession session, MenuPage menu, int selected, string seed,
             bool editingSeed, bool paused)
         {
             if (Event.current.type != EventType.Repaint)
@@ -50,10 +58,16 @@ namespace Insectum.Game
                     DrawWorldPrompt(camera, feature.Position + Vector2.up * 1.4f, feature.InteractPrompt, Gold);
                 else if (session.Abilities.DigFeedback is string feedback)
                     DrawWorldPrompt(camera, session.Motor.Body.position + Vector2.up * 1.2f, feedback, Gold);
+                if (!paused)
+                    DrawPickupName(camera, session);
                 DrawHud(session.Run);
                 if (paused)
                     DrawPause(session);
             }
+            else if (session.Phase == RunPhase.Selection && menu == MenuPage.Main)
+                DrawMainMenu();
+            else if (session.Phase == RunPhase.Selection && menu == MenuPage.Settings)
+                DrawSettings();
             else if (session.Phase == RunPhase.Selection)
                 DrawSelection(selected, seed, editingSeed);
             else
@@ -61,6 +75,40 @@ namespace Insectum.Game
 
             GUI.matrix = previousMatrix;
             GUI.color = previousColor;
+        }
+
+        private static void DrawMainMenu()
+        {
+            Shade();
+            Center("INSECTUM", 160, 36, Ink, 4);
+            Center("INSECTUM", 160, 34, Light, 4);
+            Fill(new Rect(70, 66, 180, 1), Edge);
+            Button(PlayButton, "PLAY");
+            Button(SettingsButton, "SETTINGS");
+            Button(QuitButton, "QUIT");
+            Center("ENTER PLAY  /  S SETTINGS", 160, 166, Muted);
+        }
+
+        private static void DrawSettings()
+        {
+            Shade();
+            Center("SETTINGS", 160, 28, Light, 2);
+            Frame(new Rect(34, 60, 252, 64), Edge, Panel);
+            DrawLevel(0, "SFX", GameSettings.SfxLevel);
+            DrawLevel(1, "MUSIC", GameSettings.MusicLevel);
+            Button(BackButton, "BACK");
+        }
+
+        private static void DrawLevel(int row, string label, int level)
+        {
+            Rect down = LevelDown(row);
+            Rect up = LevelUp(row);
+            Write(label, 46, (int)down.y + 4, Gold);
+            Button(down, "-");
+            Button(up, "+");
+            for (int i = 0; i < GameSettings.MaxLevel; i++)
+                Fill(new Rect(170 + i * 9, down.y + 3, 7, 9), i < level ? Mint : Edge);
+            Right(level.ToString(), 144, (int)down.y + 4, Light);
         }
 
         private static void DrawSelection(int selected, string seed, bool editingSeed)
@@ -135,6 +183,12 @@ namespace Insectum.Game
             int barY = 17 + (run.MaxHealth - 1) / heartsPerRow * 8;
             Frame(new Rect(7, barY, 53, 7), Ink, Edge);
             Fill(new Rect(8, barY + 1, Mathf.Round(51f * run.Energy / run.Character.MaxEnergy), 5), Mint);
+            if (Items.IsActive(run.Inventory.Active))
+            {
+                float charge = run.Inventory.ActiveCharge;
+                Frame(new Rect(7, barY + 8, 53, 5), Ink, Edge);
+                Fill(new Rect(8, barY + 9, Mathf.Round(51f * charge), 3), charge >= 1f ? Gold : Muted);
+            }
 
             string nektar = run.Inventory.Nektar.ToString();
             int nektarX = 312 - TextWidth(nektar);
@@ -159,17 +213,35 @@ namespace Insectum.Game
             DrawWorldPrompt(camera, shop.Position + Vector2.up * 1.4f, label, shop.Available ? Gold : Muted);
         }
 
-        private static void DrawWorldPrompt(Camera camera, Vector2 point, string prompt, Color color)
+        private const float PickupSeconds = 1.6f;
+
+        private static void DrawPickupName(Camera camera, GameSession session)
+        {
+            if (session.Content?.PickupName is not string name)
+                return;
+            float t = (Time.time - session.Content.PickupTime) / PickupSeconds;
+            if (t < 0f || t >= 1f)
+                return;
+            float alpha = t < 0.5f ? 1f : 1f - (t - 0.5f) * 2f;
+            Vector2 point = session.Motor.Body.position + Vector2.up * (1.6f + t * 1.2f);
+            Color color = Gold;
+            color.a = alpha;
+            DrawWorldPrompt(camera, point, name, color, alpha);
+        }
+
+        private static void DrawWorldPrompt(Camera camera, Vector2 point, string prompt, Color color, float alpha = 1f)
         {
             Vector3 anchor = camera.WorldToViewportPoint(point);
             int halfWidth = (TextWidth(prompt) + 1) / 2;
             int x = Mathf.Clamp(Mathf.RoundToInt(anchor.x * PixelViewport.Width), halfWidth + 2,
                 PixelViewport.Width - halfWidth - 2);
             int y = Mathf.RoundToInt((1f - anchor.y) * PixelViewport.Height) - 7;
-            Center(prompt, x - 1, y, Ink);
-            Center(prompt, x + 1, y, Ink);
-            Center(prompt, x, y - 1, Ink);
-            Center(prompt, x, y + 1, Ink);
+            Color ink = Ink;
+            ink.a *= alpha;
+            Center(prompt, x - 1, y, ink);
+            Center(prompt, x + 1, y, ink);
+            Center(prompt, x, y - 1, ink);
+            Center(prompt, x, y + 1, ink);
             Center(prompt, x, y, color);
         }
 
@@ -202,10 +274,7 @@ namespace Insectum.Game
             Write(run.Character.Name, 176, 55, Gold);
             Write($"SEED {run.Seed}", 176, 66, Light);
             Write($"ITEM  {Items.Name(run.Inventory.Active)}", 176, 75, Light);
-            int cooldown = run.Inventory.ActiveCooldownSteps;
-            if (cooldown > 0)
-                Write($"RECHARGE  {cooldown * PlayerMotor.StepSeconds:0.0}S", 176, 84, Muted);
-
+            int itemY = 84;
             string variant = session.Variant switch
             {
                 LevelVariant.Night => "NIGHT",
@@ -214,7 +283,20 @@ namespace Insectum.Game
                 _ => null
             };
             if (variant != null)
-                Write(variant, 176, 93, Mint);
+            {
+                Write(variant, 176, 84, Mint);
+                itemY += 9;
+            }
+            // Stop above the spider's climb hint and the interaction prompt.
+            int lastY = run.Character.Insect == Insect.Spider ? 102 : 113;
+            foreach (var passive in run.Inventory.Passives)
+            {
+                if (passive.Value <= 0 || itemY > lastY)
+                    continue;
+                string entry = passive.Value > 1 ? $"{Items.Name(passive.Key)} X{passive.Value}" : Items.Name(passive.Key);
+                Write(entry, 176, itemY, Muted);
+                itemY += 9;
+            }
 
             if (session.InteractionPrompt is string prompt)
                 Center(prompt, 160, 122, Gold);

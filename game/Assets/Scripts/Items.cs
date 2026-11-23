@@ -53,11 +53,15 @@ namespace Insectum.Game
         public IReadOnlyDictionary<ItemId, int> Passives { get; }
         public ItemId Active { get; private set; }
         public int ActiveCooldownSteps { get; private set; }
+        private int activeCooldownTotal;
+        // 0 right after use, 1 when the active item is ready.
+        public float ActiveCharge => ActiveCooldownSteps <= 0 || activeCooldownTotal <= 0 ? 1f
+            : 1f - ActiveCooldownSteps / (float)activeCooldownTotal;
         public int Nektar { get; private set; }
         public bool ReviveUsed { get; private set; }
         internal float MeleeReachBonus => Count(ItemId.PrismFang) * 0.35f;
         internal float EnergySapBonus => Count(ItemId.ReedFlask) * 10f;
-        public float NightVisionRadius => 2.7f + Count(ItemId.MothEyes) * 1.5f;
+        public float NightVisionRadius => 4.05f + Count(ItemId.MothEyes) * 1.5f;
 
         internal RunInventory(RunState run)
         {
@@ -130,6 +134,6 @@ namespace Insectum.Game
                 ActiveCooldownSteps--;
         }
 
-        internal void BeginCooldown(int steps) => ActiveCooldownSteps = steps;
+        internal void BeginCooldown(int steps) => ActiveCooldownSteps = activeCooldownTotal = steps;
     }
 }

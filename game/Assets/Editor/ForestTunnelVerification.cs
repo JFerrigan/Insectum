@@ -54,6 +54,7 @@ namespace Insectum.Game.Editor
 
             VerifyTrialRun(fixture);
             VerifyDigging();
+            VerifyExcavatorClaw();
             Debug.Log($"Insectum tunnel trial verified. {times.Count + branches / 3} damage-free baseline traversals, {layouts.Count} distinct layouts, "
                 + $"{branches} side-tunnel round trips, a playable fallback for all five insects, and main routes of {times.Min():F1}–{times.Max():F1}s.");
         }
@@ -177,6 +178,23 @@ namespace Insectum.Game.Editor
                 Require(session.Terrain.Revision == 1 && session.Motor.Body.position.y < height - 0.4f,
                     $"Forest tunnel seed {seed}: one downward dig did not remove the ground collider.");
             }
+        }
+
+        private static void VerifyExcavatorClaw()
+        {
+            using var fixture = new PhysicsFixture("Forest tunnel Excavator Claw");
+            GameSession session = fixture.Session;
+            Character beetle = Character.Roster[(int)Insect.Beetle];
+            session.StartTunnelTrial(beetle, 1051);
+            Require(session.Run.Inventory.Acquire(ItemId.ExcavatorClaw), "Could not equip the Excavator Claw.");
+            fixture.Advance(8);
+
+            float height = session.Motor.Body.position.y;
+            fixture.Step(new PlayerCommand(aim: -1, itemPressed: true));
+            fixture.Advance(18);
+            Require(session.Terrain.Revision == 1 && session.Motor.Body.position.y < height - 0.4f
+                && session.Run.Energy == beetle.MaxEnergy && session.Run.Inventory.ActiveCooldownSteps > 0,
+                "The Excavator Claw could not open the reinforced floor without spending ability energy.");
         }
 
         private static int Cross(PhysicsFixture fixture, bool attack = false, bool explore = false)

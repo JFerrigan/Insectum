@@ -204,6 +204,9 @@ namespace Insectum.Game
 
         internal void ShowStatus(string message) => Status = message;
 
+        internal string PickupName { get; private set; }
+        internal float PickupTime { get; private set; }
+
         internal bool TryInteract()
         {
             LevelFeature feature = ClosestInteractable();
@@ -225,6 +228,8 @@ namespace Insectum.Game
                 BossRewardClaimed = true;
             feature.Consume();
             ShowStatus($"Acquired {Items.Name(feature.Item)}");
+            PickupName = Items.Name(feature.Item);
+            PickupTime = Time.time;
             return true;
         }
 
@@ -301,7 +306,8 @@ namespace Insectum.Game
             {
                 case ItemId.ExcavatorClaw:
                     Vector2 digDirection = command.Aim < 0 ? Vector2.down : forward;
-                    if (session.Terrain.ExcavateAdjacent(origin, digDirection, Run.Character.Radius + 0.92f, null)
+                    if (session.Terrain.ExcavateAdjacent(origin, digDirection, Run.Character.Radius + 0.92f,
+                        null, allowReinforced: true)
                         != ExcavationResult.Removed)
                     {
                         ShowStatus("No diggable tile in reach");

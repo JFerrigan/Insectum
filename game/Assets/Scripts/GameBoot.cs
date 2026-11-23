@@ -21,6 +21,7 @@ namespace Insectum.Game
         private bool editingSeed;
         private bool paused;
         private float timeScaleBeforePause;
+        private MenuPage menu = MenuPage.Main;
 
 #if DEVELOPMENT_BUILD
         private ForestReplay replay;
@@ -92,11 +93,41 @@ namespace Insectum.Game
             }
 
             if (session.Phase == RunPhase.Selection)
-                UpdateSelection();
+            {
+                if (menu == MenuPage.Main)
+                    UpdateMainMenu();
+                else if (menu == MenuPage.Settings)
+                    UpdateSettings();
+                else
+                    UpdateSelection();
+            }
             else if (Input.GetKeyDown(KeyCode.Return) || Click(ForestScreen.RetryButton))
                 BeginRun();
             else if (Input.GetKeyDown(KeyCode.Escape) || Click(ForestScreen.RosterButton))
                 session.ReturnToSelection();
+        }
+
+        private void UpdateMainMenu()
+        {
+            if (Input.GetKeyDown(KeyCode.Return) || Click(ForestScreen.PlayButton))
+                menu = MenuPage.Roster;
+            else if (Input.GetKeyDown(KeyCode.S) || Click(ForestScreen.SettingsButton))
+                menu = MenuPage.Settings;
+            else if (Input.GetKeyDown(KeyCode.Escape) || Click(ForestScreen.QuitButton))
+                Application.Quit();
+        }
+
+        private void UpdateSettings()
+        {
+            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Return) || Click(ForestScreen.BackButton))
+            {
+                menu = MenuPage.Main;
+                return;
+            }
+            if (Click(ForestScreen.LevelDown(0))) GameSettings.SfxLevel--;
+            if (Click(ForestScreen.LevelUp(0))) GameSettings.SfxLevel++;
+            if (Click(ForestScreen.LevelDown(1))) GameSettings.MusicLevel--;
+            if (Click(ForestScreen.LevelUp(1))) GameSettings.MusicLevel++;
         }
 
         private void UpdateSelection()
@@ -118,7 +149,11 @@ namespace Insectum.Game
             if (Input.GetKeyDown(KeyCode.Tab))
                 editingSeed = !editingSeed;
             if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                if (!editingSeed)
+                    menu = MenuPage.Main;
                 editingSeed = false;
+            }
 
             if (editingSeed)
             {
@@ -214,7 +249,7 @@ namespace Insectum.Game
                 RenderTexture.active = previous;
                 display = nightView;
             }
-            ForestScreen.Draw(display, routeCamera, session, selected, seedText, editingSeed, paused);
+            ForestScreen.Draw(display, routeCamera, session, menu, selected, seedText, editingSeed, paused);
         }
 
         private static RenderTexture CreateNativeTarget(string label) =>

@@ -28,11 +28,11 @@ namespace Insectum.Game.Editor
             baseline.Session.StartGenerated(beetle, FullRunSeed, 1);
             variant.Session.StartGenerated(beetle, FullRunSeed, 1);
             GameSession night = variant.Session;
-            Require(night.Variant == LevelVariant.Night && night.NightVisionRadius == 2.7f,
+            Require(night.Variant == LevelVariant.Night && Mathf.Abs(night.NightVisionRadius - 4.05f) < 0.001f,
                 "The seeded night level did not set its visible light radius.");
             night.Run.Inventory.Acquire(ItemId.MothEyes);
             night.Run.Inventory.Acquire(ItemId.MothEyes);
-            Require(Mathf.Abs(night.NightVisionRadius - 5.7f) < 0.001f,
+            Require(Mathf.Abs(night.NightVisionRadius - 7.05f) < 0.001f,
                 "Moth Eyes did not extend the same Night radius used by the renderer.");
             Require(EquivalentBase(baseline.Session, night, requireExtraEnemies: false), "Night changed the base layout, encounters, or loot.");
 
@@ -87,7 +87,7 @@ namespace Insectum.Game.Editor
                         "Normal shop interaction did not acquire Moth Eyes.");
                 }
                 if (session.Variant == LevelVariant.Night)
-                    Require(Mathf.Abs(session.NightVisionRadius - (level < 3 ? 2.7f : 4.2f)) < 0.001f,
+                    Require(Mathf.Abs(session.NightVisionRadius - (level < 3 ? 4.05f : 5.55f)) < 0.001f,
                         "The actual light radius did not retain the Moth Eyes purchase.");
                 if (session.Content.HasBoss)
                     ClearArena(fixture);

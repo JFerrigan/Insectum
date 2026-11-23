@@ -25,7 +25,7 @@ Shader "Insectum/NightVision"
                 float2 pixel = floor(input.uv * _MainTex_TexelSize.zw) + 0.5;
                 float distanceToPlayer = distance(pixel, _Light.xy);
                 float visibility = 1.0 - smoothstep(_Light.z * 0.67, _Light.z, distanceToPlayer);
-                scene.rgb *= lerp(fixed3(0.17, 0.19, 0.29), fixed3(1.0, 1.0, 1.0), visibility);
+                scene.rgb *= visibility;
                 return scene;
             }
             ENDCG
