@@ -19,6 +19,25 @@ namespace Insectum.Game
         private Material flavorSurface;
         private int worldSalt;
 
+        // Decals are placed once from the untouched level, then every cell draws only its own slice of
+        // each decal overlapping it. Digging a cell removes just that slice; neighbours never change.
+        private readonly struct Decal
+        {
+            public readonly Rect Bounds;
+            public readonly Rect Uv;
+            public readonly bool Flip;
+            public readonly Color32 Tint;
+
+            public Decal(Rect bounds, Rect uv, bool flip, Color32 tint)
+            {
+                Bounds = bounds; Uv = uv; Flip = flip; Tint = tint;
+            }
+        }
+
+        private readonly Dictionary<Vector2Int, List<Decal>> decalsByCell = new();
+        private readonly List<Vector2> clipA = new();
+        private readonly List<Vector2> clipB = new();
+
         public static void Attach(HexTerrain terrain, WorldId world = WorldId.Forest)
         {
             var view = terrain.Root.AddComponent<HexTerrainView>();
@@ -32,6 +51,9 @@ namespace Insectum.Game
             foreach (Vector2Int region in terrain.Regions)
                 view.DrawRegion(region);
             foreach (Vector2Int region in terrain.Regions)
+                foreach (Vector2Int cell in terrain.CellsInRegion(region))
+                    view.PlaceDecal(cell);
+            foreach (Vector2Int region in terrain.Regions)
                 view.DrawFlavor(region);
             if (terrain.Tunnel != null)
             {
@@ -43,11 +65,7 @@ namespace Insectum.Game
         private void OnRegionChanged(Vector2Int region)
         {
             DrawRegion(region);
-            // Multi-cell decals and the "not touching air" rule read neighbouring cells,
-            // so edits on a region border must refresh the decals next door as well.
-            for (int dx = -1; dx <= 1; dx++)
-            for (int dy = -1; dy <= 1; dy++)
-                DrawFlavor(region + new Vector2Int(dx, dy));
+            DrawFlavor(region);
         }
 
         private void DrawRegion(Vector2Int region)
@@ -144,7 +162,7 @@ namespace Insectum.Game
             indices.Clear();
             colors.Clear();
             foreach (Vector2Int cell in terrain.CellsInRegion(region))
-                AddFlavor(cell);
+                DrawCellFlavor(cell);
 
             if (!flavorMeshes.TryGetValue(region, out Mesh mesh))
             {
@@ -273,7 +291,7 @@ namespace Insectum.Game
             }
         }
 
-        private void AddFlavor(Vector2Int cell)
+        private void PlaceDecal(Vector2Int cell)
         {
             if (!Interior(cell))
                 return;
@@ -318,14 +336,88 @@ namespace Insectum.Game
 
         private void AddDecal(Vector2 center, float width, float height, Rect rect, bool flip, Color32 tint)
         {
-            float l = flip ? rect.xMax : rect.xMin, r = flip ? rect.xMin : rect.xMax;
-            Vector2 half = new(width / 2f, height / 2f);
-            Vector2 tl = center + new Vector2(-half.x, half.y), tr = center + half;
-            Vector2 bl = center - half, br = center + new Vector2(half.x, -half.y);
-            AddTriangle(tl, tr, bl, new Vector2(l, rect.yMax), new Vector2(r, rect.yMax), new Vector2(l, rect.yMin));
-            AddTriangle(tr, br, bl, new Vector2(r, rect.yMax), new Vector2(r, rect.yMin), new Vector2(l, rect.yMin));
-            for (int i = 0; i < 6; i++)
-                colors.Add(tint);
+            var decal = new Decal(new Rect(center.x - width / 2f, center.y - height / 2f, width, height), rect, flip, tint);
+            Vector2Int anchor = HexGrid.CellAt(center);
+            int reach = Mathf.CeilToInt(Mathf.Max(width, height) / 1.5f) + 1;
+            foreach (Vector2Int other in Within(anchor, reach))
+                Register(other, decal);
+            Register(anchor, decal);
+        }
+
+        private void Register(Vector2Int cell, Decal decal)
+        {
+            Vector2 c = HexGrid.Center(cell);
+            var hex = new Rect(c.x - HexGrid.HalfWidth, c.y - 1f, HexGrid.ColumnSpacing, 2f);
+            if (!hex.Overlaps(decal.Bounds))
+                return;
+            if (!decalsByCell.TryGetValue(cell, out List<Decal> list))
+                decalsByCell[cell] = list = new List<Decal>();
+            list.Add(decal);
+        }
+
+        private void DrawCellFlavor(Vector2Int cell)
+        {
+            if (!decalsByCell.TryGetValue(cell, out List<Decal> decals))
+                return;
+            if (terrain.Tunnel?.TryGetPieces(cell, out List<Vector2[]> pieces) == true)
+            {
+                foreach (Vector2[] piece in pieces)
+                    foreach (Decal decal in decals)
+                        AddClipped(piece, decal);
+                return;
+            }
+            var hex = new Vector2[HexGrid.SideCount];
+            for (int side = 0; side < HexGrid.SideCount; side++)
+                hex[side] = HexGrid.Vertex(HexGrid.Corner(cell, side));
+            foreach (Decal decal in decals)
+                AddClipped(hex, decal);
+        }
+
+        // Clip a convex polygon to the decal's rectangle and emit it with UVs mapped into the decal.
+        private void AddClipped(Vector2[] polygon, Decal decal)
+        {
+            clipA.Clear();
+            clipA.AddRange(polygon);
+            Rect b = decal.Bounds;
+            ClipAxis(clipA, clipB, 0, b.xMin, true);
+            ClipAxis(clipB, clipA, 0, b.xMax, false);
+            ClipAxis(clipA, clipB, 1, b.yMin, true);
+            ClipAxis(clipB, clipA, 1, b.yMax, false);
+            if (clipA.Count < 3)
+                return;
+            Rect r = decal.Uv;
+            Vector2 Uv(Vector2 p)
+            {
+                float u = (p.x - b.xMin) / b.width, v = (p.y - b.yMin) / b.height;
+                if (decal.Flip)
+                    u = 1f - u;
+                return new Vector2(Mathf.Lerp(r.xMin, r.xMax, u), Mathf.Lerp(r.yMin, r.yMax, v));
+            }
+            for (int i = 1; i + 1 < clipA.Count; i++)
+            {
+                AddTriangle(clipA[0], clipA[i], clipA[i + 1], Uv(clipA[0]), Uv(clipA[i]), Uv(clipA[i + 1]));
+                colors.Add(decal.Tint);
+                colors.Add(decal.Tint);
+                colors.Add(decal.Tint);
+            }
+        }
+
+        private static void ClipAxis(List<Vector2> input, List<Vector2> output, int axis, float limit, bool keepAbove)
+        {
+            output.Clear();
+            for (int i = 0; i < input.Count; i++)
+            {
+                Vector2 a = input[i], c = input[(i + 1) % input.Count];
+                bool aIn = keepAbove ? a[axis] >= limit : a[axis] <= limit;
+                bool cIn = keepAbove ? c[axis] >= limit : c[axis] <= limit;
+                if (aIn)
+                    output.Add(a);
+                if (aIn != cIn)
+                {
+                    float t = (limit - a[axis]) / (c[axis] - a[axis]);
+                    output.Add(Vector2.Lerp(a, c, t));
+                }
+            }
         }
 
         private void DrawLining()
