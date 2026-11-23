@@ -48,8 +48,36 @@ namespace Insectum.Game.Editor
             string[] missing = counts.Where(count => count.Value == 0).Select(count => count.Key).ToArray();
             Require(missing.Length == 0,
                 $"Forest room shapes never generated across {SeedCount} seeds: {string.Join(", ", missing)}.");
-            return $"Insectum room profiles verified across {SeedCount} seeds and the fallback. Unlinked spaces keep "
-                + $"{closest:F2} units of rock, the steepest walkable floor is {steepest:F1} degrees. Rooms per shape: "
+
+            // Every non-boss level of every world is a tunnel built from that world's templates.
+            var templates = new Dictionary<WorldId, HashSet<string>>();
+            int levels = 0;
+            foreach (WorldId world in Enum.GetValues(typeof(WorldId)))
+            {
+                templates[world] = new HashSet<string>();
+                for (int seed = -30; seed < 30; seed++)
+                {
+                    int level = RunWorlds.FirstLevel(world) + (seed + 30) % (RunWorlds.LevelsPerWorld - 1);
+                    LevelLayout layout = RunWorlds.Generate(seed, level);
+                    Require(layout.World == world && layout.LevelNumber == level && layout.Tunnel != null,
+                        $"{world} seed {seed}, level {level} is not a {world} tunnel.");
+                    Check(layout, new Dictionary<string, int>(counts), ref closest, ref steepest);
+                    foreach (MacroChunk chunk in layout.Chunks.Where(chunk => chunk.Ports != MacroPort.None))
+                    {
+                        Require(ForestRoomCatalog.For(world).Any(template => template.Id == chunk.TemplateId),
+                            $"{world} seed {seed} used {chunk.TemplateId}, which is not one of its templates.");
+                        templates[world].Add(chunk.TemplateId);
+                    }
+                    levels++;
+                }
+                Require(templates[world].Count == ForestRoomCatalog.For(world).Count,
+                    $"{world} never used {string.Join(", ", ForestRoomCatalog.For(world).Select(t => t.Id).Except(templates[world]))}.");
+            }
+
+            return $"Insectum room profiles verified across {SeedCount} Forest 1 seeds, the fallback, and {levels} levels "
+                + $"across all five worlds. Unlinked spaces keep {closest:F2} units of rock, the steepest walkable floor is "
+                + $"{steepest:F1} degrees. Templates per world: "
+                + string.Join(", ", templates.Select(world => $"{world.Key} {world.Value.Count}")) + ". Rooms per shape: "
                 + string.Join(", ", counts.OrderByDescending(count => count.Value).Select(count => $"{count.Key} {count.Value}"))
                 + ".";
         }

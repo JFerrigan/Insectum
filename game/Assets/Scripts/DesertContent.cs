@@ -34,7 +34,8 @@ namespace Insectum.Game
                         break;
                     case LevelMarkerKind.Branch:
                         content.AddFeature(LevelFeatureKind.Chest,
-                            marker.Position + trail * (HexGrid.ColumnSpacing * 3f) + Vector2.up * 0.49f,
+                            layout.Tunnel != null ? TunnelContent.ChestPosition(marker)
+                                : marker.Position + trail * (HexGrid.ColumnSpacing * 3f) + Vector2.up * 0.49f,
                             item: layout.WorldLevel == 1 ? ItemId.DuneMantle : ItemId.SeedBomb);
                         break;
                     case LevelMarkerKind.Trap:
@@ -50,6 +51,12 @@ namespace Insectum.Game
             {
                 content.AddFeature(LevelFeatureKind.HeartSap, layout.Spawn + trail * 1.3f + Vector2.up * 0.46f, 1);
                 content.AddFeature(LevelFeatureKind.EnergySap, layout.Spawn + trail * 2.6f + Vector2.up * 0.46f, 32);
+                return;
+            }
+
+            if (layout.Tunnel != null)
+            {
+                TunnelContent.AddSupplies(content, layout, 26);
                 return;
             }
 

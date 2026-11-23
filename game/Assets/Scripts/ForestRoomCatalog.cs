@@ -50,7 +50,7 @@ namespace Insectum.Game
         // Plain ramps and halls that fit every shape, so a shape without authored templates still generates.
         internal static readonly ForestRoomTemplate Generic = new("Forest.Room.Generic", 1, _ => true, CarveGeneric);
 
-        private static readonly ForestRoomTemplate[] Templates =
+        private static readonly ForestRoomTemplate[] ForestTemplates =
         {
             Generic,
             new("Forest.Open.GreatHollow", 1, Shape("Main.Switchback"), CarveGreatHollow),
@@ -61,19 +61,26 @@ namespace Insectum.Game
             new("Forest.Open.SunlitRise", 1, Shape("Main.Ascent", "SideTunnel.Ascent"), CarveSunlitRise)
         };
 
-        internal static IReadOnlyList<ForestRoomTemplate> All => Templates;
+        private static readonly ForestRoomTemplate[] GenericOnly = { Generic };
 
-        internal static ForestRoomTemplate Choose(ForestRoomProfile profile, ref SeededRandom random)
+        internal static IReadOnlyList<ForestRoomTemplate> For(WorldId world) => world switch
         {
+            WorldId.Forest => ForestTemplates,
+            _ => GenericOnly
+        };
+
+        internal static ForestRoomTemplate Choose(WorldId world, ForestRoomProfile profile, ref SeededRandom random)
+        {
+            IReadOnlyList<ForestRoomTemplate> templates = For(world);
             int total = 0;
-            foreach (ForestRoomTemplate template in Templates)
+            foreach (ForestRoomTemplate template in templates)
                 if (template.Fits(profile))
                     total += template.Weight;
             if (total == 0)
                 return Generic;
 
             int pick = random.Next(total);
-            foreach (ForestRoomTemplate template in Templates)
+            foreach (ForestRoomTemplate template in templates)
             {
                 if (!template.Fits(profile))
                     continue;

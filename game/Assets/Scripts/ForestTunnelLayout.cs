@@ -36,9 +36,14 @@ namespace Insectum.Game
             }
         }
 
-        internal static LevelLayout Generate(int seed, bool forceFallback = false)
+        internal static LevelLayout Generate(int seed, bool forceFallback = false) =>
+            Generate(seed, 1, WorldId.Forest, forceFallback);
+
+        // Every non-boss level in every world is a tunnel. The level number seeds the route, and the world
+        // picks the room templates, rock art and content.
+        internal static LevelLayout Generate(int seed, int level, WorldId world, bool forceFallback = false)
         {
-            var seeds = new LevelSeeds(seed, 1);
+            var seeds = new LevelSeeds(seed, level);
             var random = new SeededRandom(seeds.Layout);
             var route = new List<Vector2Int>(MainCount);
             var branches = new List<(int source, Vector2Int first, Vector2Int end)>();
@@ -65,7 +70,7 @@ namespace Insectum.Game
                     throw new InvalidOperationException("The Forest tunnel fallback could not fit its branches.");
             }
 
-            return Build(seed, seeds, route, branches, fallback);
+            return Build(seed, level, world, seeds, route, branches, fallback);
         }
 
         private static IEnumerable<Vector2Int> BoardCells()
@@ -199,7 +204,7 @@ namespace Insectum.Game
         private static bool Rightward(int side) => side is 0 or 1;
         private static Vector2 Center(Vector2Int chunk) => HexGrid.Center(ForestTemplates.MacroCenter(chunk));
 
-        private static LevelLayout Build(int seed, LevelSeeds seeds, List<Vector2Int> route,
+        private static LevelLayout Build(int seed, int level, WorldId world, LevelSeeds seeds, List<Vector2Int> route,
             List<(int source, Vector2Int first, Vector2Int end)> branches, bool fallback)
         {
             var space = new ForestTunnelSpace();
@@ -301,8 +306,8 @@ namespace Insectum.Game
             Vector2 spawn = landings[route[0]];
             Vector2 exit = landings[route[^1]] + Vector2.up * 0.55f;
             int facing = Center(route[1]).x > spawn.x ? 1 : -1;
-            return new LevelLayout(seed, 1, seeds, tiles, chunks, checkpoints, markers, spawn, exit,
-                bounds, facing, fallback, tunnel: space);
+            return new LevelLayout(seed, level, seeds, tiles, chunks, checkpoints, markers, spawn, exit,
+                bounds, facing, fallback, world, space);
 
             void MarkJump(Vector2Int from, Vector2Int to)
             {
@@ -320,7 +325,7 @@ namespace Insectum.Game
             void CarveRoom(Vector2Int chunk)
             {
                 ForestRoomProfile profile = space.Rooms[chunk];
-                ForestRoomTemplate template = ForestRoomCatalog.Choose(profile, ref roomRandom);
+                ForestRoomTemplate template = ForestRoomCatalog.Choose(world, profile, ref roomRandom);
                 templateIds.Add(chunk, template.Id);
                 var room = new ForestRoomBuilder(space, chunk, Center(chunk), profile);
                 template.Carve(room);

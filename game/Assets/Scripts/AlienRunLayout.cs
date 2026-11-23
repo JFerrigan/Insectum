@@ -8,7 +8,7 @@ namespace Insectum.Game
         internal static LevelLayout Generate(int seed, int level) =>
             RunWorlds.LocalLevel(level) == RunWorlds.LevelsPerWorld
                 ? BossArena(seed, level)
-                : ForestGenerator.Generate(seed, level, WorldId.Alien);
+                : ForestTunnelLayout.Generate(seed, level, WorldId.Alien);
 
         private static LevelLayout BossArena(int seed, int level)
         {
