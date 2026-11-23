@@ -22,6 +22,11 @@ namespace Insectum.Game
 
             if (layout.Checkpoints.Count > 2)
                 content.AddFeature(LevelFeatureKind.EnergySap, layout.Checkpoints[2].Landing + Vector2.up * 0.47f, energySap);
+
+            // Caches on perches, ledges and pit floors reward a detour or a careful jump.
+            foreach (LevelMarker marker in layout.Markers)
+                if (marker.Kind == LevelMarkerKind.Treasure)
+                    content.AddFeature(LevelFeatureKind.Nektar, marker.Position + Vector2.up * 0.5f, 3);
         }
     }
 }

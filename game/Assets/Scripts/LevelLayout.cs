@@ -118,7 +118,8 @@ namespace Insectum.Game
         Shop,
         Branch,
         Boss,
-        Shortcut
+        Shortcut,
+        Treasure
     }
 
     public readonly struct LevelMarker

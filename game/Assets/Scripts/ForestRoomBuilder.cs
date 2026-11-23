@@ -30,6 +30,8 @@ namespace Insectum.Game
         internal Vector2 Center { get; }
         internal Vector2 Landing { get; private set; }
         internal IReadOnlyDictionary<RoomDoor, (float clearance, Vector2? lip)> Doors => doors;
+        internal List<Vector2> TrapSpots { get; } = new();
+        internal List<Vector2> TreasureSpots { get; } = new();
 
         internal static Vector2 Anchor(RoomDoor door) => door switch
         {
@@ -133,6 +135,12 @@ namespace Insectum.Game
                     return i;
             return -1;
         }
+
+        // A floor point off the walking route where the level may place the world's trap.
+        internal void Trap(Vector2 floor) => TrapSpots.Add(World(floor));
+
+        // A floor point off the walking route, such as an island top or a pit, where the level may leave Nektar.
+        internal void Treasure(Vector2 floor) => TreasureSpots.Add(World(floor));
 
         // The room's main standing point, used for checkpoints, route markers, spawn and exit.
         internal void SetLanding(Vector2 local) => Landing = World(local);

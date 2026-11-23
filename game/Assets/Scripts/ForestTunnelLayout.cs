@@ -11,6 +11,9 @@ namespace Insectum.Game
         private const int MainCount = 28;
         private const int SearchBudget = 24000;
         private const uint RoomSalt = 0x6C8E9CF5u;
+        private const uint SpotSalt = 0x2F9A51C3u;
+        private const int MaxTraps = 5;
+        private const int MaxTreasures = 6;
         internal const float Height = 3.1f;
 
         // The four diagonal ports have enough horizontal span for baseline movement.
@@ -203,6 +206,18 @@ namespace Insectum.Game
 
         private static bool Rightward(int side) => side is 0 or 1;
 
+        private static List<(Vector2 position, Vector2Int chunk)> Pick(List<(Vector2 position, Vector2Int chunk)> spots,
+            int count, ref SeededRandom random)
+        {
+            var pool = new List<(Vector2 position, Vector2Int chunk)>(spots);
+            for (int i = pool.Count - 1; i > 0; i--)
+            {
+                int j = random.Next(i + 1);
+                (pool[i], pool[j]) = (pool[j], pool[i]);
+            }
+            return pool.GetRange(0, Mathf.Min(count, pool.Count));
+        }
+
         internal static TerrainMaterial PlugMaterial(WorldId world) => world switch
         {
             WorldId.Swamp => TerrainMaterial.Mud,
@@ -238,6 +253,8 @@ namespace Insectum.Game
             // Templates draw from their own stream so adding one never changes a seed's route.
             var roomRandom = new SeededRandom(seeds.Layout ^ RoomSalt);
             var templateIds = new Dictionary<Vector2Int, string>();
+            var trapSpots = new List<(Vector2 position, Vector2Int chunk)>();
+            var treasureSpots = new List<(Vector2 position, Vector2Int chunk)>();
             foreach (var entry in ports)
                 CarveRoom(entry.Key);
             foreach (var link in links)
@@ -318,6 +335,13 @@ namespace Insectum.Game
             tiles[plug] = PlugMaterial(world);
             markers.Add(new LevelMarker(LevelMarkerKind.Shortcut, HexGrid.Center(plug), cache.end));
 
+            // Templates offer trap and treasure spots off the walking route; each level uses a seeded handful.
+            var spots = new SeededRandom(seeds.Layout ^ SpotSalt);
+            foreach (var (position, chunk) in Pick(trapSpots, MaxTraps, ref spots))
+                markers.Add(new LevelMarker(LevelMarkerKind.Trap, position, chunk));
+            foreach (var (position, chunk) in Pick(treasureSpots, MaxTreasures, ref spots))
+                markers.Add(new LevelMarker(LevelMarkerKind.Treasure, position, chunk));
+
             foreach (Vector2Int chunk in route)
                 space.Route.Add(landings[chunk]);
 
@@ -348,6 +372,10 @@ namespace Insectum.Game
                 var room = new ForestRoomBuilder(space, chunk, Center(chunk), profile);
                 template.Carve(room);
                 landings.Add(chunk, room.Landing);
+                foreach (Vector2 spot in room.TrapSpots)
+                    trapSpots.Add((spot, chunk));
+                foreach (Vector2 spot in room.TreasureSpots)
+                    treasureSpots.Add((spot, chunk));
                 foreach (int side in Sides)
                 {
                     if ((profile.Ports & (MacroPort)(1 << side)) == 0)
