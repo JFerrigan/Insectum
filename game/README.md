@@ -9,11 +9,17 @@ Open this directory as a project in Unity 6000.3.11f1. Open
 A/D, then press Enter. Use A/D to walk, Space to jump, and E at the marked exit.
 Hold Space for a higher jump.
 Touching a live enemy costs one heart and knocks you back. Hard landings after
-a fall of about 7.4 world units cost one heart. Forest 1 is the tunnel trial.
-Its 37-chunk board has a 28-chunk main route and three side tunnels. Amber chevrons mark uphill
-turns on the main route, and green chevrons mark side entrances. One side
-tunnel leads to a shop and two lead to chests with diggable alcoves. The exit
-continues to Forest 2. Press Esc during a run to pause and see the controls,
+a fall of about 7.4 world units cost one heart.
+
+Levels 1 to 3 of every world are winding tunnels. Each 37-chunk board has a
+28-room main route and three side tunnels: one leads to a shop and two to
+chest vaults. Every room is built from a template that matches where its doors
+are, so the same seed always gives the same rooms. Each world has its own
+themed set (Forest hollows and fungus shelves, Swamp fens and lily pads, Caves
+geodes and stalactites, Desert dunes and temple halls, Alien bubbles and
+pods), with traps and Nektar caches placed off the walking route. The first
+chest vault in each level stands on a plug of the world's soft material with
+Nektar buried in it. Level 4 is the world's boss arena. Press Esc during a run to pause and see the controls,
 current item, and seed. Press Esc again or click Resume to continue. Leave
 the seed field blank for a random layout, or enter a seed to replay it. Click
 the seed field or press Tab to edit it. From the
@@ -31,12 +37,12 @@ Use S + L to aim the Excavator Claw downward. Aim the Seed Bomb with W or S,
 or face your target for a forward blast.
 
 Defeat Barkback and take its reward to enter the four Swamp levels.
-Watch for the green bubbles before a gas vent opens. The mud plug in a Swamp
-side pocket can be jumped or excavated for five energy as Worm. Reed Flask
+Watch for the green bubbles before a gas vent opens. The mud plug under a Swamp
+chest vault costs Worm five energy. Reed Flask
 adds ten energy per stack to each energy sap pickup. Defeat Mire Bell and
 claim its prize to enter Caves. Look for falling crystal warnings and jump
-over Faultback's ground waves. Worm can clear the soft-stone side passage
-for twelve energy. Prism Fang adds 0.35 world units per stack to melee reach.
+over Faultback's ground waves. The soft-stone plug costs Worm twelve energy.
+Prism Fang adds 0.35 world units per stack to melee reach.
 
 Faultback's reward opens Desert. Watch the cinder jets for an amber warning
 and step off the mark before Dune Maw resurfaces. The sand plug costs Worm
@@ -63,21 +69,14 @@ Run the production verification from this directory on macOS.
   -logFile /private/tmp/insectum-bootstrap.log
 ```
 
-Add `-insectum-tunnel-only` to run only the Forest 1 trial checks. The trial
-verification covers the regular route, side tunnels, fallback, and continuation
-to Forest 2. The full suite also verifies the authored two-chunk crossing, the generated routes for
-100 Forest seeds with all five insects, and the fallback. After changing Forest
-templates, add `-insectum-bake-forest` to run every candidate through Unity
-physics and regenerate `Assets/Resources/ForestCertificates.txt`. The Swamp
-suite verifies 100 seeds, the mud shortcut and its ordinary jump route, and
-the boss reward. Use `-insectum-bake-swamp` to regenerate its certificates
-after editing the Swamp templates. The Caves suite likewise checks 100
-seeds, its stone shortcut, and the boss encounter. Use
-`-insectum-bake-caves` after editing Caves templates. Desert uses the same
-100-seed sweep with `-insectum-bake-desert` to refresh its certificates.
-Alien follows the same procedure with `-insectum-bake-alien`. The suite also
-completes the 20-level run on seed 1051 with ordinary commands, buys Moth
-Eyes, and verifies all three variants.
+Add `-insectum-tunnel-only` to run only the room-template checks and the
+Forest 1 tunnel checks. The room checks generate 200 Forest 1 seeds and 300
+levels across all worlds, and require every room shape, every template, the
+buried plug, and at least 1.5 units of rock between unlinked rooms. Each
+world's suite crosses 12 of its tunnels and the fallback with all five insects
+damage-free, opens a vault chest, digs the plug as Worm, and fights the boss.
+The suite also completes the 20-level run on seed 1051 with ordinary
+commands, buys Moth Eyes, and verifies all three variants.
 
 If Unity waits for licensing, copy the `LicenseClient` channel name from the
 signed-in editor log and pass it with `-licensingIpc`.
