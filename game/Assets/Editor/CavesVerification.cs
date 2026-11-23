@@ -11,15 +11,13 @@ namespace Insectum.Game.Editor
         private const int FirstLevel = 9;
 
         internal static void VerifyGeneration() =>
-            BiomeVerification.VerifyGeneration(WorldId.Caves, TerrainMaterial.SoftStone, TerrainMaterial.HardStone);
+            BiomeVerification.VerifyGeneration(WorldId.Caves, TerrainMaterial.SoftStone);
 
         internal static void VerifyPlaythrough()
         {
             using var fixture = new PhysicsFixture("Caves playthrough");
-            VerifyPocket(fixture, WorldId.Caves, ItemId.PrismFang, 1, excavate: true);
-            VerifyPocket(fixture, WorldId.Caves, ItemId.PrismFang, -1, excavate: true);
-            VerifyPocket(fixture, WorldId.Caves, ItemId.PrismFang, 1, excavate: false);
-            VerifyPocket(fixture, WorldId.Caves, ItemId.PrismFang, -1, excavate: false);
+            VerifyVault(fixture, WorldId.Caves, ItemId.PrismFang, excavate: true);
+            VerifyVault(fixture, WorldId.Caves, ItemId.PrismFang, excavate: false);
             Require(fixture.Session.Content.Enemies.All(enemy => enemy.Style is EnemyStyle.CaveHopper or EnemyStyle.GlowFly)
                     && fixture.Session.Content.Traps.All(trap => trap.Style == TrapStyle.Crystal),
                 "Caves generated a foreign encounter or hazard.");
@@ -27,7 +25,7 @@ namespace Insectum.Game.Editor
             VerifyQuake();
             VerifyFang(fixture);
             VerifyProgression(fixture);
-            Debug.Log("Insectum Caves playthrough verified: both Worm and normal pocket routes, warning and crystal drop, Prism Fang reach, Faultback shockwave, reward, and gated exit.");
+            Debug.Log("Insectum Caves playthrough verified: vault chest and a 12-energy Worm soft-stone plug, warning and crystal drop, Prism Fang reach, Faultback shockwave, reward, and gated exit.");
         }
 
         private static void VerifyCrystal()

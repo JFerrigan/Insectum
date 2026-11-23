@@ -11,15 +11,13 @@ namespace Insectum.Game.Editor
         private const int FirstLevel = 17;
 
         internal static void VerifyGeneration() =>
-            BiomeVerification.VerifyGeneration(WorldId.Alien, TerrainMaterial.AlienOrganic, TerrainMaterial.Metal);
+            BiomeVerification.VerifyGeneration(WorldId.Alien, TerrainMaterial.AlienOrganic);
 
         internal static void VerifyPlaythrough()
         {
             using var fixture = new PhysicsFixture("Alien playthrough");
-            VerifyPocket(fixture, WorldId.Alien, ItemId.FluxCore, 1, excavate: true);
-            VerifyPocket(fixture, WorldId.Alien, ItemId.FluxCore, -1, excavate: true);
-            VerifyPocket(fixture, WorldId.Alien, ItemId.FluxCore, 1, excavate: false);
-            VerifyPocket(fixture, WorldId.Alien, ItemId.FluxCore, -1, excavate: false);
+            VerifyVault(fixture, WorldId.Alien, ItemId.FluxCore, excavate: true);
+            VerifyVault(fixture, WorldId.Alien, ItemId.FluxCore, excavate: false);
             Require(fixture.Session.Content.Enemies.All(enemy => enemy.Style is EnemyStyle.LatticeTick or EnemyStyle.ArcMote)
                     && fixture.Session.Content.Traps.All(trap => trap.Style == TrapStyle.Arc),
                 "Alien generated a foreign encounter or hazard.");
@@ -27,7 +25,7 @@ namespace Insectum.Game.Editor
             VerifyBeam();
             VerifyFluxCore(fixture);
             VerifyProgression(fixture);
-            Debug.Log("Insectum Alien playthrough verified: ordinary jumps and 10-energy Worm shortcuts, static warning and strike, Flux Core on kills, Crown Relay shield and sweep, reward, and final victory.");
+            Debug.Log("Insectum Alien playthrough verified: vault chest and a 10-energy Worm organic plug, static warning and strike, Flux Core on kills, Crown Relay shield and sweep, reward, and final victory.");
         }
 
         private static void VerifyArc()

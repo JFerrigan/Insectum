@@ -11,21 +11,19 @@ namespace Insectum.Game.Editor
         private const int FirstLevel = 5;
 
         internal static void VerifyGeneration() =>
-            BiomeVerification.VerifyGeneration(WorldId.Swamp, TerrainMaterial.Mud, TerrainMaterial.Clay);
+            BiomeVerification.VerifyGeneration(WorldId.Swamp, TerrainMaterial.Mud);
 
         internal static void VerifyPlaythrough()
         {
             using var fixture = new PhysicsFixture("Swamp playthrough");
-            VerifyPocket(fixture, WorldId.Swamp, ItemId.ReedFlask, 1, excavate: true);
-            VerifyPocket(fixture, WorldId.Swamp, ItemId.ReedFlask, -1, excavate: true);
-            VerifyPocket(fixture, WorldId.Swamp, ItemId.ReedFlask, 1, excavate: false);
-            VerifyPocket(fixture, WorldId.Swamp, ItemId.ReedFlask, -1, excavate: false);
+            VerifyVault(fixture, WorldId.Swamp, ItemId.ReedFlask, excavate: true);
+            VerifyVault(fixture, WorldId.Swamp, ItemId.ReedFlask, excavate: false);
             Require(fixture.Session.Content.Enemies.All(enemy => enemy.Style is EnemyStyle.ReedRunner or EnemyStyle.Skimmer)
                     && fixture.Session.Content.Traps.All(trap => trap.Style == TrapStyle.Gas),
                 "Swamp generated a foreign encounter or hazard.");
             VerifyGas();
             VerifyProgression(fixture);
-            Debug.Log("Insectum Swamp playthrough verified: Worm excavation and ordinary jumps in both pockets, readable gas, three routes, Mire Bell volley, Reed Flask, and gated exit.");
+            Debug.Log("Insectum Swamp playthrough verified: vault chest and a 5-energy Worm mud plug, readable gas, three tunnel levels, Mire Bell volley, Reed Flask, and gated exit.");
         }
 
         private static void VerifyGas()

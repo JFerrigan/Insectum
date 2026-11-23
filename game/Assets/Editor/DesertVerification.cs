@@ -11,15 +11,13 @@ namespace Insectum.Game.Editor
         private const int FirstLevel = 13;
 
         internal static void VerifyGeneration() =>
-            BiomeVerification.VerifyGeneration(WorldId.Desert, TerrainMaterial.Sand, TerrainMaterial.Sandstone);
+            BiomeVerification.VerifyGeneration(WorldId.Desert, TerrainMaterial.Sand);
 
         internal static void VerifyPlaythrough()
         {
             using var fixture = new PhysicsFixture("Desert playthrough");
-            VerifyPocket(fixture, WorldId.Desert, ItemId.DuneMantle, 1, excavate: true);
-            VerifyPocket(fixture, WorldId.Desert, ItemId.DuneMantle, -1, excavate: true);
-            VerifyPocket(fixture, WorldId.Desert, ItemId.DuneMantle, 1, excavate: false);
-            VerifyPocket(fixture, WorldId.Desert, ItemId.DuneMantle, -1, excavate: false);
+            VerifyVault(fixture, WorldId.Desert, ItemId.DuneMantle, excavate: true);
+            VerifyVault(fixture, WorldId.Desert, ItemId.DuneMantle, excavate: false);
             Require(fixture.Session.Content.Enemies.All(enemy => enemy.Style is EnemyStyle.DuneBeetle or EnemyStyle.SandWasp)
                     && fixture.Session.Content.Traps.All(trap => trap.Style == TrapStyle.Heat),
                 "Desert generated a foreign encounter or hazard.");
@@ -27,7 +25,7 @@ namespace Insectum.Game.Editor
             VerifyBurrow();
             VerifyMantle(fixture);
             VerifyProgression(fixture);
-            Debug.Log("Insectum Desert playthrough verified: ordinary jumps and 3-energy Worm shortcuts, cinder warning and knockback, Dune Mantle per-level guards, Dune Maw burrow, reward, and gated exit.");
+            Debug.Log("Insectum Desert playthrough verified: vault chest and a 3-energy Worm sand plug, cinder warning and knockback, Dune Mantle per-level guards, Dune Maw burrow, reward, and gated exit.");
         }
 
         private static void VerifyHeat()

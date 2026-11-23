@@ -81,7 +81,7 @@ namespace Insectum.Game.Editor
                 {
                     LevelFeature shop = session.Content.Features.Single(feature => feature.Kind == LevelFeatureKind.Shop);
                     Require(shop.Item == ItemId.MothEyes, $"Seed {seed} no longer sells Moth Eyes in Forest 3.");
-                    Walk(fixture, () => Vector2.Distance(shop.Position, session.Motor.Body.position) < 1.2f, 360, useHeavy: true);
+                    TunnelWalker.WalkTo(fixture, shop.Position, 1.2f, useHeavy: true);
                     fixture.Step(new PlayerCommand(interactPressed: true));
                     Require(run.Inventory.Count(ItemId.MothEyes) == 1 && !shop.Available,
                         "Normal shop interaction did not acquire Moth Eyes.");

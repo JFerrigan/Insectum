@@ -60,6 +60,9 @@ namespace Insectum.Game
                         content.AddTrap(marker.Position);
                         trapPlaced = true;
                         break;
+                    case LevelMarkerKind.Shortcut:
+                        content.BuryNektar(HexGrid.CellAt(marker.Position), 2);
+                        break;
                     case LevelMarkerKind.Boss:
                         content.AddEnemy(Barkback, marker.Position, 0);
                         break;
@@ -75,14 +78,7 @@ namespace Insectum.Game
 
             if (layout.Tunnel != null)
             {
-                content.AddFeature(LevelFeatureKind.Nektar, layout.Spawn + Vector2.up * 0.50f, 2);
-                for (int i = 0; i < layout.Checkpoints.Count; i += 4)
-                {
-                    Vector2 pickup = layout.Checkpoints[i].Landing + Vector2.up * 0.5f;
-                    content.AddFeature(LevelFeatureKind.Nektar, pickup, 2);
-                    if (i % 8 == 4)
-                        content.AddFeature(LevelFeatureKind.HeartSap, pickup + Vector2.up * 0.6f, 1);
-                }
+                TunnelContent.AddSupplies(content, layout, 32);
                 return;
             }
 

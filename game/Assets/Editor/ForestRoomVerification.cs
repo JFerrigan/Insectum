@@ -118,6 +118,12 @@ namespace Insectum.Game.Editor
             foreach (var branch in tunnel.Branches)
                 Require(tunnel.Jumps.ContainsKey((tunnel.Route[branch.source], branch.first)),
                     $"{level}: side tunnel {branch.source} has no marked ledge for its sign.");
+            LevelMarker[] plugs = layout.Markers.Where(marker => marker.Kind == LevelMarkerKind.Shortcut).ToArray();
+            Require(plugs.Length == 1 && rooms[plugs[0].Chunk].Role == RoomRole.Vault
+                    && layout.Tiles.TryGetValue(HexGrid.CellAt(plugs[0].Position), out TerrainMaterial plug)
+                    && plug == ForestTunnelLayout.PlugMaterial(layout.World)
+                    && layout.Tiles.Values.Count(material => material != TerrainMaterial.Reinforced) == 1,
+                $"{level} does not have exactly one {ForestTunnelLayout.PlugMaterial(layout.World)} plug under a chest vault.");
 
             CheckSpacing(level, tunnel, ref closest, ref steepest);
         }

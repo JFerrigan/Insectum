@@ -202,6 +202,15 @@ namespace Insectum.Game
         }
 
         private static bool Rightward(int side) => side is 0 or 1;
+
+        internal static TerrainMaterial PlugMaterial(WorldId world) => world switch
+        {
+            WorldId.Swamp => TerrainMaterial.Mud,
+            WorldId.Caves => TerrainMaterial.SoftStone,
+            WorldId.Desert => TerrainMaterial.Sand,
+            WorldId.Alien => TerrainMaterial.AlienOrganic,
+            _ => TerrainMaterial.PackedDirt
+        };
         private static Vector2 Center(Vector2Int chunk) => HexGrid.Center(ForestTemplates.MacroCenter(chunk));
 
         private static LevelLayout Build(int seed, int level, WorldId world, LevelSeeds seeds, List<Vector2Int> route,
@@ -299,6 +308,15 @@ namespace Insectum.Game
                 markers.Add(new LevelMarker(kind, landings[branch.end], branch.end));
                 space.Branches.Add((branch.source, landings[branch.first], landings[branch.end]));
             }
+
+            // The first chest vault stands on a plug of the world's soft material with Nektar buried in it, so
+            // Worm, the Excavator Claw or a Seed Bomb can dig out a bonus beneath the chest.
+            var cache = branches.Where(branch => !branch.Equals(shop)).OrderBy(branch => branch.source).First();
+            Vector2Int plug = HexGrid.CellAt(landings[cache.end] + Vector2.down * 0.05f);
+            if (!tiles.ContainsKey(plug))
+                throw new InvalidOperationException($"Tunnel seed {seed} has no rock beneath its chest vault.");
+            tiles[plug] = PlugMaterial(world);
+            markers.Add(new LevelMarker(LevelMarkerKind.Shortcut, HexGrid.Center(plug), cache.end));
 
             foreach (Vector2Int chunk in route)
                 space.Route.Add(landings[chunk]);

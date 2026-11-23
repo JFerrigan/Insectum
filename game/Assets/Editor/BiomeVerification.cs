@@ -10,128 +10,102 @@ namespace Insectum.Game.Editor
 {
     internal static class BiomeVerification
     {
-        internal static void VerifyGeneration(WorldId world, TerrainMaterial plugMaterial, TerrainMaterial otherMaterial)
+        // Levels 1 to 3 of every world are room-template tunnels. Each sampled level must reproduce from its
+        // seed, carry one plug of the world's soft material under a chest vault, and let all five insects cross
+        // it damage-free with ordinary movement; one insect also visits every side tunnel.
+        internal static void VerifyGeneration(WorldId world, TerrainMaterial plugMaterial)
         {
             int firstLevel = RunWorlds.FirstLevel(world);
-            string bakeArgument = $"-insectum-bake-{world.ToString().ToLowerInvariant()}";
-            string certificatePath = $"Assets/Resources/{world}Certificates.txt";
-            using var fixture = new PhysicsFixture($"{world} routes", enableAbilities: false);
-            var signatures = new SortedSet<string>(StringComparer.Ordinal);
-            bool bake = Environment.GetCommandLineArgs().Contains(bakeArgument);
-            foreach (LevelLayout layout in Candidates(world, firstLevel))
-            {
-                if (bake)
-                {
-                    foreach (Character character in Character.Roster)
-                        GenerationVerification.ReplayLayout(fixture, character, layout);
-                }
-                signatures.Add(ForestGenerator.Signature(layout));
-            }
-
-            LevelLayout fallback = ForestGenerator.Build(77189, firstLevel, 0, false, 0, hasPocket: false, world);
-            if (bake)
-            {
-                foreach (Character character in Character.Roster)
-                    GenerationVerification.ReplayLayout(fixture, character, fallback);
-                File.WriteAllText(certificatePath, $"fallback {ForestGenerator.Signature(fallback)}\n{string.Join("\n", signatures)}\n");
-                AssetDatabase.ImportAsset(certificatePath, ImportAssetOptions.ForceSynchronousImport);
-                Debug.Log($"Insectum baked {signatures.Count} {world} layout certificates plus fallback.");
-            }
-
-            ForestGenerator.ForestCertificates certificate = ForestGenerator.ForestCertificates.Load(world);
-            Require(signatures.All(certificate.Contains), $"{world} certificates do not cover the authored layouts.");
-            var rejected = new ForestGenerator.ForestCertificates($"fallback {certificate.Fallback}");
-            LevelLayout knownGood = ForestGenerator.Generate(1503, firstLevel, rejected, world);
-            Require(knownGood.UsedFallback && knownGood.World == world, $"The {world} fallback was not selected.");
-            foreach (Character character in Character.Roster)
-                GenerationVerification.ReplayLayout(fixture, character, knownGood);
-
+            using var fixture = new PhysicsFixture($"{world} tunnels", enableAbilities: false);
             var observed = new HashSet<string>();
-            for (int seed = -35; seed < 65; seed++)
+            var templates = new HashSet<string>();
+            int crossings = 0;
+            for (int seed = -6; seed < 6; seed++)
             {
-                int level = firstLevel + (seed + 35) % 3;
+                int level = firstLevel + (seed + 6) % (RunWorlds.LevelsPerWorld - 1);
                 LevelLayout layout = RunWorlds.Generate(seed, level);
                 LevelLayout duplicate = RunWorlds.Generate(seed, level);
                 string signature = ForestGenerator.Signature(layout);
-                Require(layout.World == world && !layout.UsedFallback
+                Require(layout.World == world && layout.Tunnel != null && !layout.UsedFallback
                         && signature == ForestGenerator.Signature(duplicate)
                         && GenerationVerification.SameMarkers(layout.Markers, duplicate.Markers),
-                    $"{world} seed {seed}/{level} did not reproduce a certified route.");
-                LevelMarker[] shortcuts = layout.Markers.Where(marker => marker.Kind == LevelMarkerKind.Shortcut).ToArray();
-                Require(shortcuts.Length == 1 && layout.Tiles.TryGetValue(HexGrid.CellAt(shortcuts[0].Position), out var plug)
-                        && plug == plugMaterial && layout.Tiles.Values.Contains(otherMaterial),
-                    $"{world} seed {seed}/{level} missed the {plugMaterial} shortcut or {otherMaterial} material.");
-                GenerationVerification.VerifyGeometry(layout);
+                    $"{world} seed {seed}/{level} did not reproduce its tunnel.");
+                LevelMarker plug = layout.Markers.Single(marker => marker.Kind == LevelMarkerKind.Shortcut);
+                Require(layout.Tiles.TryGetValue(HexGrid.CellAt(plug.Position), out TerrainMaterial material)
+                        && material == plugMaterial,
+                    $"{world} seed {seed}/{level} has no {plugMaterial} plug beneath its chest vault.");
                 observed.Add(signature);
-                foreach (Character character in Character.Roster)
-                    GenerationVerification.ReplayLayout(fixture, character, layout);
+                foreach (MacroChunk chunk in layout.Chunks.Where(chunk => chunk.Ports != MacroPort.None))
+                    templates.Add(chunk.TemplateId);
+                Cross(fixture, layout);
+                crossings += Character.Roster.Length;
             }
 
-            Require(observed.Count >= 20, $"Expected diverse {world} assemblies, got {observed.Count}.");
-            Debug.Log($"Insectum {world} generation verified: 100 seeds, {observed.Count} layouts, five insects per seed, every checkpoint, no abilities or items, no damage.");
+            LevelLayout fallback = ForestTunnelLayout.Generate(77189, firstLevel, world, forceFallback: true);
+            Require(fallback.UsedFallback && fallback.World == world, $"The {world} tunnel fallback was not used.");
+            Cross(fixture, fallback);
+            Require(observed.Count == 12, $"Expected twelve distinct {world} tunnels, got {observed.Count}.");
+            Debug.Log($"Insectum {world} tunnels verified: 12 seeds and the fallback, {crossings + 5} damage-free crossings, "
+                + $"side tunnels explored, {templates.Count} room templates in use.");
         }
 
-        private static IEnumerable<LevelLayout> Candidates(WorldId world, int firstLevel)
+        private static void Cross(PhysicsFixture fixture, LevelLayout layout)
         {
-            for (int band = -1; band <= 1; band++)
+            foreach (Character character in Character.Roster)
             {
-                foreach (bool mirrored in new[] { false, true })
-                {
-                    int count = 1 << ForestGenerator.RouteLength(band, hasPocket: true);
-                    for (int bits = 0; bits < count; bits++)
-                        yield return ForestGenerator.Build(77189, firstLevel, band, mirrored, bits, hasPocket: true, world);
-                }
+                fixture.Session.Start(character, layout.RunSeed, layout);
+                TunnelWalker.CrossRoute(fixture, explore: character.Insect == Insect.FireAnt);
+                Require(fixture.Session.Run.Health == character.MaxHealth,
+                    $"{layout.World} seed {layout.RunSeed}/{layout.LevelNumber}: {character.Name} took damage crossing the tunnel.");
+                fixture.Step(new PlayerCommand(interactPressed: true));
+                Require(fixture.Session.Phase == RunPhase.Cleared,
+                    $"{layout.World} seed {layout.RunSeed}/{layout.LevelNumber} could not interact with its exit.");
             }
         }
 
-        internal static void VerifyPocket(PhysicsFixture fixture, WorldId world, ItemId prize, int direction, bool excavate)
+        // Walks to the chest vault that stands on the level's plug and opens the chest. Worm then digs down
+        // through the plug for the material's energy cost and uncovers the buried Nektar.
+        internal static void VerifyVault(PhysicsFixture fixture, WorldId world, ItemId prize, bool excavate)
         {
+            const int seed = 660;
             int firstLevel = RunWorlds.FirstLevel(world);
-            int seed = Enumerable.Range(660, 70).First(candidate =>
-                RunWorlds.Generate(candidate, firstLevel).RouteDirection == direction);
             GameSession session = fixture.Session;
             Character character = Character.Roster[(int)(excavate ? Insect.Worm : Insect.Beetle)];
             session.StartGenerated(character, seed, firstLevel);
-            Walk(fixture, () => session.AtExit && session.Motor.Grounded, 760);
-            fixture.Advance(8);
-            LevelLayout layout = session.Layout;
-            Vector2 pocket = layout.Markers.Single(marker => marker.Kind == LevelMarkerKind.Branch).Position;
-            for (int drop = 2; drop >= 0; drop--)
-            {
-                Vector2 landing = pocket - new Vector2(drop * HexGrid.HalfWidth * direction, drop * HexGrid.RowSpacing);
-                GenerationVerification.JumpToPocketLedge(fixture, character, layout, landing);
-            }
-
-            LevelMarker shortcut = layout.Markers.Single(marker => marker.Kind == LevelMarkerKind.Shortcut);
+            LevelMarker shortcut = session.Layout.Markers.Single(marker => marker.Kind == LevelMarkerKind.Shortcut);
             Vector2Int plug = HexGrid.CellAt(shortcut.Position);
-            LevelFeature chest = session.Content.Features.Single(feature => feature.Kind == LevelFeatureKind.Chest);
-            float before = session.Run.Energy;
-            int revision = session.Terrain.Revision;
-            int cost = session.Terrain.Materials.Get(session.Terrain.Cells[plug]).excavationEnergy;
-            fixture.Advance(55, new PlayerCommand(move: direction));
-            Require(Vector2.Distance(session.Motor.Body.position, chest.Position) > 1.35f
-                    && session.Terrain.Cells.ContainsKey(plug),
-                $"{world} seed {seed}: {character.Name} bypassed the intact one-cell plug by walking.");
-            if (excavate)
-            {
-                fixture.Step(new PlayerCommand(move: direction, abilityPressed: true));
-                Require(session.Terrain.Revision == revision + 1 && !session.Terrain.Cells.ContainsKey(plug)
-                        && session.Run.Energy == before - cost,
-                    $"{world} seed {seed}, shortcut {plug}: a real excavation did not remove one tile for {cost} energy.");
-            }
-            else
-            {
-                fixture.Step(new PlayerCommand(move: direction, jumpPressed: true, jumpHeld: true));
-                fixture.Advance(30, new PlayerCommand(move: direction, jumpHeld: true));
-                Require(session.Terrain.Revision == revision && session.Terrain.Cells.ContainsKey(plug)
-                        && session.Run.Energy == before,
-                    $"{world} seed {seed}, shortcut {plug}: an ordinary jump altered terrain or energy.");
-            }
+            Vector2 center = HexGrid.Center(plug);
+            LevelFeature chest = session.Content.Features.Where(feature => feature.Kind == LevelFeatureKind.Chest)
+                .OrderBy(feature => Vector2.Distance(feature.Position, shortcut.Position)).First();
+            Require(session.Content.BuriedNektar.ContainsKey(plug) && session.Terrain.Cells[plug] != TerrainMaterial.Reinforced,
+                $"{world} seed {seed}: the chest vault has no buried plug.");
 
-            Walk(fixture, () => Vector2.Distance(session.Motor.Body.position, chest.Position) < 1.18f, 120);
+            TunnelWalker.WalkTo(fixture, chest.Position, 1.18f);
             fixture.Step(new PlayerCommand(interactPressed: true));
             Require(!chest.Available && session.Run.Inventory.Count(prize) == 1,
-                $"{world} seed {seed}: {character.Name} could not pass the plug and claim its side chest.");
+                $"{world} seed {seed}: {character.Name} could not claim the vault chest.");
+
+            float before = session.Run.Energy;
+            int cost = session.Terrain.Materials.Get(session.Terrain.Cells[plug]).excavationEnergy;
+            if (!excavate)
+            {
+                fixture.Advance(30, new PlayerCommand(jumpPressed: true, jumpHeld: true));
+                Require(session.Terrain.Cells.ContainsKey(plug) && session.Run.Energy == before,
+                    $"{world} seed {seed}: ordinary movement disturbed the plug or spent energy.");
+                return;
+            }
+
+            // Stand on the vault floor above the plug and hold the downward dig. Reinforced rock is free, so only
+            // the plug costs energy.
+            Vector2 landing = session.Layout.Markers.Single(marker => marker.Kind == LevelMarkerKind.Branch
+                && marker.Chunk == shortcut.Chunk).Position;
+            session.Motor.Warp(landing + Vector2.up * (character.Radius + 0.06f));
+            fixture.Advance(20);
+            for (int step = 0; step < 90 && session.Terrain.Cells.ContainsKey(plug); step++)
+                fixture.Step(new PlayerCommand(aim: -1, abilityHeld: true));
+            Require(!session.Terrain.Cells.ContainsKey(plug) && session.Run.Energy == before - cost
+                    && session.Content.Features.Any(feature => feature.Kind == LevelFeatureKind.Nektar && feature.Position == center),
+                $"{world} seed {seed}: Worm did not dig the {cost}-energy plug and uncover its Nektar. Energy {before} to {session.Run.Energy}.");
         }
 
         internal static void MoveTo(PhysicsFixture fixture, float x, Func<bool> reached, int limit)
@@ -148,6 +122,11 @@ namespace Insectum.Game.Editor
         internal static void Walk(PhysicsFixture fixture, Func<bool> reached, int limit, bool useHeavy = false)
         {
             GameSession session = fixture.Session;
+            if (session.Layout?.Tunnel != null)
+            {
+                TunnelWalker.Walk(fixture, reached, useHeavy);
+                return;
+            }
             for (int i = 0; i < limit && !reached() && session.Phase == RunPhase.Playing; i++)
                 fixture.Step(TrailCommand(session, useHeavy));
             Require(reached(), $"{session.Run.World} seed {session.Run.Seed}/{session.Run.LevelNumber} stopped at {session.Motor.Body.position} with {session.Run.Health} hearts.");

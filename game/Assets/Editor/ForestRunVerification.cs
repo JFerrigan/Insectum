@@ -126,7 +126,7 @@ namespace Insectum.Game.Editor
             session.StartGenerated(Character.Roster[4], 7124);
             Vector2Int cell = session.Content.BuriedNektar.Keys.Single();
             Vector2 center = HexGrid.Center(cell);
-            session.Motor.Warp(center + Vector2.up * (1.08f + session.Run.Character.Radius));
+            session.Motor.Warp(OverPlug(session));
             float energy = session.Run.Energy;
             session.Run.Inventory.Acquire(ItemId.ExcavatorClaw);
             fixture.Step(new PlayerCommand(aim: -1, itemPressed: true));
@@ -139,7 +139,7 @@ namespace Insectum.Game.Editor
             cell = session.Content.BuriedNektar.Keys.Single();
             center = HexGrid.Center(cell);
             session.Run.Inventory.Acquire(ItemId.SeedBomb);
-            session.Motor.Warp(center + Vector2.up * (1.08f + session.Run.Character.Radius));
+            session.Motor.Warp(OverPlug(session));
             fixture.Step(new PlayerCommand(aim: -1, itemPressed: true));
             Require(!session.Terrain.Cells.ContainsKey(cell) && session.Run.Inventory.ActiveCooldownSteps > 0
                 && session.Content.Features.Any(f => f.Kind == LevelFeatureKind.Nektar && f.Position == center),
@@ -177,10 +177,11 @@ namespace Insectum.Game.Editor
             fixture.Advance(8);
             LevelFeature shop = session.Content.Features.Single(feature => feature.Kind == LevelFeatureKind.Shop);
             Require(session.Content.NearbyShop() == null, "The shop offer appeared from too far away.");
-            BiomeVerification.Walk(fixture, () => Near(session, shop.Position, 2.5f), 350);
+            TunnelWalker.WalkTo(fixture, shop.Position, 2.5f);
             Require(session.Content.NearbyShop() == shop && session.Content.ClosestInteractable() != shop,
                 "Approaching the shop did not reveal its offer before entering purchase range.");
-            BiomeVerification.Walk(fixture, () => run.Inventory.Nektar >= shop.Amount && Near(session, shop.Position, 1.2f), 350);
+            TunnelWalker.WalkTo(fixture, shop.Position, 1.2f);
+            Require(run.Inventory.Nektar >= shop.Amount, "The route pickups before the shop did not cover its price.");
             Require(session.Content.ClosestInteractable() == shop &&
                 session.InteractionPrompt == $"E  Buy {Items.Name(shop.Item)}  ({shop.Amount} Nektar)",
                 "The shop prompt did not identify the item, price, and purchase key in range.");
@@ -192,16 +193,11 @@ namespace Insectum.Game.Editor
                 "The sold-out shop did not remain visible or still offered a purchase.");
             ItemId active = run.Inventory.Active;
 
-            BiomeVerification.Walk(fixture, () => session.AtExit && session.Motor.Grounded, 500);
-            LevelFeature chest = session.Content.Features.Single(feature => feature.Kind == LevelFeatureKind.Chest);
-            if (session.Layout.Markers.Any(marker => marker.Kind == LevelMarkerKind.Branch))
-                ReachPocketChest(fixture);
-            Require(Near(session, chest.Position, 1.25f), "The optional chest could not be reached from the Forest route.");
+            LevelFeature chest = NearestChest(session);
+            TunnelWalker.WalkTo(fixture, chest.Position, 1.25f);
             fixture.Step(new PlayerCommand(interactPressed: true));
             Require(!chest.Available && run.Inventory.Count(chest.Item) == 1, "E did not award the chest's passive.");
-
-            MoveTo(fixture, session.Layout.Exit.x - 0.32f * session.Layout.RouteDirection,
-                () => session.AtExit && session.Motor.Grounded, 180);
+            BiomeVerification.Walk(fixture, () => session.AtExit && session.Motor.Grounded, 500);
 
             run.TrySpendEnergy(47f);
             run.TakeDamage(1);
@@ -217,20 +213,19 @@ namespace Insectum.Game.Editor
             for (int level = 2; level <= 3; level++)
             {
                 run.TrySpendEnergy(70f);
-                LevelFeature heart = session.Content.Features.Single(feature => feature.Kind == LevelFeatureKind.HeartSap);
+                LevelFeature[] hearts = session.Content.Features.Where(feature => feature.Kind == LevelFeatureKind.HeartSap).ToArray();
                 LevelFeature sap = session.Content.Features.Single(feature => feature.Kind == LevelFeatureKind.EnergySap);
                 BiomeVerification.Walk(fixture, () => session.AtExit && session.Motor.Grounded, 650);
                 if (level == 2)
                 {
-                    Require(!heart.Available && !sap.Available && run.Energy > 31f,
+                    Require(hearts.Any(heart => !heart.Available) && !sap.Available && run.Energy > 31f,
                         "The Forest route did not reach both restoration pickups.");
-                    LevelFeature replacement = session.Content.Features.Single(feature => feature.Kind == LevelFeatureKind.Chest);
+                    LevelFeature replacement = NearestChest(session);
                     Require(Items.IsActive(replacement.Item) && replacement.Item != active, "The second chest did not offer an alternate active.");
-                    ReachPocketChest(fixture);
+                    TunnelWalker.WalkTo(fixture, replacement.Position, 1.25f);
                     fixture.Step(new PlayerCommand(interactPressed: true));
                     Require(!replacement.Available && run.Inventory.Active == replacement.Item, "A normal chest interaction did not replace the active item.");
-                    MoveTo(fixture, session.Layout.Exit.x - 0.32f * session.Layout.RouteDirection,
-                        () => session.AtExit && session.Motor.Grounded, 180);
+                    BiomeVerification.Walk(fixture, () => session.AtExit && session.Motor.Grounded, 500);
                 }
                 fixture.Step(new PlayerCommand(interactPressed: true));
                 Require(run.LevelNumber == level + 1 && run.Energy == character.MaxEnergy,
@@ -267,30 +262,18 @@ namespace Insectum.Game.Editor
             Debug.Log($"Insectum Forest playthrough: seed {seed}, {character.Name}, all four levels and Barkback cleared, Swamp entered.");
         }
 
-        private static void ReachPocketChest(PhysicsFixture fixture)
+        // The chest vault that stands on the level's buried plug, or the nearest chest to the player.
+        private static LevelFeature NearestChest(GameSession session) =>
+            session.Content.Features.Where(feature => feature.Kind == LevelFeatureKind.Chest && feature.Available)
+                .OrderBy(feature => (feature.Position - session.Motor.Body.position).sqrMagnitude).First();
+
+        // Stands the player on the vault floor directly above the buried plug's top edge.
+        private static Vector2 OverPlug(GameSession session)
         {
-            GameSession session = fixture.Session;
-            LevelLayout layout = session.Layout;
-            Vector2 pocket = layout.Markers.Single(marker => marker.Kind == LevelMarkerKind.Branch).Position;
-            fixture.Advance(8);
-            for (int rise = 2; rise >= 0; rise--)
-            {
-                Vector2 landing = pocket - new Vector2(rise * HexGrid.HalfWidth * layout.RouteDirection, rise * HexGrid.RowSpacing);
-                bool reached = false;
-                for (int tick = 0; tick < 80; tick++)
-                {
-                    float dx = landing.x - session.Motor.Body.position.x;
-                    int move = Mathf.Abs(dx) > 0.18f ? Math.Sign(dx) : 0;
-                    fixture.Step(new PlayerCommand(move: move, jumpPressed: tick == 0, jumpHeld: true));
-                    Vector2 feet = session.Motor.Body.position - Vector2.up * session.Run.Character.Radius;
-                    if (session.Motor.Grounded && Vector2.Distance(feet, landing) < 0.58f)
-                    {
-                        reached = true;
-                        break;
-                    }
-                }
-                Require(reached, $"Could not reach seed {layout.RunSeed} pocket landing {landing}. Body {session.Motor.Body.position}.");
-            }
+            LevelMarker plug = session.Layout.Markers.Single(marker => marker.Kind == LevelMarkerKind.Shortcut);
+            Vector2 landing = session.Layout.Markers.Single(marker => marker.Kind == LevelMarkerKind.Branch
+                && marker.Chunk == plug.Chunk).Position;
+            return landing + Vector2.up * (session.Run.Character.Radius + 0.06f);
         }
 
         private static void FightBoss(PhysicsFixture fixture, LevelEnemy boss)
