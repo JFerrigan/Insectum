@@ -210,6 +210,8 @@ namespace Insectum.Game
             var checkpoints = new List<RouteCheckpoint>();
             var markers = new List<LevelMarker>();
             var shop = branches.OrderBy(branch => branch.source).First();
+            foreach (var room in ForestRoomProfile.Classify(route, branches))
+                space.Rooms.Add(room.Key, room.Value);
 
             for (int i = 1; i < route.Count; i++)
                 Connect(route[i - 1], route[i]);

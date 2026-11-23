@@ -12,6 +12,7 @@ namespace Insectum.Game
         internal readonly List<Vector2> Route = new();
         internal readonly Dictionary<(Vector2 from, Vector2 to), Vector2> Jumps = new();
         internal readonly List<(int source, Vector2 first, Vector2 end)> Branches = new();
+        internal readonly Dictionary<Vector2Int, ForestRoomProfile> Rooms = new();
         internal Rect Bounds { get; private set; } = Rect.MinMaxRect(0, 0, 0, 0);
 
         private sealed class Passage
