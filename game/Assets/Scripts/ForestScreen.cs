@@ -86,7 +86,6 @@ namespace Insectum.Game
             Button(PlayButton, "PLAY");
             Button(SettingsButton, "SETTINGS");
             Button(QuitButton, "QUIT");
-            Center("ENTER PLAY  /  S SETTINGS", 160, 166, Muted);
         }
 
         private static void DrawSettings()
