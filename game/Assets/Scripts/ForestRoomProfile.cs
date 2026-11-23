@@ -100,6 +100,9 @@ namespace Insectum.Game
             return rooms;
         }
 
+        // The canonical door for one of the chunk's world sides.
+        internal RoomDoor DoorAt(int side) => Door(side, Mirrored);
+
         public override string ToString() => Mirrored ? $"{Shape} (mirrored)" : Shape;
 
         private static int Side(Vector2Int from, Vector2Int to)

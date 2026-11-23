@@ -10,10 +10,8 @@ namespace Insectum.Game
         private const int Radius = 3;
         private const int MainCount = 28;
         private const int SearchBudget = 24000;
-        private const float RoomHalfWidth = 1.85f;
-        private const float Height = 3.1f;
-        private const float TurnStep = 1.4f;
-        private const float LowerDoor = 1.33f;
+        private const uint RoomSalt = 0x6C8E9CF5u;
+        internal const float Height = 3.1f;
 
         // The four diagonal ports have enough horizontal span for baseline movement.
         private static readonly int[] Sides = { 0, 1, 3, 4 };
@@ -221,8 +219,10 @@ namespace Insectum.Game
                 Connect(branch.first, branch.end);
             }
 
+            // Templates draw from their own stream so adding one never changes a seed's route.
+            var roomRandom = new SeededRandom(seeds.Layout ^ RoomSalt);
             foreach (var entry in ports)
-                CarveRoom(entry.Key, entry.Value);
+                CarveRoom(entry.Key);
             foreach (var link in links)
             {
                 CarveLink(link.from, link.to);
@@ -315,39 +315,21 @@ namespace Insectum.Game
                 ports[to] = ports.GetValueOrDefault(to) | (MacroPort)(1 << Side(to, from));
             }
 
-            void CarveRoom(Vector2Int chunk, MacroPort mask)
+            void CarveRoom(Vector2Int chunk)
             {
-                Vector2 center = Center(chunk);
-                int left = 0;
-                int right = 0;
+                ForestRoomProfile profile = space.Rooms[chunk];
+                ForestRoomTemplate template = ForestRoomCatalog.Choose(profile, ref roomRandom);
+                var room = new ForestRoomBuilder(space, Center(chunk), profile);
+                template.Carve(room);
+                landings.Add(chunk, room.Landing);
                 foreach (int side in Sides)
                 {
-                    if (((int)mask & (1 << side)) == 0)
+                    if ((profile.Ports & (MacroPort)(1 << side)) == 0)
                         continue;
-                    if (Rightward(side))
-                        right++;
-                    else
-                        left++;
-                }
-
-                bool turn = left == 2 && right == 0 || right == 2 && left == 0;
-                float floor = center.y - (turn ? TurnStep / 2f : 0f);
-                Vector2 landing = new(center.x, floor);
-                landings.Add(chunk, landing);
-                float roomHeight = left + right == 1 ? 3.8f : Height + (turn || left + right == 3 ? TurnStep : 0f);
-                space.AddPassage(landing + Vector2.left * RoomHalfWidth, landing + Vector2.right * RoomHalfWidth,
-                    roomHeight, roomHeight);
-
-                foreach (int side in Sides)
-                {
-                    if (((int)mask & (1 << side)) == 0)
-                        continue;
-                    bool rightward = Rightward(side);
-                    bool split = (rightward ? right : left) == 2;
-                    bool upper = split && side is 0 or 4;
-                    float x = landing.x + (rightward ? RoomHalfWidth : -RoomHalfWidth);
-                    arms.Add((chunk, side), new Arm(new Vector2(x, floor + (upper ? TurnStep : 0f)),
-                        split && !upper ? LowerDoor : Height));
+                    RoomDoor door = profile.DoorAt(side);
+                    if (!room.Doors.TryGetValue(door, out var foot))
+                        throw new InvalidOperationException($"{template.Id} did not carve the {door} door of {profile}.");
+                    arms.Add((chunk, side), new Arm(foot.foot, foot.clearance));
                 }
             }
 
