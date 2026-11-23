@@ -19,9 +19,11 @@ namespace Insectum.Game
         {
             internal readonly Vector2[] Outline;
             internal readonly Rect Bounds;
+            internal readonly object Owner;
 
-            internal Passage(Vector2 a, Vector2 b, float left, float right)
+            internal Passage(Vector2 a, Vector2 b, float left, float right, object owner)
             {
+                Owner = owner;
                 Outline = new[] { a, b, b + Vector2.up * right, a + Vector2.up * left };
                 Bounds = Rect.MinMaxRect(a.x, Mathf.Min(a.y, b.y), b.x, Mathf.Max(a.y + left, b.y + right));
             }
@@ -57,9 +59,19 @@ namespace Insectum.Game
             return true;
         }
 
-        internal void AddPassage(Vector2 left, Vector2 right, float leftHeight, float rightHeight)
+        // Owner names what carved the passage (a room's chunk or a link) so checks can tell spaces apart.
+        internal void AddPassage(Vector2 left, Vector2 right, float leftHeight, float rightHeight, object owner = null)
         {
-            passages.Add(new Passage(left, right, leftHeight, rightHeight));
+            passages.Add(new Passage(left, right, leftHeight, rightHeight, owner));
+        }
+
+        internal IEnumerable<(object owner, IReadOnlyList<Vector2> outline)> Passages
+        {
+            get
+            {
+                foreach (Passage passage in passages)
+                    yield return (passage.Owner, passage.Outline);
+            }
         }
 
         internal bool AddRock(Vector2Int cell)

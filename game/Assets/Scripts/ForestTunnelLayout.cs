@@ -26,11 +26,13 @@ namespace Insectum.Game
         {
             internal readonly Vector2 Foot;
             internal readonly float Clearance;
+            internal readonly Vector2? Lip;
 
-            internal Arm(Vector2 foot, float clearance = Height)
+            internal Arm(Vector2 foot, float clearance, Vector2? lip)
             {
                 Foot = foot;
                 Clearance = clearance;
+                Lip = lip;
             }
         }
 
@@ -303,9 +305,8 @@ namespace Insectum.Game
 
             void MarkJump(Vector2Int from, Vector2Int to)
             {
-                Arm arm = arms[(from, Side(from, to))];
-                if (arm.Foot.y > landings[from].y + 0.5f)
-                    space.Jumps.Add((landings[from], landings[to]), arm.Foot);
+                if (arms[(from, Side(from, to))].Lip is Vector2 lip)
+                    space.Jumps.Add((landings[from], landings[to]), lip);
             }
 
             void Connect(Vector2Int from, Vector2Int to)
@@ -319,7 +320,7 @@ namespace Insectum.Game
             {
                 ForestRoomProfile profile = space.Rooms[chunk];
                 ForestRoomTemplate template = ForestRoomCatalog.Choose(profile, ref roomRandom);
-                var room = new ForestRoomBuilder(space, Center(chunk), profile);
+                var room = new ForestRoomBuilder(space, chunk, Center(chunk), profile);
                 template.Carve(room);
                 landings.Add(chunk, room.Landing);
                 foreach (int side in Sides)
@@ -327,26 +328,20 @@ namespace Insectum.Game
                     if ((profile.Ports & (MacroPort)(1 << side)) == 0)
                         continue;
                     RoomDoor door = profile.DoorAt(side);
-                    if (!room.Doors.TryGetValue(door, out var foot))
+                    if (!room.Doors.TryGetValue(door, out var carved))
                         throw new InvalidOperationException($"{template.Id} did not carve the {door} door of {profile}.");
-                    arms.Add((chunk, side), new Arm(foot.foot, foot.clearance));
+                    arms.Add((chunk, side), new Arm(room.WorldAnchor(door), carved.clearance, carved.lip));
                 }
             }
 
+            // Door anchors are fixed, so every link is a short, nearly level passage between two rooms.
             void CarveLink(Vector2Int from, Vector2Int to)
             {
                 Arm a = arms[(from, Side(from, to))];
                 Arm b = arms[(to, Side(to, from))];
                 if (a.Foot.x > b.Foot.x)
                     (a, b) = (b, a);
-
-                const float throat = 3.8f;
-                float span = b.Foot.x - a.Foot.x;
-                Vector2 left = Vector2.Lerp(a.Foot, b.Foot, throat / span);
-                Vector2 right = Vector2.Lerp(b.Foot, a.Foot, throat / span);
-                space.AddPassage(a.Foot, left, a.Clearance, Height);
-                space.AddPassage(left, right, Height, Height);
-                space.AddPassage(right, b.Foot, Height, b.Clearance);
+                space.AddPassage(a.Foot, b.Foot, a.Clearance, b.Clearance, (from, to));
             }
         }
     }
