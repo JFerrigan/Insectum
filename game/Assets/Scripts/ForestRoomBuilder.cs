@@ -18,15 +18,19 @@ namespace Insectum.Game
         private readonly Vector2Int chunk;
         private readonly Dictionary<RoomDoor, (float clearance, Vector2? lip)> doors = new();
 
-        internal ForestRoomBuilder(ForestTunnelSpace space, Vector2Int chunk, Vector2 center, ForestRoomProfile profile)
+        internal ForestRoomBuilder(ForestTunnelSpace space, Vector2Int chunk, Vector2 center, ForestRoomProfile profile,
+            int level = 1)
         {
             this.space = space;
             this.chunk = chunk;
             Center = center;
             Profile = profile;
+            Level = level;
         }
 
         internal ForestRoomProfile Profile { get; }
+        // The level's place within its world, from 1 to 3, so a template can ease in on a world's first level.
+        internal int Level { get; }
         internal Vector2 Center { get; }
         internal Vector2 Landing { get; private set; }
         internal IReadOnlyDictionary<RoomDoor, (float clearance, Vector2? lip)> Doors => doors;
@@ -141,6 +145,28 @@ namespace Insectum.Game
 
         // A floor point off the walking route, such as an island top or a pit, where the level may leave Nektar.
         internal void Treasure(Vector2 floor) => TreasureSpots.Add(World(floor));
+
+        // A bramble bed growing up from a flat floor between two x positions.
+        internal void Brambles(float from, float to, float floor) =>
+            AddHazard(HazardKind.Bramble, from, to, floor, floor + LevelHazards.BrambleHeight, false);
+
+        // Brambles hanging down from a flat roof between two x positions.
+        internal void HangingBrambles(float from, float to, float roof) =>
+            AddHazard(HazardKind.Bramble, from, to, roof - LevelHazards.BrambleHeight, roof, true);
+
+        // A take-off point on the route where a player heading in the given direction (1 right, -1 left) jumps
+        // to clear a hazard. The verification walker leaps from exactly here.
+        internal void Leap(Vector2 takeoff, int direction) =>
+            space.Leaps.Add((World(takeoff), Profile.Mirrored ? -direction : direction));
+
+        private void AddHazard(HazardKind kind, float from, float to, float bottom, float top, bool hanging)
+        {
+            float a = World(new Vector2(from, 0f)).x;
+            float b = World(new Vector2(to, 0f)).x;
+            float y = Center.y;
+            space.Hazards.Add(new TunnelHazard(kind,
+                Rect.MinMaxRect(Mathf.Min(a, b), y + bottom, Mathf.Max(a, b), y + top), hanging, chunk));
+        }
 
         // The room's main standing point, used for checkpoints, route markers, spawn and exit.
         internal void SetLanding(Vector2 local) => Landing = World(local);

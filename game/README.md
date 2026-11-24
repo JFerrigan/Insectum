@@ -17,7 +17,13 @@ chest vaults. Every room is built from a template that matches where its doors
 are, so the same seed always gives the same rooms. Each world has its own
 themed set (Forest hollows and fungus shelves, Swamp fens and lily pads, Caves
 geodes and stalactites, Desert dunes and temple halls, Alien bubbles and
-pods), with traps and Nektar caches placed off the walking route. The first
+pods), with traps and Nektar caches placed off the walking route. Forest
+levels also put brambles on the route: one bramble room on Forest 1, two on
+Forest 2, and three on Forest 3. Touching brambles costs a heart and throws you
+clear, and a downward strike (S + J in the air) bounces off them unhurt.
+Bramble rooms hop over floor beds, walk under hanging thorns, leap across a
+thorny bowl, or take a cliff at a run so you clear the bed below without
+jumping into the thorns above. The first
 chest vault in each level stands on a plug of the world's soft material with
 Nektar buried in it. Level 4 is the world's boss arena. Press Esc during a run to pause and see the controls,
 current item, and seed. Press Esc again or click Resume to continue. Leave
@@ -69,10 +75,15 @@ Run the production verification from this directory on macOS.
   -logFile /private/tmp/insectum-bootstrap.log
 ```
 
-Add `-insectum-tunnel-only` to run only the room-template checks and the
-Forest 1 tunnel checks. The room checks generate 200 Forest 1 seeds and 300
+Add `-insectum-tunnel-only` to run only the room-template checks, the
+Forest 1 tunnel checks, the bramble checks, and the Forest 1 to 3 crossings.
+The room checks generate 200 Forest 1 seeds and 300
 levels across all worlds, and require every room shape, every template, the
-buried plug, and at least 1.5 units of rock between unlinked rooms. Each
+buried plug, and at least 1.5 units of rock between unlinked rooms. The
+bramble checks generate 90 Forest tunnels and require every bramble to rest on
+rock clear of the landings, at most one bramble room per world level, and all
+four bramble rooms in use. They also check bramble damage, invulnerability,
+the pogo bounce, hanging thorns, and Dune Mantle. Each
 world's suite crosses 12 of its tunnels and the fallback with all five insects
 damage-free, opens a vault chest, digs the plug as Worm, and fights the boss.
 The suite also completes the 20-level run on seed 1051 with ordinary

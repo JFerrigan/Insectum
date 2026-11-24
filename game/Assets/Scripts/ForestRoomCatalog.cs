@@ -9,16 +9,21 @@ namespace Insectum.Game
         private readonly Func<ForestRoomProfile, bool> fits;
         private readonly Action<ForestRoomBuilder> carve;
 
-        internal ForestRoomTemplate(string id, int weight, Func<ForestRoomProfile, bool> fits, Action<ForestRoomBuilder> carve)
+        internal ForestRoomTemplate(string id, int weight, Func<ForestRoomProfile, bool> fits, Action<ForestRoomBuilder> carve,
+            int hazardLevel = 0)
         {
             Id = id;
             Weight = weight;
             this.fits = fits;
             this.carve = carve;
+            HazardLevel = hazardLevel;
         }
 
         internal string Id { get; }
         internal int Weight { get; }
+        // Hazard rooms put a hazard on the walking route. The layout chooses them only for the rooms it sets
+        // aside for hazards, and only from this world level on. Zero marks an ordinary room.
+        internal int HazardLevel { get; }
         internal bool Fits(ForestRoomProfile profile) => fits(profile);
         internal void Carve(ForestRoomBuilder room) => carve(room);
     }
@@ -62,7 +67,8 @@ namespace Insectum.Game
             new("Forest.Open.RootBridge", 1, Shape("Main.Span"), CarveRootBridge),
             new("Forest.Open.BracketFungi", 1, Shape("Main.Descent"), CarveBracketFungi),
             new("Forest.Open.ThornHollow", 1, Shape("Main.Switchback", "Main.ClimbBack", "SideTunnel.ClimbBack"), CarveThornHollow),
-            new("Forest.Open.CanopyLoft", 1, Shape("Main.Ascent", "SideTunnel.Ascent"), CarveCanopyLoft)
+            new("Forest.Open.CanopyLoft", 1, Shape("Main.Ascent", "SideTunnel.Ascent"), CarveCanopyLoft),
+            ForestBrambleRooms.Hop, ForestBrambleRooms.Canopy, ForestBrambleRooms.Bowl, ForestBrambleRooms.Drop
         };
 
         internal static IReadOnlyList<ForestRoomTemplate> For(WorldId world) => world switch
@@ -74,26 +80,39 @@ namespace Insectum.Game
             _ => ForestTemplates
         };
 
-        internal static ForestRoomTemplate Choose(WorldId world, ForestRoomProfile profile, ref SeededRandom random)
+        // Picks a weighted template for the room. A hazard room draws only from hazard templates open at this
+        // world level, and every other room only from ordinary ones.
+        internal static ForestRoomTemplate Choose(WorldId world, ForestRoomProfile profile, int level, bool hazard,
+            ref SeededRandom random)
         {
             IReadOnlyList<ForestRoomTemplate> templates = For(world);
+            bool Allowed(ForestRoomTemplate template) => template.Fits(profile)
+                && (hazard ? template.HazardLevel > 0 && level >= template.HazardLevel : template.HazardLevel == 0);
             int total = 0;
             foreach (ForestRoomTemplate template in templates)
-                if (template.Fits(profile))
+                if (Allowed(template))
                     total += template.Weight;
             if (total == 0)
-                return Generic;
+                return hazard ? Choose(world, profile, level, false, ref random) : Generic;
 
             int pick = random.Next(total);
             foreach (ForestRoomTemplate template in templates)
             {
-                if (!template.Fits(profile))
+                if (!Allowed(template))
                     continue;
                 if (pick < template.Weight)
                     return template;
                 pick -= template.Weight;
             }
             return Generic;
+        }
+
+        internal static bool HasHazard(WorldId world, ForestRoomProfile profile, int level)
+        {
+            foreach (ForestRoomTemplate template in For(world))
+                if (template.HazardLevel > 0 && level >= template.HazardLevel && template.Fits(profile))
+                    return true;
+            return false;
         }
 
         internal static Func<ForestRoomProfile, bool> Shape(params string[] shapes) =>

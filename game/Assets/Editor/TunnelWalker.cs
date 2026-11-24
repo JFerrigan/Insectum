@@ -7,10 +7,13 @@ using static Insectum.Game.Editor.ProductionVerification;
 namespace Insectum.Game.Editor
 {
     // Drives the player through a tunnel level the way it is built: landing to landing along the room graph,
-    // jumping where a door starts from a ledge, and striking enemies that stand in the way.
+    // jumping where a door starts from a ledge or a room marks a leap over a hazard, and striking enemies that
+    // stand in the way.
     internal static class TunnelWalker
     {
         private const int SegmentLimit = 420;
+        // A walker crossing a take-off point leaps on its first grounded step inside this window.
+        private const float LeapWindow = 0.6f;
 
         // Walks toward the level exit until reached() holds.
         internal static void Walk(PhysicsFixture fixture, Func<bool> reached, bool useHeavy = false)
@@ -80,6 +83,7 @@ namespace Insectum.Game.Editor
             GameSession session = fixture.Session;
             bool jump = session.Layout.Tunnel.Jumps.ContainsKey((from, to));
             bool jumped = false;
+            bool leaping = false;
             if (jump && !reached())
             {
                 // Settle on the landing so the jump starts from rest, as a player would.
@@ -98,13 +102,17 @@ namespace Insectum.Game.Editor
                 float dx = to.x - feet.x;
                 int move = Mathf.Abs(dx) > 0.13f ? Math.Sign(dx) : 0;
                 PlayerCommand command;
-                if (Fight(session, move, useHeavy) is PlayerCommand strike)
+                // Mid-leap the walker keeps running, since stopping to strike would drop it short.
+                bool airborne = leaping && !session.Motor.Grounded;
+                if (!airborne && Fight(session, move, useHeavy) is PlayerCommand strike)
                     command = strike;
                 else
                 {
                     bool press = jump && !jumped && session.Motor.Grounded;
                     jumped |= press;
-                    command = new PlayerCommand(move: move, jumpPressed: press, jumpHeld: jump);
+                    bool leap = !press && AtLeap(session, to);
+                    leaping = leap || (leaping && !session.Motor.Grounded);
+                    command = new PlayerCommand(move: move, jumpPressed: press || leap, jumpHeld: jump || leaping);
                 }
                 fixture.Step(command);
                 Steps++;
@@ -139,6 +147,22 @@ namespace Insectum.Game.Editor
                     return new PlayerCommand(aim: 1, attackPressed: true, abilityPressed: heavy);
             }
             return null;
+        }
+
+        // True when the grounded player has just crossed a take-off point that a room marks toward this goal.
+        internal static bool AtLeap(GameSession session, Vector2 goal)
+        {
+            if (!session.Motor.Grounded)
+                return false;
+            Vector2 feet = Feet(session);
+            foreach (var (takeoff, direction) in session.Layout.Tunnel.Leaps)
+            {
+                float along = (feet.x - takeoff.x) * direction;
+                if (along >= -0.02f && along < LeapWindow && Mathf.Abs(feet.y - takeoff.y) < 0.5f
+                    && (goal.x - takeoff.x) * direction > 0f)
+                    return true;
+            }
+            return false;
         }
 
         private static List<Vector2> Path(ForestTunnelSpace tunnel, Vector2 start, Vector2 goal)

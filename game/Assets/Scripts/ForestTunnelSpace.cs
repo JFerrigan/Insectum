@@ -13,6 +13,10 @@ namespace Insectum.Game
         internal readonly Dictionary<(Vector2 from, Vector2 to), Vector2> Jumps = new();
         internal readonly List<(int source, Vector2 first, Vector2 end)> Branches = new();
         internal readonly Dictionary<Vector2Int, ForestRoomProfile> Rooms = new();
+        // Hazards carved into rooms, and the take-off points where a walker heading in the given direction leaps
+        // over them.
+        internal readonly List<TunnelHazard> Hazards = new();
+        internal readonly List<(Vector2 takeoff, int direction)> Leaps = new();
         internal Rect Bounds { get; private set; } = Rect.MinMaxRect(0, 0, 0, 0);
 
         private sealed class Passage

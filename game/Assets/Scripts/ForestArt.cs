@@ -19,6 +19,17 @@ namespace Insectum.Game
         private static readonly Sprite[,] actorFrames = new Sprite[8, 6];
         private static readonly Sprite[] propSprites = new Sprite[16];
         private static Sprite backdrop;
+        private static Texture2D hazards;
+        private static readonly Sprite[] brambleCels = new Sprite[BrambleVariants + 2];
+
+        // Bramble tiles are half a unit wide and stand on their bottom edge: four middle variants, then the
+        // left and right end caps.
+        internal const int BrambleVariants = 4;
+        internal const int BrambleLeft = BrambleVariants;
+        internal const int BrambleRight = BrambleVariants + 1;
+
+        internal static Sprite Bramble(int cel) =>
+            brambleCels[cel] ??= Frame(hazards ??= Load("ForestHazards"), cel, 0, 8, 16, new Vector2(0.5f, 0f));
 
         internal static Texture2D Actors => actors ??= Load("Actors");
         internal static Texture2D Terrain => terrain ??= Load("Terrain");

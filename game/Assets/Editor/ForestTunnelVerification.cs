@@ -233,6 +233,7 @@ namespace Insectum.Game.Editor
             GameSession session = fixture.Session;
             PlayerMotor player = session.Motor;
             bool jump = session.Layout.Tunnel.Jumps.TryGetValue((start, target), out Vector2 lip);
+            bool leaping = false;
             if (jump)
                 fixture.Advance(12);
             for (int step = 0; step < 310 && session.Run.Alive; step++)
@@ -243,7 +244,10 @@ namespace Insectum.Game.Editor
 
                 float delta = target.x - feet.x;
                 int move = Mathf.Abs(delta) > 0.13f ? Math.Sign(delta) : 0;
-                fixture.Step(new PlayerCommand(move: move, jumpPressed: jump && step == 0, jumpHeld: jump,
+                bool press = jump && step == 0;
+                bool leap = !press && TunnelWalker.AtLeap(session, target);
+                leaping = leap || (leaping && !player.Grounded);
+                fixture.Step(new PlayerCommand(move: move, jumpPressed: press || leap, jumpHeld: jump || leaping,
                     attackPressed: attack && step % 10 == 0));
             }
 

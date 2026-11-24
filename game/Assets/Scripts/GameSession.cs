@@ -40,6 +40,7 @@ namespace Insectum.Game
         public DamageReceiver PlayerDamage { get; private set; }
         public PlayerAbilities Abilities { get; private set; }
         internal LevelContent Content { get; private set; }
+        internal LevelHazards Hazards { get; private set; }
         public string Status => Content?.Status;
         public string InteractionPrompt => Content?.ClosestInteractable()?.InteractPrompt ?? (AtExit
             ? Content?.ExitUnlocked == false ? Content.BossGatePrompt : $"E  Enter {Run.World} exit"
@@ -126,6 +127,8 @@ namespace Insectum.Game
                 }
             }
             Combat = new CombatArena();
+            Hazards = layout?.Tunnel is { Hazards: { Count: > 0 } } tunnel
+                ? new LevelHazards(level.transform, pixel, tunnel.Hazards) : null;
             attackCooldown = 0;
             MeleePoseSteps = 0;
 
@@ -170,6 +173,8 @@ namespace Insectum.Game
                 MotorControl control = enableAbilities ? Abilities.Step(command) : default;
                 StepMelee(command);
                 Content?.Step(command);
+                if (Run.Alive)
+                    Hazards?.Step(PlayerDamage, Motor.Body.linearVelocity);
                 if (Run.Alive)
                     Motor.Step(command, control);
                 if (Motor.Body.position.y < (Layout?.KillHeight ?? ForestRoute.KillHeight))
@@ -259,6 +264,7 @@ namespace Insectum.Game
             PlayerDamage = null;
             Abilities = null;
             Content = null;
+            Hazards = null;
         }
 
         private const float PogoSpeed = 10.5f;
@@ -286,10 +292,11 @@ namespace Insectum.Game
             HeavyPose = heavy;
             attackCooldown = heavy ? tuning.heavyRecoverySteps : tuning.meleeRecoverySteps;
             float reachBonus = Run.Inventory.MeleeReachBonus;
-            bool hit = Combat.Melee(heavy
+            MeleeStrike strike = heavy
                 ? new MeleeStrike(origin, direction, 2.1f + reachBonus, 0.83f, tuning.fireAntAttackDamage, 7f)
-                : new MeleeStrike(origin, direction, 1.3f + reachBonus, 0.38f, 1, 4f));
-            if (hit && direction == Vector2.down)
+                : new MeleeStrike(origin, direction, 1.3f + reachBonus, 0.38f, 1, 4f);
+            bool hit = Combat.Melee(strike);
+            if (direction == Vector2.down && (hit || Hazards?.Pogo(strike) == true))
                 Motor.Bounce(PogoSpeed);
         }
 

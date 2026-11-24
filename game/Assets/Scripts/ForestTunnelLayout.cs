@@ -12,6 +12,7 @@ namespace Insectum.Game
         private const int SearchBudget = 24000;
         private const uint RoomSalt = 0x6C8E9CF5u;
         private const uint SpotSalt = 0x2F9A51C3u;
+        private const uint HazardSalt = 0x4B1D7A63u;
         private const int MaxTraps = 5;
         private const int MaxTreasures = 6;
         internal const float Height = 3.1f;
@@ -218,6 +219,31 @@ namespace Insectum.Game
             return pool.GetRange(0, Mathf.Min(count, pool.Count));
         }
 
+        // A level sets aside one hazard room per world level, one in each equal stretch of the main route past
+        // its first two rooms. A stretch with no main room that suits a hazard template goes without.
+        private static HashSet<Vector2Int> PickHazardRooms(WorldId world, int worldLevel, List<Vector2Int> route,
+            IReadOnlyDictionary<Vector2Int, ForestRoomProfile> rooms, LevelSeeds seeds)
+        {
+            const int first = 2;
+            var picked = new HashSet<Vector2Int>();
+            var random = new SeededRandom(seeds.Layout ^ HazardSalt);
+            int last = route.Count - 1;
+            var candidates = new List<Vector2Int>();
+            for (int stretch = 0; stretch < worldLevel; stretch++)
+            {
+                candidates.Clear();
+                for (int i = first + (last - first) * stretch / worldLevel; i < first + (last - first) * (stretch + 1) / worldLevel; i++)
+                {
+                    ForestRoomProfile room = rooms[route[i]];
+                    if (room.Role == RoomRole.Main && ForestRoomCatalog.HasHazard(world, room, worldLevel))
+                        candidates.Add(route[i]);
+                }
+                if (candidates.Count > 0)
+                    picked.Add(candidates[random.Next(candidates.Count)]);
+            }
+            return picked;
+        }
+
         internal static TerrainMaterial PlugMaterial(WorldId world) => world switch
         {
             WorldId.Swamp => TerrainMaterial.Mud,
@@ -252,6 +278,8 @@ namespace Insectum.Game
 
             // Templates draw from their own stream so adding one never changes a seed's route.
             var roomRandom = new SeededRandom(seeds.Layout ^ RoomSalt);
+            int worldLevel = RunWorlds.LocalLevel(level);
+            HashSet<Vector2Int> hazardRooms = PickHazardRooms(world, worldLevel, route, space.Rooms, seeds);
             var templateIds = new Dictionary<Vector2Int, string>();
             var trapSpots = new List<(Vector2 position, Vector2Int chunk)>();
             var treasureSpots = new List<(Vector2 position, Vector2Int chunk)>();
@@ -377,9 +405,10 @@ namespace Insectum.Game
             void CarveRoom(Vector2Int chunk)
             {
                 ForestRoomProfile profile = space.Rooms[chunk];
-                ForestRoomTemplate template = ForestRoomCatalog.Choose(world, profile, ref roomRandom);
+                ForestRoomTemplate template = ForestRoomCatalog.Choose(world, profile, worldLevel,
+                    hazardRooms.Contains(chunk), ref roomRandom);
                 templateIds.Add(chunk, template.Id);
-                var room = new ForestRoomBuilder(space, chunk, Center(chunk), profile);
+                var room = new ForestRoomBuilder(space, chunk, Center(chunk), profile, worldLevel);
                 template.Carve(room);
                 landings.Add(chunk, room.Landing);
                 foreach (Vector2 spot in room.TrapSpots)

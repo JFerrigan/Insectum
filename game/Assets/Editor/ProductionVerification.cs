@@ -48,6 +48,8 @@ namespace Insectum.Game.Editor
                     "GameBoot did not initialize in play mode.");
                 ForestRoomVerification.VerifyProfiles();
                 ForestTunnelVerification.Verify();
+                HazardVerification.Verify();
+                BiomeVerification.VerifyGeneration(WorldId.Forest, TerrainMaterial.PackedDirt);
                 if (Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "-insectum-tunnel-only"))
                 {
                     Finish(0);

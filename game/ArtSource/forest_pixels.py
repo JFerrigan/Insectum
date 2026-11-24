@@ -297,6 +297,55 @@ def props():
     atlas.save(OUT / "Props.png")
 
 
+def hazards():
+    """Bramble tiles, half a unit wide and standing on their bottom edge: four middle variants, then the left
+    and right end caps. Hanging brambles reuse them flipped. The tangle is as tall as the half-unit hit box,
+    and thorns lean out above it."""
+    atlas = Image.new("RGBA", (6 * 8, 16))
+    dark, mid, vine, thorn = "#341f33", "#55354d", "#9a6a6c", "#ead0a8"
+    tops = (
+        (9, 8, 8, 9, 9, 8, 8, 9),
+        (9, 9, 8, 8, 9, 9, 8, 8),
+        (8, 8, 9, 9, 8, 8, 9, 9),
+        (8, 9, 9, 8, 8, 9, 9, 8),
+        (14, 13, 12, 11, 10, 9, 9, 9),
+    )
+    # Each variant: where a thorn sprouts and which way it leans.
+    thorns = (((1, -1), (5, 1)), ((2, 1), (6, -1)), ((0, 1), (4, -1)), ((3, -1), (7, -1)), ((5, -1),))
+    for index in range(6):
+        cel = Cel(8, 16)
+        cap = min(index, 4)
+        heights = tops[cap]
+        flip = index == 5
+        if flip:
+            heights = tuple(reversed(heights))
+        for x, top in enumerate(heights):
+            cel.line([(x, top), (x, 15)], dark)
+            cel.dot((x, top), INK)
+            if (x + index) % 3 == 0 and top + 3 < 15:
+                cel.dot((x, top + 3), mid)
+        # Two vines weave through the tangle, crossing near the middle of the tile.
+        for x, top in enumerate(heights):
+            rise = (0, 1, 2, 2, 2, 2, 1, 0)[x]
+            cel.dot((x, min(15, top + 1 + rise)), vine)
+            cel.dot((x, min(15, top + 5 - rise)), vine)
+        # Thorns lean out from the top of the tangle: a pale base and a cream point.
+        for x, lean in thorns[cap]:
+            if flip:
+                x, lean = 7 - x, -lean
+            top = heights[x]
+            tip = x + lean
+            cel.dot((x, top), thorn)
+            cel.dot((x, top - 1), thorn)
+            if 0 <= tip < 8:
+                cel.dot((tip, top - 2), CREAM)
+        if index not in (3, 4, 5):
+            bx = (index * 3 + 2) % 7
+            cel.dot((bx, heights[bx] + 4), PINK)
+        atlas.paste(cel.image, (index * 8, 0))
+    atlas.save(OUT / "ForestHazards.png")
+
+
 def cavern():
     width, height = 384, 192
     cel = Cel(width, height, "#171225")
@@ -386,5 +435,6 @@ if __name__ == "__main__":
     actors()
     rock_tiles()
     props()
+    hazards()
     cavern()
     font()
