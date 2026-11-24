@@ -50,7 +50,10 @@ namespace Insectum.Game
         private static readonly ForestRoomTemplate[] Alien =
             { Gorge(WorldId.Alien), Cascade(WorldId.Alien, "PodCascade"), Descent(WorldId.Alien, "HiveDescent") };
 
-        internal static IReadOnlyList<ForestRoomTemplate> For(WorldId world) => world switch
+        // The world's code suites with any data suites from the Chunk Editor merged in.
+        internal static IReadOnlyList<ForestRoomTemplate> For(WorldId world) => RoomLibrary.Merge(world, Code(world), true);
+
+        internal static IReadOnlyList<ForestRoomTemplate> Code(WorldId world) => world switch
         {
             WorldId.Forest => Forest,
             WorldId.Swamp => Swamp,

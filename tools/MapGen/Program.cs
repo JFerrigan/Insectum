@@ -19,6 +19,24 @@ internal static class Program
             Console.WriteLine(Usage);
             return args.Length == 0 ? 1 : 0;
         }
+        if (args[0] == "export" && args.Length > 2)
+        {
+            if (!Enum.TryParse(args[1], true, out WorldId world))
+            {
+                Console.Error.WriteLine($"Unknown world {args[1]}");
+                return 1;
+            }
+            RoomRecorder recorder = RoomRecorder.Capture(world, args[2], args.Length > 3 ? args[3] : null);
+            if (recorder == null)
+            {
+                Console.Error.WriteLine($"{args[2]} was not carved in 400 seeds of {world}.");
+                return 1;
+            }
+            Console.WriteLine(recorder.Data.ToJson());
+            return 0;
+        }
+        if (args[0] == "roundtrip")
+            return RoundTrip(args.Length > 1 ? args[1] : "all");
         if (args[0] == "chunks")
             return Chunks(args.Length > 1 ? args[1] : "all", args.Length > 2 ? args[2] : "",
                 args.Length > 3 ? float.Parse(args[3], CultureInfo.InvariantCulture) : 16f,
@@ -180,6 +198,11 @@ internal static class Program
       (for example Suite or Cascade). zoom defaults to 16. outDir defaults to game/Builds/Chunks.
   MapGen stats [seedCount] [firstSeed]
       How often multi-chunk suites spawn, per world (default 200 seeds from 1).
+  MapGen export <world> <templateId> [shape]
+      Prints a code room or suite as Chunk Editor JSON (one shape of a room; suites need none).
+  MapGen roundtrip [world|all]
+      Converts every code room and suite to Chunk Editor data, through JSON, and checks the data
+      carves exactly the same passages, doors, landings, spots and hazards.
   MapGen -h
       This help.";
 
@@ -270,6 +293,106 @@ internal static class Program
             Console.WriteLine($"  {found.Count} images in {dir}\n");
         }
         return missingTotal == 0 ? 0 : 2;
+    }
+
+    private static int RoundTrip(string worldArg)
+    {
+        int failures = 0, checkedCount = 0;
+        foreach (WorldId world in Enum.GetValues(typeof(WorldId)))
+        {
+            if (worldArg != "all" && !string.Equals(worldArg, world.ToString(), StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (!TryFirstLevel(world, out _))
+                continue;
+            var keys = new List<(string id, string shape)>();
+            foreach (ForestRoomTemplate template in ForestSuites.Code(world))
+                keys.Add((template.Id, null));
+            foreach (ForestRoomTemplate template in ForestRoomCatalog.Code(world))
+                foreach (string shape in ForestRoomProfile.Shapes)
+                    keys.Add((template.Id, shape));
+            foreach (var (id, shape) in keys)
+            {
+                if (shape != null && !FitsShape(world, id, shape))
+                    continue;
+                RoomRecorder recorder = RoomRecorder.Capture(world, id, shape, 60);
+                if (recorder == null)
+                    continue;
+                checkedCount++;
+                RoomData data = RoomData.FromJson(recorder.Data.ToJson());
+                string original = Carve(recorder, recorder.Suite.Template);
+                string replayed = Carve(recorder, RoomDataTemplates.Create(data));
+                if (original != replayed)
+                {
+                    failures++;
+                    Console.WriteLine($"MISMATCH {id} {shape}");
+                    string[] a = original.Split('\n'), b = replayed.Split('\n');
+                    for (int i = 0; i < Math.Max(a.Length, b.Length); i++)
+                        if (i >= a.Length || i >= b.Length || a[i] != b[i])
+                        {
+                            Console.WriteLine($"  code: {(i < a.Length ? a[i] : "-")}\n  data: {(i < b.Length ? b[i] : "-")}");
+                            break;
+                        }
+                }
+            }
+        }
+        Console.WriteLine($"{checkedCount} rooms checked, {failures} mismatches");
+        return failures == 0 ? 0 : 1;
+    }
+
+    private static bool FitsShape(WorldId world, string id, string shape)
+    {
+        foreach (ForestRoomTemplate template in ForestRoomCatalog.Code(world))
+            if (template.Id == id)
+                foreach (var pair in AnyProfiles())
+                    if (pair.Shape == shape && template.Fits(pair))
+                        return true;
+        return false;
+    }
+
+    private static List<ForestRoomProfile> profileCache;
+
+    // One profile per shape, gathered from generated levels, to ask which shapes a template fits.
+    private static List<ForestRoomProfile> AnyProfiles()
+    {
+        if (profileCache != null)
+            return profileCache;
+        var byShape = new Dictionary<string, ForestRoomProfile>();
+        for (int seed = 1; seed <= 20; seed++)
+            for (int level = 1; level <= 3; level++)
+            {
+                LevelLayout layout = RunWorlds.Generate(seed, level);
+                foreach (ForestRoomProfile profile in layout.Tunnel.Rooms.Values)
+                    byShape.TryAdd(profile.Shape, profile);
+            }
+        return profileCache = new List<ForestRoomProfile>(byShape.Values);
+    }
+
+    // Carves a template into a fresh space with the inputs the recorder saw and describes everything it made.
+    private static string Carve(RoomRecorder recorder, ForestRoomTemplate template)
+    {
+        var space = new ForestTunnelSpace();
+        var suite = new RoomSuite(template, recorder.Suite.Chunks, recorder.Suite.Mirrored);
+        var room = new ForestRoomBuilder(space, suite, recorder.Centers, recorder.Profiles, recorder.Openings, recorder.Level);
+        template.Carve(room);
+        var text = new System.Text.StringBuilder();
+        string P(Vector2 v) => $"{v.x:0.0000},{v.y:0.0000}";
+        foreach (var (_, outline) in space.Passages)
+            text.AppendLine("passage " + string.Join(" ", System.Linq.Enumerable.Select(outline, P)));
+        foreach (TunnelHazard hazard in space.Hazards)
+            text.AppendLine($"hazard {hazard.Kind} {P(hazard.Area.min)} {P(hazard.Area.max)} {hazard.Hanging}");
+        foreach (var leap in space.Leaps) text.AppendLine($"leap {P(leap.takeoff)} {leap.direction}");
+        foreach (var wait in space.Waits) text.AppendLine($"wait {P(wait.spot)} {wait.direction} {wait.distance:0.000}");
+        foreach (var tile in space.TileOverrides) text.AppendLine($"tile {tile.Key} {tile.Value}");
+        for (int i = 0; i < recorder.Centers.Length; i++)
+        {
+            text.AppendLine($"landing {i} {P(room.LandingOf(i))}");
+            foreach (var door in room.DoorsOf(i))
+                text.AppendLine($"door {i} {door.Key} {door.Value.clearance:0.000} {(door.Value.lip is Vector2 lip ? P(lip) : "-")}");
+        }
+        foreach (Vector2 spot in room.TrapSpots) text.AppendLine($"trap {P(spot)}");
+        foreach (Vector2 spot in room.TreasureSpots) text.AppendLine($"treasure {P(spot)}");
+        foreach (var (spot, enemy) in room.EnemySpots) text.AppendLine($"enemy {P(spot)} {enemy}");
+        return text.ToString();
     }
 
     private static bool TryFirstLevel(WorldId world, out int level)

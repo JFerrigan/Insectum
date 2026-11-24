@@ -6,7 +6,7 @@ namespace Insectum.Game
     {
         internal static readonly EnemySpec ReedRunner = new("Reed runner", EnemyStyle.ReedRunner, 2, 2, 0.44f,
             new Color32(111, 182, 142, 255));
-        private static readonly EnemySpec MarshSkimmer = new("Marsh skimmer", EnemyStyle.Skimmer, 2, 1, 0.35f,
+        internal static readonly EnemySpec MarshSkimmer = new("Marsh skimmer", EnemyStyle.Skimmer, 2, 1, 0.35f,
             new Color32(101, 190, 193, 255));
         private static readonly EnemySpec MireBell = new("Mire Bell", EnemyStyle.VolleyBoss, 8, 4, 0.78f,
             new Color32(123, 188, 136, 255));
@@ -23,7 +23,7 @@ namespace Insectum.Game
                 switch (marker.Kind)
                 {
                     case LevelMarkerKind.Encounter:
-                        EnemySpec enemy = encounters.Next(2) == 0 ? ReedRunner : MarshSkimmer;
+                        EnemySpec enemy = EnemySpec.Find(marker.Enemy) ?? (encounters.Next(2) == 0 ? ReedRunner : MarshSkimmer);
                         content.AddEnemy(enemy, marker.Position, encounters.Next(96));
                         break;
                     case LevelMarkerKind.Boss:

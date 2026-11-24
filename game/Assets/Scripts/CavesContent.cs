@@ -6,7 +6,7 @@ namespace Insectum.Game
     {
         internal static readonly EnemySpec Hopper = new("Slate hopper", EnemyStyle.CaveHopper, 2, 1, 0.44f,
             new Color32(143, 166, 219, 255));
-        private static readonly EnemySpec GlowFly = new("Geode gnat", EnemyStyle.GlowFly, 2, 2, 0.34f,
+        internal static readonly EnemySpec GlowFly = new("Geode gnat", EnemyStyle.GlowFly, 2, 2, 0.34f,
             new Color32(169, 114, 243, 255));
         private static readonly EnemySpec Faultback = new("Faultback", EnemyStyle.QuakeBoss, 9, 5, 0.83f,
             new Color32(173, 138, 236, 255));
@@ -23,7 +23,7 @@ namespace Insectum.Game
                 switch (marker.Kind)
                 {
                     case LevelMarkerKind.Encounter:
-                        content.AddEnemy(encounters.Next(2) == 0 ? Hopper : GlowFly, marker.Position, encounters.Next(96));
+                        content.AddEnemy(EnemySpec.Find(marker.Enemy) ?? (encounters.Next(2) == 0 ? Hopper : GlowFly), marker.Position, encounters.Next(96));
                         break;
                     case LevelMarkerKind.Boss:
                         content.AddEnemy(Faultback, marker.Position, 0);

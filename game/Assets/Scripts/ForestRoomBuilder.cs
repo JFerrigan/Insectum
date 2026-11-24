@@ -31,6 +31,8 @@ namespace Insectum.Game
         private readonly Dictionary<RoomDoor, (float clearance, Vector2? lip)>[] doors;
         // The member the single-room calls act on. Local units are measured from its center.
         private readonly int focus;
+        // Set while the Chunk Editor captures this template's calls.
+        private readonly RoomRecorder recorder;
 
         // Centers are in world space, one per member. Openings name each member's doors to chunks outside the
         // suite in the suite's canonical orientation.
@@ -57,6 +59,16 @@ namespace Insectum.Game
             }
             TrapSpots = new List<Vector2>();
             TreasureSpots = new List<Vector2>();
+            EnemySpots = new List<(Vector2 spot, string enemy)>();
+            recorder = RoomRecorder.Begin(suite, profiles);
+            if (recorder != null)
+            {
+                recorder.Suite = suite;
+                recorder.Centers = centers.ToArray();
+                recorder.Profiles = profiles.ToArray();
+                recorder.Openings = openings;
+                recorder.Level = level;
+            }
         }
 
         // A view of the same suite centered on another member. Whatever it carves, lands, or opens belongs to
@@ -74,6 +86,8 @@ namespace Insectum.Game
             Level = whole.Level;
             TrapSpots = whole.TrapSpots;
             TreasureSpots = whole.TreasureSpots;
+            EnemySpots = whole.EnemySpots;
+            recorder = whole.recorder;
             this.focus = focus;
         }
 
@@ -87,6 +101,8 @@ namespace Insectum.Game
         internal IReadOnlyDictionary<RoomDoor, (float clearance, Vector2? lip)> Doors => doors[focus];
         internal List<Vector2> TrapSpots { get; }
         internal List<Vector2> TreasureSpots { get; }
+        // Enemies a data room places itself, each with an enemy name or empty for the world's usual pick.
+        internal List<(Vector2 spot, string enemy)> EnemySpots { get; }
 
         // Lets a suite template carve one member with a single-room template: the view's local units and
         // single-room calls are centered on that member.
@@ -130,6 +146,7 @@ namespace Insectum.Game
         // own headroom, so the floor and ceiling can both slope.
         internal void Hall(Vector2 from, Vector2 to, float fromHeight, float toHeight)
         {
+            recorder?.Add(focus, new RoomOp { op = "hall", x = from.x, y = from.y, x2 = to.x, y2 = to.y, h1 = fromHeight, h2 = toHeight });
             Vector2 a = World(from);
             Vector2 b = World(to);
             if (a.x <= b.x)
@@ -143,6 +160,27 @@ namespace Insectum.Game
         // each outlined by a bottom line and a top line sampled left to right in the same way.
         internal void Cave((float x, float floor, float ceiling)[] profile,
             params (float x, float bottom, float top)[][] islands)
+        {
+            if (recorder != null)
+            {
+                var op = new RoomOp { op = "cave", points = RoomDataTemplates.Flatten(profile) };
+                foreach (var island in islands)
+                    op.platforms.Add(new RoomPlatform { kind = "Custom", points = RoomDataTemplates.Flatten(island) });
+                recorder.Add(focus, op);
+                recorder.Depth++;
+            }
+            try
+            {
+                CarveCave(profile, islands);
+            }
+            finally
+            {
+                if (recorder != null)
+                    recorder.Depth--;
+            }
+        }
+
+        private void CarveCave((float x, float floor, float ceiling)[] profile, (float x, float bottom, float top)[][] islands)
         {
             var breaks = new List<float>(profile.Length + islands.Length * 5);
             foreach (var point in profile)
@@ -211,10 +249,36 @@ namespace Insectum.Game
         }
 
         // A floor point off the walking route where the level may place the world's trap.
-        internal void Trap(Vector2 floor) => TrapSpots.Add(World(floor));
+        internal void Trap(Vector2 floor)
+        {
+            recorder?.Add(focus, new RoomOp { op = "trap", x = floor.x, y = floor.y });
+            TrapSpots.Add(World(floor));
+        }
 
         // A floor point off the walking route, such as an island top or a pit, where the level may leave Nektar.
-        internal void Treasure(Vector2 floor) => TreasureSpots.Add(World(floor));
+        internal void Treasure(Vector2 floor)
+        {
+            recorder?.Add(focus, new RoomOp { op = "treasure", x = floor.x, y = floor.y });
+            TreasureSpots.Add(World(floor));
+        }
+
+        // An enemy standing at a floor point, by name, or the world's usual pick when the name is empty.
+        internal void Enemy(Vector2 floor, string enemy)
+        {
+            recorder?.Add(focus, new RoomOp { op = "enemy", x = floor.x, y = floor.y, enemy = enemy ?? "" });
+            EnemySpots.Add((World(floor), enemy ?? ""));
+        }
+
+        // Makes the rock in the hex cell holding this point the given material.
+        internal void Tile(Vector2 point, TerrainMaterial material)
+        {
+            recorder?.Add(focus, new RoomOp { op = "tile", x = point.x, y = point.y, material = material.ToString() });
+            space.TileOverrides[HexGrid.CellAt(World(point))] = material;
+        }
+
+        // Any of the flat hazards by kind, the way the named helpers below place them.
+        internal void Hazard(HazardKind kind, float from, float to, float bottom, float top, bool hanging) =>
+            AddHazard(kind, from, to, bottom, top, hanging);
 
         // A bramble bed growing up from a flat floor between two x positions.
         internal void Brambles(float from, float to, float floor) =>
@@ -251,6 +315,7 @@ namespace Insectum.Game
         // positive, both in local orientation.
         internal void Laser(Vector2 emitter, float reach, float spin, int arms, float phase)
         {
+            recorder?.Add(focus, new RoomOp { op = "laser", x = emitter.x, y = emitter.y, a = reach, b = spin, count = arms, c = phase });
             Vector2 at = World(emitter);
             space.Hazards.Add(new TunnelHazard(HazardKind.Laser, new Rect(at.x - 0.25f, at.y - 0.25f, 0.5f, 0.5f), false,
                 suite.Anchor, reach, suite.Mirrored ? -spin : spin, arms, suite.Mirrored ? 180f - phase : phase));
@@ -258,17 +323,24 @@ namespace Insectum.Game
 
         // A standing point on the route where a walker heading in the given direction waits for a laser gap, then
         // runs the given distance in one go. The verification walker waits from exactly here.
-        internal void Wait(Vector2 spot, int direction, float distance) =>
+        internal void Wait(Vector2 spot, int direction, float distance)
+        {
+            recorder?.Add(focus, new RoomOp { op = "wait", x = spot.x, y = spot.y, count = direction, a = distance });
             space.Waits.Add((World(spot), suite.Mirrored ? -direction : direction, distance));
+        }
 
         // A take-off point on the route where a player heading in the given direction (1 right, -1 left) jumps
         // to clear a hazard. The verification walker leaps from exactly here.
-        internal void Leap(Vector2 takeoff, int direction) =>
+        internal void Leap(Vector2 takeoff, int direction)
+        {
+            recorder?.Add(focus, new RoomOp { op = "leap", x = takeoff.x, y = takeoff.y, count = direction });
             space.Leaps.Add((World(takeoff), suite.Mirrored ? -direction : direction));
+        }
 
         // Hazards belong to the suite's first chunk, so a suite counts once toward a level's hazard rooms.
         private void AddHazard(HazardKind kind, float from, float to, float bottom, float top, bool hanging)
         {
+            recorder?.Add(focus, new RoomOp { op = "hazard", kind = kind.ToString(), a = from, b = to, c = bottom, h1 = top, flag = hanging });
             float a = World(new Vector2(from, 0f)).x;
             float b = World(new Vector2(to, 0f)).x;
             float y = Center.y;
@@ -280,14 +352,26 @@ namespace Insectum.Game
         internal void SetLanding(Vector2 local) => SetLanding(focus, local);
 
         // A member's standing point, in local units.
-        internal void SetLanding(int member, Vector2 local) => landings[member] = World(local);
+        internal void SetLanding(int member, Vector2 local)
+        {
+            Vector2 own = local - MemberCenter(member);
+            recorder?.Add(member, new RoomOp { op = "landing", x = own.x, y = own.y });
+            landings[member] = World(local);
+        }
 
         // Declares a door with the headroom at its anchor. Lip marks the ledge a player must jump onto when
         // leaving the landing through this door.
         internal void Door(RoomDoor door, float clearance, Vector2? lip = null) => Door(focus, door, clearance, lip);
 
         // Declares one of a member's doors. Lip is in local units.
-        internal void Door(int member, RoomDoor door, float clearance, Vector2? lip = null) =>
+        internal void Door(int member, RoomDoor door, float clearance, Vector2? lip = null)
+        {
+            if (recorder != null)
+            {
+                Vector2 own = (lip ?? Vector2.zero) - MemberCenter(member);
+                recorder.Add(member, new RoomOp { op = "door", door = door.ToString(), h1 = clearance, flag = lip.HasValue, x2 = own.x, y2 = own.y });
+            }
             doors[member].Add(door, (clearance, lip.HasValue ? World(lip.Value) : (Vector2?)null));
+        }
     }
 }

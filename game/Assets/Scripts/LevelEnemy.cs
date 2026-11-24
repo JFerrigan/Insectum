@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Insectum.Game
@@ -39,6 +40,25 @@ namespace Insectum.Game
             Nektar = nektar;
             Radius = radius;
             Tint = tint;
+        }
+
+        // Every world's regular enemies, which rooms may place by name.
+        internal static IReadOnlyList<EnemySpec> Regulars => new[]
+        {
+            ForestContent.BarkMite, ForestContent.SporeMoth, SwampContent.ReedRunner, SwampContent.MarshSkimmer,
+            CavesContent.Hopper, CavesContent.GlowFly, DesertContent.DuneBeetle, DesertContent.SandWasp,
+            AlienContent.LatticeTick, AlienContent.ArcMote
+        };
+
+        // The regular enemy with this name, or null when the name is empty or unknown.
+        internal static EnemySpec Find(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+                return null;
+            foreach (EnemySpec spec in Regulars)
+                if (spec.Name == name)
+                    return spec;
+            return null;
         }
     }
 

@@ -16,6 +16,8 @@ namespace Insectum.Game
         // Hazards carved into rooms, and the take-off points where a walker heading in the given direction leaps
         // over them.
         internal readonly List<TunnelHazard> Hazards = new();
+        // Rock materials rooms ask for in particular cells, applied over the level's default rock.
+        internal readonly Dictionary<Vector2Int, TerrainMaterial> TileOverrides = new();
         internal readonly List<(Vector2 takeoff, int direction)> Leaps = new();
         // Standing points where a walker heading in the given direction waits for a gap in a laser's sweep before
         // running the given distance.

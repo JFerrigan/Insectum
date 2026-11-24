@@ -6,7 +6,7 @@ namespace Insectum.Game
     {
         internal static readonly EnemySpec LatticeTick = new("Lattice tick", EnemyStyle.LatticeTick, 3, 2, 0.45f,
             new Color32(201, 102, 182, 255));
-        private static readonly EnemySpec ArcMote = new("Arc mote", EnemyStyle.ArcMote, 2, 2, 0.36f,
+        internal static readonly EnemySpec ArcMote = new("Arc mote", EnemyStyle.ArcMote, 2, 2, 0.36f,
             new Color32(102, 226, 183, 255));
         private static readonly EnemySpec CrownRelay = new("Crown Relay", EnemyStyle.BeamBoss, 10, 6, 0.86f,
             new Color32(146, 223, 236, 255));
@@ -23,7 +23,7 @@ namespace Insectum.Game
                 switch (marker.Kind)
                 {
                     case LevelMarkerKind.Encounter:
-                        content.AddEnemy(encounters.Next(2) == 0 ? LatticeTick : ArcMote, marker.Position, encounters.Next(96));
+                        content.AddEnemy(EnemySpec.Find(marker.Enemy) ?? (encounters.Next(2) == 0 ? LatticeTick : ArcMote), marker.Position, encounters.Next(96));
                         break;
                     case LevelMarkerKind.Boss:
                         content.AddEnemy(CrownRelay, marker.Position, 0);

@@ -42,5 +42,6 @@
     <Compile Include="../../game/Assets/Scripts/LevelHazard.cs" Link="Game/LevelHazard.cs" />
     <Compile Include="../../game/Assets/Scripts/HazardRooms.cs" Link="Game/HazardRooms.cs" />
     <Compile Include="../../game/Assets/Scripts/PixelViewport.cs" Link="Game/PixelViewport.cs" />
+    <Compile Include="../../game/Assets/Scripts/RoomData.cs" Link="Game/RoomData.cs" />
   </ItemGroup>
 </Project>

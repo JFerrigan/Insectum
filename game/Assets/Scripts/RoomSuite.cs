@@ -53,6 +53,8 @@ namespace Insectum.Game
         }
 
         internal IReadOnlyList<int> Steps => steps;
+        internal IReadOnlyList<RoomDoor> Entries => entries;
+        internal IReadOnlyList<RoomDoor> Exits => exits;
         internal int Length => steps.Length + 1;
 
         internal bool Enters(RoomDoor door) => System.Array.IndexOf(entries, door) >= 0;

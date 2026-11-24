@@ -7,7 +7,7 @@ namespace Insectum.Game
         private const uint ShopSalt = 0xE12D64A5u;
         internal static readonly EnemySpec BarkMite = new("Bark mite", EnemyStyle.Crawler, 2, 1, 0.45f,
             new Color32(198, 121, 78, 255));
-        private static readonly EnemySpec SporeMoth = new("Spore moth", EnemyStyle.Flyer, 2, 1, 0.37f,
+        internal static readonly EnemySpec SporeMoth = new("Spore moth", EnemyStyle.Flyer, 2, 1, 0.37f,
             new Color32(188, 158, 227, 255));
         private static readonly EnemySpec Barkback = new("Barkback", EnemyStyle.ChargeBoss, 8, 4, 0.80f,
             new Color32(174, 99, 60, 255));
@@ -41,7 +41,7 @@ namespace Insectum.Game
                 switch (marker.Kind)
                 {
                     case LevelMarkerKind.Encounter:
-                        EnemySpec enemy = encounters.Next(2) == 0 ? BarkMite : SporeMoth;
+                        EnemySpec enemy = EnemySpec.Find(marker.Enemy) ?? (encounters.Next(2) == 0 ? BarkMite : SporeMoth);
                         content.AddEnemy(enemy, marker.Position, encounters.Next(96));
                         break;
                     case LevelMarkerKind.Shop:

@@ -80,7 +80,10 @@ namespace Insectum.Game
             ForestBrambleRooms.Hollow
         };
 
-        internal static IReadOnlyList<ForestRoomTemplate> For(WorldId world) => world switch
+        // The world's code rooms with any data rooms from the Chunk Editor merged in.
+        internal static IReadOnlyList<ForestRoomTemplate> For(WorldId world) => RoomLibrary.Merge(world, Code(world), false);
+
+        internal static IReadOnlyList<ForestRoomTemplate> Code(WorldId world) => world switch
         {
             WorldId.Swamp => SwampRooms.Templates,
             WorldId.Caves => CavesRooms.Templates,

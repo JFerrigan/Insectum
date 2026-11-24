@@ -249,6 +249,21 @@ namespace UnityEngine
     {
         public static string Root;
 
+        public static T[] LoadAll<T>(string path) where T : Object
+        {
+            var found = new System.Collections.Generic.List<T>();
+            string dir = Path.Combine(Root, path);
+            if (typeof(T) != typeof(TextAsset) || !Directory.Exists(dir))
+                return found.ToArray();
+            foreach (string file in Directory.GetFiles(dir))
+            {
+                string extension = Path.GetExtension(file);
+                if (extension is ".json" or ".txt" or ".bytes" or ".csv")
+                    found.Add(new TextAsset(File.ReadAllText(file)) { name = Path.GetFileNameWithoutExtension(file) } as T);
+            }
+            return found.ToArray();
+        }
+
         public static T Load<T>(string path) where T : Object
         {
             if (typeof(T) != typeof(TextAsset))
@@ -261,6 +276,29 @@ namespace UnityEngine
             }
             return null;
         }
+    }
+
+    // JSON with Unity's rules: public fields by name, no properties.
+    public static class JsonUtility
+    {
+        private static readonly System.Text.Json.JsonSerializerOptions Options = new()
+        {
+            IncludeFields = true,
+            IgnoreReadOnlyProperties = true,
+            WriteIndented = false
+        };
+
+        private static readonly System.Text.Json.JsonSerializerOptions Pretty = new()
+        {
+            IncludeFields = true,
+            IgnoreReadOnlyProperties = true,
+            WriteIndented = true
+        };
+
+        public static string ToJson(object value, bool prettyPrint = false) =>
+            System.Text.Json.JsonSerializer.Serialize(value, value.GetType(), prettyPrint ? Pretty : Options);
+
+        public static T FromJson<T>(string json) => System.Text.Json.JsonSerializer.Deserialize<T>(json, Options);
     }
 
     public static class Debug

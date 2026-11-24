@@ -347,6 +347,7 @@ namespace Insectum.Game
             var templateIds = new Dictionary<Vector2Int, string>();
             var trapSpots = new List<(Vector2 position, Vector2Int chunk)>();
             var treasureSpots = new List<(Vector2 position, Vector2Int chunk)>();
+            var enemySpots = new List<(Vector2 position, Vector2Int chunk, string enemy)>();
             // Every carved chunk belongs to one suite, carved by one template. A claimed set piece joins the list
             // at its first chunk, and every other chunk is a suite of one, chosen in the order the chunks were
             // connected.
@@ -425,6 +426,9 @@ namespace Insectum.Game
                 if (x < leftWall || x > rightWall)
                     tiles[cell] = TerrainMaterial.Boundary;
             }
+            foreach (var (cell, material) in space.TileOverrides)
+                if (tiles.TryGetValue(cell, out TerrainMaterial current) && current != TerrainMaterial.Boundary)
+                    tiles[cell] = material;
 
             for (int index = 1; index < route.Count; index++)
             {
@@ -440,6 +444,10 @@ namespace Insectum.Game
                 Vector2Int chunk = route[index];
                 markers.Add(new LevelMarker(LevelMarkerKind.Encounter, landings[chunk], chunk));
             }
+
+            // Enemies that data rooms place themselves.
+            foreach (var (position, chunk, enemy) in enemySpots)
+                markers.Add(new LevelMarker(LevelMarkerKind.Encounter, position, chunk, enemy));
 
             foreach (var branch in branches)
             {
@@ -515,6 +523,8 @@ namespace Insectum.Game
                     trapSpots.Add((spot, Nearest(suite, spot)));
                 foreach (Vector2 spot in room.TreasureSpots)
                     treasureSpots.Add((spot, Nearest(suite, spot)));
+                foreach (var (spot, enemy) in room.EnemySpots)
+                    enemySpots.Add((spot, Nearest(suite, spot), enemy));
                 for (int i = 0; i < count; i++)
                 {
                     Vector2Int chunk = suite.Chunks[i];

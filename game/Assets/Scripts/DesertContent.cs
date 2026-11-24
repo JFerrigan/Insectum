@@ -6,7 +6,7 @@ namespace Insectum.Game
     {
         internal static readonly EnemySpec DuneBeetle = new("Dune beetle", EnemyStyle.DuneBeetle, 3, 2, 0.48f,
             new Color32(219, 157, 93, 255));
-        private static readonly EnemySpec SandWasp = new("Sand wasp", EnemyStyle.SandWasp, 2, 1, 0.36f,
+        internal static readonly EnemySpec SandWasp = new("Sand wasp", EnemyStyle.SandWasp, 2, 1, 0.36f,
             new Color32(218, 152, 93, 255));
         private static readonly EnemySpec DuneMaw = new("Dune Maw", EnemyStyle.BurrowBoss, 9, 5, 0.84f,
             new Color32(218, 125, 83, 255));
@@ -23,7 +23,7 @@ namespace Insectum.Game
                 switch (marker.Kind)
                 {
                     case LevelMarkerKind.Encounter:
-                        content.AddEnemy(encounters.Next(2) == 0 ? DuneBeetle : SandWasp, marker.Position, encounters.Next(96));
+                        content.AddEnemy(EnemySpec.Find(marker.Enemy) ?? (encounters.Next(2) == 0 ? DuneBeetle : SandWasp), marker.Position, encounters.Next(96));
                         break;
                     case LevelMarkerKind.Boss:
                         content.AddEnemy(DuneMaw, marker.Position, 0);

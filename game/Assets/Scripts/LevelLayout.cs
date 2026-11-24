@@ -127,12 +127,15 @@ namespace Insectum.Game
         public LevelMarkerKind Kind { get; }
         public Vector2 Position { get; }
         public Vector2Int Chunk { get; }
+        // For an encounter a room placed itself: the enemy it asked for, or empty for the world's usual pick.
+        public string Enemy { get; }
 
-        internal LevelMarker(LevelMarkerKind kind, Vector2 position, Vector2Int chunk)
+        internal LevelMarker(LevelMarkerKind kind, Vector2 position, Vector2Int chunk, string enemy = "")
         {
             Kind = kind;
             Position = position;
             Chunk = chunk;
+            Enemy = enemy ?? "";
         }
     }
 
