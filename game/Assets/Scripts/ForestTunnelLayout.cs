@@ -14,7 +14,6 @@ namespace Insectum.Game
         private const uint SpotSalt = 0x2F9A51C3u;
         private const uint HazardSalt = 0x4B1D7A63u;
         private const uint SuiteSalt = 0x7E3A91B5u;
-        private const int SuitesPerLevel = 1;
         private const int MaxTraps = 5;
         private const int MaxTreasures = 6;
         internal const float Height = 3.1f;
@@ -253,9 +252,9 @@ namespace Insectum.Game
             return picked;
         }
 
-        // Finds runs of main-route rooms that a suite's footprint matches, in either mirroring, and claims up to
-        // SuitesPerLevel of them without overlap. Every member must be an ordinary main room, so suites never
-        // take the start, the finish, or a room where a side tunnel branches off.
+        // Finds runs of main-route rooms that a suite's footprint matches, in either mirroring, and claims as
+        // many of them as fit without overlap, in seeded random order. Every member must be an ordinary main
+        // room, so suites never take the start, the finish, or a room where a side tunnel branches off.
         private static List<RoomSuite> PickSuites(WorldId world, List<Vector2Int> route,
             IReadOnlyDictionary<Vector2Int, ForestRoomProfile> rooms, LevelSeeds seeds)
         {
@@ -286,7 +285,7 @@ namespace Insectum.Game
             var random = new SeededRandom(seeds.Layout ^ SuiteSalt);
             var picked = new List<RoomSuite>();
             var used = new HashSet<Vector2Int>();
-            while (matches.Count > 0 && picked.Count < SuitesPerLevel)
+            while (matches.Count > 0)
             {
                 int choice = random.Next(matches.Count);
                 RoomSuite suite = matches[choice];
