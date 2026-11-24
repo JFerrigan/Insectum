@@ -1,0 +1,347 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.IO.Compression;
+using Insectum.Game;
+using UnityEngine;
+
+// Renders Insectum levels to PNG straight from the game's generator source, no Unity needed.
+//   MapGen <seed|random> [level|all] [zoom] [outDir]
+internal static class Program
+{
+    private static int Main(string[] args)
+    {
+        string repo = FindRepo();
+        Resources.Root = Path.Combine(repo, "game", "Assets", "Resources");
+
+        int seed = args.Length > 0 && args[0] != "random"
+            ? int.Parse(args[0], CultureInfo.InvariantCulture)
+            : new System.Random().Next(int.MinValue, int.MaxValue);
+        string levelArg = args.Length > 1 ? args[1] : "1";
+        float zoom = args.Length > 2 ? float.Parse(args[2], CultureInfo.InvariantCulture) : 6f;
+        string outDir = args.Length > 3 ? args[3] : Path.Combine(repo, "game", "Builds", "Maps");
+        Directory.CreateDirectory(outDir);
+
+        var levels = new List<int>();
+        if (levelArg == "all")
+            for (int i = 1; i <= RunWorlds.LevelCount; i++) levels.Add(i);
+        else
+            levels.Add(Math.Clamp(int.Parse(levelArg, CultureInfo.InvariantCulture), 1, RunWorlds.LevelCount));
+
+        int failures = 0;
+        foreach (int level in levels)
+        {
+            try
+            {
+                LevelLayout layout = RunWorlds.Generate(seed, level);
+                string path = Path.Combine(outDir, $"seed{seed}_level{level:00}.png");
+                Render(layout, zoom, path, out string info);
+                string report = Report(layout, info);
+                string textPath = Path.ChangeExtension(path, ".txt");
+                File.WriteAllText(textPath, report);
+                Console.WriteLine(report);
+                Console.WriteLine($"  {path}\n  {textPath}\n");
+            }
+            catch (Exception exception)
+            {
+                failures++;
+                Console.Error.WriteLine($"Level {level}: generation failed: {exception}");
+            }
+        }
+        return failures == 0 ? 0 : 1;
+    }
+
+    private static string FindRepo()
+    {
+        string dir = AppContext.BaseDirectory;
+        while (dir != null && !Directory.Exists(Path.Combine(dir, "game", "Assets", "Resources")))
+            dir = Path.GetDirectoryName(dir);
+        return dir ?? throw new DirectoryNotFoundException("Could not find the Insectum repo above " + AppContext.BaseDirectory);
+    }
+
+    private static string LevelName(int level) =>
+        $"{RunWorlds.AtLevel(level)} {(Math.Max(1, level) - 1) / RunWorlds.LevelsPerWorld + 1}-{RunWorlds.LocalLevel(level)}";
+
+    private static void Render(LevelLayout layout, float pixelsPerUnit, string path, out string info)
+    {
+        Rect bounds = layout.Bounds;
+        bounds.xMin -= 2f; bounds.yMin -= 2f; bounds.xMax += 2f; bounds.yMax += 2f;
+        float ppu = MathF.Min(pixelsPerUnit, 8192f / MathF.Max(bounds.width, bounds.height));
+        int width = Math.Max(1, (int)MathF.Ceiling(bounds.width * ppu));
+        int height = Math.Max(1, (int)MathF.Ceiling(bounds.height * ppu));
+        var image = new Image(width, height);
+
+        var air = new Color32(20, 16, 30, 255);
+        var passages = new List<(Rect box, IReadOnlyList<Vector2> outline)>();
+        if (layout.Tunnel != null)
+            foreach (var passage in layout.Tunnel.Passages)
+            {
+                Vector2 lo = passage.outline[0], hi = lo;
+                foreach (Vector2 p in passage.outline) { lo = Vector2.Min(lo, p); hi = Vector2.Max(hi, p); }
+                passages.Add((Rect.MinMaxRect(lo.x, lo.y, hi.x, hi.y), passage.outline));
+            }
+        for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+            {
+                var world = new Vector2(bounds.xMin + (x + 0.5f) / ppu, bounds.yMin + (y + 0.5f) / ppu);
+                bool open = !layout.Tiles.TryGetValue(HexGrid.CellAt(world), out TerrainMaterial material);
+                if (!open)
+                    foreach (var (box, outline) in passages)
+                        if (box.Contains(world) && Inside(outline, world)) { open = true; break; }
+                image.Set(x, y, open ? air : MaterialColor(material));
+            }
+
+        (int, int) P(Vector2 p) => ((int)MathF.Floor((p.x - bounds.xMin) * ppu), (int)MathF.Floor((p.y - bounds.yMin) * ppu));
+        void Line(Vector2 a, Vector2 b, Color32 c) => image.Line(P(a), P(b), c);
+        void Dot(Vector2 p, int r, Color32 c) => image.Dot(P(p), r, c);
+
+        if (layout.Tunnel != null)
+        {
+            foreach ((Vector2 from, Vector2 to) in layout.Tunnel.Lining)
+                Line(from, to, new Color32(150, 140, 170, 255));
+            IReadOnlyList<Vector2> route = layout.Tunnel.Route;
+            for (int i = 1; i < route.Count; i++)
+                Line(route[i - 1], route[i], new Color32(240, 210, 80, 255));
+            foreach (var branch in layout.Tunnel.Branches)
+                Line(branch.first, branch.end, new Color32(200, 200, 200, 255));
+        }
+        foreach (LevelMarker marker in layout.Markers)
+            Dot(marker.Position, 2, MarkerColor(marker.Kind));
+        foreach (RouteCheckpoint checkpoint in layout.Checkpoints)
+            Dot(checkpoint.Landing, 1, new Color32(120, 220, 255, 255));
+        Dot(layout.Spawn, 3, new Color32(80, 240, 120, 255));
+        Dot(layout.Exit, 3, new Color32(255, 70, 70, 255));
+        image.WritePng(path);
+
+        var counts = new SortedDictionary<string, int>();
+        foreach (LevelMarker marker in layout.Markers)
+        {
+            string key = marker.Kind.ToString().ToLowerInvariant();
+            counts[key] = counts.TryGetValue(key, out int n) ? n + 1 : 1;
+        }
+        var parts = new List<string>();
+        foreach (var pair in counts) parts.Add($"{pair.Value} {pair.Key}");
+        info = $"Seed {layout.RunSeed} · {LevelName(layout.LevelNumber)} · variant {layout.Variant}" +
+               (layout.UsedFallback ? " · FALLBACK" : "") +
+               $" · {layout.Bounds.width:0}x{layout.Bounds.height:0} units · " + string.Join(", ", parts);
+    }
+
+    private static string F(Vector2 v) => $"({v.x,6:0.0},{v.y,6:0.0})";
+
+    // Text listing of everything the generator placed, grouped by chunk.
+    private static string Report(LevelLayout layout, string info)
+    {
+        var text = new System.Text.StringBuilder();
+        text.AppendLine(info);
+        text.AppendLine($"Spawn {F(layout.Spawn)}   Exit {F(layout.Exit)}   Bounds {F(layout.Bounds.min)}-{F(layout.Bounds.max)}" +
+                        $"   Route direction {layout.RouteDirection}   Tiles {layout.Tiles.Count}");
+
+        var markers = new Dictionary<Vector2Int, List<LevelMarker>>();
+        foreach (LevelMarker marker in layout.Markers)
+        {
+            if (!markers.TryGetValue(marker.Chunk, out var list)) markers[marker.Chunk] = list = new List<LevelMarker>();
+            list.Add(marker);
+        }
+        var hazards = new Dictionary<Vector2Int, List<TunnelHazard>>();
+        if (layout.Tunnel != null)
+            foreach (TunnelHazard hazard in layout.Tunnel.Hazards)
+            {
+                if (!hazards.TryGetValue(hazard.Chunk, out var list)) hazards[hazard.Chunk] = list = new List<TunnelHazard>();
+                list.Add(hazard);
+            }
+        var checkpoints = new Dictionary<Vector2Int, RouteCheckpoint>();
+        foreach (RouteCheckpoint checkpoint in layout.Checkpoints)
+            checkpoints[checkpoint.Chunk] = checkpoint;
+
+        text.AppendLine();
+        text.AppendLine($"CHUNKS ({layout.Chunks.Count})");
+        var seen = new HashSet<Vector2Int>();
+        foreach (MacroChunk chunk in layout.Chunks)
+        {
+            seen.Add(chunk.Coordinate);
+            string kind = chunk.MainRoute ? "main  " : chunk.IsBranch ? "branch" : "filler";
+            text.Append($"  {chunk.Coordinate,-9} {kind}  {chunk.TemplateId,-28} ports {chunk.Ports}");
+            if (layout.Tunnel != null && layout.Tunnel.Rooms.TryGetValue(chunk.Coordinate, out ForestRoomProfile room))
+                text.Append($"  room {room.Role}/{room.Shape}{(room.Mirrored ? " mirrored" : "")}");
+            text.AppendLine();
+            AppendContents(text, chunk.Coordinate, checkpoints, markers, hazards);
+        }
+
+        // Rooms and things whose chunk isn't in the chunk list (tunnel levels key rooms separately).
+        if (layout.Tunnel != null)
+            foreach (var pair in layout.Tunnel.Rooms)
+                if (seen.Add(pair.Key))
+                {
+                    ForestRoomProfile room = pair.Value;
+                    text.AppendLine($"  {pair.Key,-9} room    {room.Role}/{room.Shape}{(room.Mirrored ? " mirrored" : "")}" +
+                                    $"  entry {room.Entry} exit {room.Exit} branch {room.Branch}");
+                    AppendContents(text, pair.Key, checkpoints, markers, hazards);
+                }
+        var leftovers = new HashSet<Vector2Int>(markers.Keys);
+        leftovers.UnionWith(hazards.Keys);
+        leftovers.UnionWith(checkpoints.Keys);
+        leftovers.ExceptWith(seen);
+        foreach (Vector2Int key in leftovers)
+        {
+            text.AppendLine($"  {key,-9} (no chunk)");
+            AppendContents(text, key, checkpoints, markers, hazards);
+        }
+
+        if (layout.Tunnel != null)
+        {
+            text.AppendLine();
+            text.AppendLine($"ROUTE ({layout.Tunnel.Route.Count} points)  " + string.Join(" ", layout.Tunnel.Route.ConvertAll(F)));
+            foreach (var branch in layout.Tunnel.Branches)
+                text.AppendLine($"BRANCH from route point {branch.source}: {F(branch.first)} -> {F(branch.end)}");
+            foreach (var leap in layout.Tunnel.Leaps)
+                text.AppendLine($"LEAP at {F(leap.takeoff)} direction {leap.direction}");
+        }
+        return text.ToString();
+    }
+
+    private static void AppendContents(System.Text.StringBuilder text, Vector2Int chunk,
+        Dictionary<Vector2Int, RouteCheckpoint> checkpoints, Dictionary<Vector2Int, List<LevelMarker>> markers,
+        Dictionary<Vector2Int, List<TunnelHazard>> hazards)
+    {
+        if (checkpoints.TryGetValue(chunk, out RouteCheckpoint checkpoint))
+            text.AppendLine($"      checkpoint {F(checkpoint.Landing)} entry {checkpoint.EntryPort} template {checkpoint.TemplateId}");
+        if (markers.TryGetValue(chunk, out var list))
+            foreach (LevelMarker marker in list)
+                text.AppendLine($"      {marker.Kind.ToString().ToLowerInvariant(),-10} {F(marker.Position)}");
+        if (hazards.TryGetValue(chunk, out var hazardList))
+            foreach (TunnelHazard hazard in hazardList)
+                text.AppendLine($"      hazard {hazard.Kind,-8} {F(hazard.Area.min)}-{F(hazard.Area.max)}{(hazard.Hanging ? " hanging" : "")}");
+    }
+
+    private static bool Inside(IReadOnlyList<Vector2> polygon, Vector2 p)
+    {
+        bool inside = false;
+        for (int i = 0, j = polygon.Count - 1; i < polygon.Count; j = i++)
+        {
+            Vector2 a = polygon[i], b = polygon[j];
+            if ((a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x)
+                inside = !inside;
+        }
+        return inside;
+    }
+
+    private static Color32 MaterialColor(TerrainMaterial material)
+    {
+        // Muted hue per material, same idea as the editor Map Viewer.
+        float h = (int)material * 0.137f % 1f, s = 0.35f, v = 0.55f;
+        float c = v * s, x = c * (1f - MathF.Abs(h * 6f % 2f - 1f)), m = v - c;
+        (float r, float g, float b) = (int)(h * 6f) switch
+        {
+            0 => (c, x, 0f), 1 => (x, c, 0f), 2 => (0f, c, x), 3 => (0f, x, c), 4 => (x, 0f, c), _ => (c, 0f, x)
+        };
+        return new Color32((byte)((r + m) * 255), (byte)((g + m) * 255), (byte)((b + m) * 255), 255);
+    }
+
+    private static Color32 MarkerColor(LevelMarkerKind kind) => kind switch
+    {
+        LevelMarkerKind.Encounter => new Color32(255, 90, 90, 255),
+        LevelMarkerKind.Trap => new Color32(255, 150, 40, 255),
+        LevelMarkerKind.Shop => new Color32(60, 230, 230, 255),
+        LevelMarkerKind.Treasure => new Color32(255, 215, 0, 255),
+        LevelMarkerKind.Boss => new Color32(240, 60, 240, 255),
+        _ => new Color32(255, 255, 255, 255)
+    };
+
+    // Bottom-up RGBA canvas with a minimal PNG encoder.
+    private sealed class Image
+    {
+        private readonly int width, height;
+        private readonly byte[] rgba;
+
+        public Image(int width, int height)
+        {
+            this.width = width;
+            this.height = height;
+            rgba = new byte[width * height * 4];
+        }
+
+        public void Set(int x, int y, Color32 c)
+        {
+            if (x < 0 || y < 0 || x >= width || y >= height) return;
+            int i = ((height - 1 - y) * width + x) * 4;
+            rgba[i] = c.r; rgba[i + 1] = c.g; rgba[i + 2] = c.b; rgba[i + 3] = c.a;
+        }
+
+        public void Dot((int x, int y) c, int r, Color32 color)
+        {
+            for (int y = -r; y <= r; y++)
+                for (int x = -r; x <= r; x++)
+                    if (x * x + y * y <= r * r + r)
+                        Set(c.x + x, c.y + y, color);
+        }
+
+        public void Line((int x, int y) a, (int x, int y) b, Color32 color)
+        {
+            int dx = Math.Abs(b.x - a.x), dy = -Math.Abs(b.y - a.y);
+            int sx = a.x < b.x ? 1 : -1, sy = a.y < b.y ? 1 : -1, error = dx + dy;
+            while (true)
+            {
+                Set(a.x, a.y, color);
+                if (a == b) return;
+                int e2 = 2 * error;
+                if (e2 >= dy) { error += dy; a.x += sx; }
+                if (e2 <= dx) { error += dx; a.y += sy; }
+            }
+        }
+
+        public void WritePng(string path)
+        {
+            using var file = File.Create(path);
+            file.Write(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 });
+            var header = new byte[13];
+            WriteInt(header, 0, width); WriteInt(header, 4, height);
+            header[8] = 8; header[9] = 6;
+            Chunk(file, "IHDR", header);
+
+            using var raw = new MemoryStream();
+            using (var z = new ZLibStream(raw, CompressionLevel.Optimal, leaveOpen: true))
+                for (int y = 0; y < height; y++)
+                {
+                    z.WriteByte(0);
+                    z.Write(rgba, y * width * 4, width * 4);
+                }
+            Chunk(file, "IDAT", raw.ToArray());
+            Chunk(file, "IEND", Array.Empty<byte>());
+        }
+
+        private static void Chunk(Stream s, string type, byte[] data)
+        {
+            var len = new byte[4]; WriteInt(len, 0, data.Length); s.Write(len);
+            var body = new byte[4 + data.Length];
+            for (int i = 0; i < 4; i++) body[i] = (byte)type[i];
+            Array.Copy(data, 0, body, 4, data.Length);
+            s.Write(body);
+            var crc = new byte[4]; WriteInt(crc, 0, (int)Crc(body)); s.Write(crc);
+        }
+
+        private static void WriteInt(byte[] b, int o, int v)
+        {
+            b[o] = (byte)(v >> 24); b[o + 1] = (byte)(v >> 16); b[o + 2] = (byte)(v >> 8); b[o + 3] = (byte)v;
+        }
+
+        private static uint[] crcTable;
+
+        private static uint Crc(byte[] data)
+        {
+            if (crcTable == null)
+            {
+                crcTable = new uint[256];
+                for (uint n = 0; n < 256; n++)
+                {
+                    uint c = n;
+                    for (int k = 0; k < 8; k++) c = (c & 1) != 0 ? 0xEDB88320u ^ (c >> 1) : c >> 1;
+                    crcTable[n] = c;
+                }
+            }
+            uint crc = 0xFFFFFFFFu;
+            foreach (byte b in data) crc = crcTable[(crc ^ b) & 0xFF] ^ (crc >> 8);
+            return crc ^ 0xFFFFFFFFu;
+        }
+    }
+}

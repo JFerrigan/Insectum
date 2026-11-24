@@ -268,6 +268,7 @@ namespace Insectum.Game
             }
         }
 
+#if !MAPGEN
         internal static void BuildCollision(GameObject owner, IReadOnlyList<(Vector2 from, Vector2 to)> edges,
             List<EdgeCollider2D> colliders)
         {
@@ -302,5 +303,6 @@ namespace Insectum.Game
         }
 
         private static Vector2Int Key(Vector2 position) => Vector2Int.RoundToInt(position * 500f);
+#endif
     }
 }

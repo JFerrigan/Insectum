@@ -58,11 +58,16 @@ namespace Insectum.Game
     // enters its open mouth, killing it, then chews for three seconds before it opens again. Lasers spin at a
     // fixed rate from the moment the level loads, their beams stop at rock, and they kill what they touch.
     // Dune Mantle blocks any hazard hit, as it blocks traps.
-    internal sealed class LevelHazards
+    internal sealed partial class LevelHazards
     {
         internal const float BrambleHeight = 0.5f;
         internal const float SpikeHeight = 0.45f;
         internal const float MouthSize = 1.0f;
+    }
+
+#if !MAPGEN
+    internal sealed partial class LevelHazards
+    {
         internal const int LethalHearts = 99;
         // The hit test shrinks the player a little, so grazing the art's outermost thorns is free.
         private const float Forgiveness = 0.08f;
@@ -344,4 +349,5 @@ namespace Insectum.Game
             }
         }
     }
+#endif
 }

@@ -38,6 +38,7 @@ namespace Insectum.Game
             };
         }
 
+#if !MAPGEN
         internal static void ApplyVariant(LevelContent content, LevelLayout layout, HexTerrain terrain, LevelVariant variant)
         {
             if (variant == LevelVariant.DoubleBoss)
@@ -111,6 +112,7 @@ namespace Insectum.Game
             }
         }
 
+#endif
         internal static LevelLayout Generate(int seed, int level) => AtLevel(level) switch
         {
             WorldId.Forest => ForestRunLayout.Generate(seed, level),
@@ -121,6 +123,7 @@ namespace Insectum.Game
             _ => throw new ArgumentOutOfRangeException(nameof(level))
         };
 
+#if !MAPGEN
         internal static void Populate(LevelContent content, LevelLayout layout)
         {
             switch (layout.World)
@@ -142,5 +145,6 @@ namespace Insectum.Game
                     break;
             }
         }
+#endif
     }
 }

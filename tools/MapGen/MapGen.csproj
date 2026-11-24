@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <DefineConstants>$(DefineConstants);MAPGEN</DefineConstants>
+    <NoWarn>CS0162;CS0414;CS0649;CS0169;CS8632</NoWarn>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="*.cs" />
+    <Compile Include="../../game/Assets/Scripts/ForestGenerator.cs" Link="Game/ForestGenerator.cs" />
+    <Compile Include="../../game/Assets/Scripts/ForestTunnelLayout.cs" Link="Game/ForestTunnelLayout.cs" />
+    <Compile Include="../../game/Assets/Scripts/ForestTunnelSpace.cs" Link="Game/ForestTunnelSpace.cs" />
+    <Compile Include="../../game/Assets/Scripts/ForestRoomBuilder.cs" Link="Game/ForestRoomBuilder.cs" />
+    <Compile Include="../../game/Assets/Scripts/ForestRoomProfile.cs" Link="Game/ForestRoomProfile.cs" />
+    <Compile Include="../../game/Assets/Scripts/ForestRoomCatalog.cs" Link="Game/ForestRoomCatalog.cs" />
+    <Compile Include="../../game/Assets/Scripts/ForestSuites.cs" Link="Game/ForestSuites.cs" />
+    <Compile Include="../../game/Assets/Scripts/ForestBrambleRooms.cs" Link="Game/ForestBrambleRooms.cs" />
+    <Compile Include="../../game/Assets/Scripts/ForestTemplates.cs" Link="Game/ForestTemplates.cs" />
+    <Compile Include="../../game/Assets/Scripts/ForestRunLayout.cs" Link="Game/ForestRunLayout.cs" />
+    <Compile Include="../../game/Assets/Scripts/LevelLayout.cs" Link="Game/LevelLayout.cs" />
+    <Compile Include="../../game/Assets/Scripts/HexGrid.cs" Link="Game/HexGrid.cs" />
+    <Compile Include="../../game/Assets/Scripts/RunWorlds.cs" Link="Game/RunWorlds.cs" />
+    <Compile Include="../../game/Assets/Scripts/BiomeTemplates.cs" Link="Game/BiomeTemplates.cs" />
+    <Compile Include="../../game/Assets/Scripts/TerrainMaterials.cs" Link="Game/TerrainMaterials.cs" />
+    <Compile Include="../../game/Assets/Scripts/SwampRunLayout.cs" Link="Game/SwampRunLayout.cs" />
+    <Compile Include="../../game/Assets/Scripts/SwampRooms.cs" Link="Game/SwampRooms.cs" />
+    <Compile Include="../../game/Assets/Scripts/SwampTemplates.cs" Link="Game/SwampTemplates.cs" />
+    <Compile Include="../../game/Assets/Scripts/CavesRunLayout.cs" Link="Game/CavesRunLayout.cs" />
+    <Compile Include="../../game/Assets/Scripts/CavesRooms.cs" Link="Game/CavesRooms.cs" />
+    <Compile Include="../../game/Assets/Scripts/CavesTemplates.cs" Link="Game/CavesTemplates.cs" />
+    <Compile Include="../../game/Assets/Scripts/DesertRunLayout.cs" Link="Game/DesertRunLayout.cs" />
+    <Compile Include="../../game/Assets/Scripts/DesertRooms.cs" Link="Game/DesertRooms.cs" />
+    <Compile Include="../../game/Assets/Scripts/DesertTemplates.cs" Link="Game/DesertTemplates.cs" />
+    <Compile Include="../../game/Assets/Scripts/AlienRunLayout.cs" Link="Game/AlienRunLayout.cs" />
+    <Compile Include="../../game/Assets/Scripts/AlienRooms.cs" Link="Game/AlienRooms.cs" />
+    <Compile Include="../../game/Assets/Scripts/AlienTemplates.cs" Link="Game/AlienTemplates.cs" />
+    <Compile Include="../../game/Assets/Scripts/RoomSuite.cs" Link="Game/RoomSuite.cs" />
+    <Compile Include="../../game/Assets/Scripts/LevelHazard.cs" Link="Game/LevelHazard.cs" />
+    <Compile Include="../../game/Assets/Scripts/HazardRooms.cs" Link="Game/HazardRooms.cs" />
+    <Compile Include="../../game/Assets/Scripts/PixelViewport.cs" Link="Game/PixelViewport.cs" />
+  </ItemGroup>
+</Project>
