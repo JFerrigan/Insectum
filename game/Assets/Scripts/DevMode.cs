@@ -17,6 +17,22 @@ namespace Insectum.Game
 
         internal static readonly ItemId[] ItemList = BuildItems();
 
+        private const string PlayHereKey = "Insectum.PlayHere";
+
+        // Asks the next Play mode to start at this seed and level (the Chunk Editor's Play here).
+        internal static void RequestPlayHere(int seed, int level) => PlayerPrefs.SetString(PlayHereKey, $"{seed},{level}");
+
+        internal static bool TakePlayHere(out int seed, out int level)
+        {
+            seed = level = 0;
+            string value = PlayerPrefs.GetString(PlayHereKey, "");
+            if (value.Length == 0)
+                return false;
+            PlayerPrefs.DeleteKey(PlayHereKey);
+            string[] parts = value.Split(',');
+            return parts.Length == 2 && int.TryParse(parts[0], out seed) && int.TryParse(parts[1], out level);
+        }
+
         private static ItemId[] BuildItems()
         {
             var items = new List<ItemId>();

@@ -56,6 +56,14 @@ namespace Insectum.Game
             backdrop.transform.localScale = Vector3.one * ((float)PixelViewport.WorldHeight / PixelViewport.Height);
 
             session = new GameSession(transform, marker, surface);
+#if UNITY_EDITOR
+            // The Chunk Editor's Play here: start straight at the level that uses the room, with dev mode on.
+            if (DevMode.TakePlayHere(out int playSeed, out int playLevel))
+            {
+                DevMode.Enabled = true;
+                session.StartGenerated(Character.Roster[0], playSeed, playLevel);
+            }
+#endif
 
 #if DEVELOPMENT_BUILD
             replay = ForestReplay.FromArguments(session);

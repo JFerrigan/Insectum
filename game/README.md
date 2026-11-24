@@ -204,6 +204,63 @@ must match the game seed for seed.
 
 The Unity editor has the same view under **Insectum → Map Viewer**.
 
+## Chunk Editor
+
+**Insectum → Chunk Editor** makes and edits rooms (one chunk) and suites (2–4
+chunks) without writing code. Rooms are saved as JSON in
+`Assets/Resources/Rooms/<World>/<id>.json`. The generator merges them into that
+world's rooms or suites, and they show up in levels, `tools/map.sh` and
+`tools/chunks.sh`. Commit the JSON files like any other asset.
+
+- **New chunk:** pick a world, a name, and either the profiles (room shapes)
+  the room fits or a suite size. A suite starts as a chain of switchbacks,
+  the most common route run, and its footprint (entry doors, steps, exit
+  doors) can be changed under Room settings.
+- **Edit a saved chunk:** reopens any JSON file in `Resources/Rooms`.
+- **Edit a built-in chunk:** opens any code room (one of its profiles) or
+  suite as data. It's captured by recording the builder calls it makes in a
+  generated level. Saving with the same id replaces the built-in room in the
+  game; give it a new id to make a new room from it.
+
+**Tools:**
+- Select (drag handles; ctrl-click a cave to add a point; Delete removes)
+- Cave (floor and ceiling lines)
+- Platform (Islet, Pad, Slab, Crystal, Pod)
+- Hall
+- Landing, Treasure, Trap
+- Enemy (a named regular, or the world's usual pick)
+- Hazard (bramble, spikes, flytrap, cactus; shift-click to hang it from the roof)
+- Laser
+- Door (click a door circle to toggle it)
+- Tile (paints the rock material of hex cells)
+- Erase
+
+Scroll zooms and right- or middle-drag pans. Undo and redo cover every change,
+and Cmd/Ctrl-S saves.
+
+The canvas replays the room through the real `ForestRoomBuilder`, so the dark
+air is exactly what the game carves. The checks panel flags:
+- missing landings
+- landings or door anchors not in open air
+- doors the chosen profiles or footprint need
+- floors steeper than 42°
+- drops of 5 units or more
+- single-room caves outside the hexagon (x ±8.3, y ±7.2)
+
+Walkability still needs a playtest or the production verification run.
+**Preview in level** saves, finds the first seed whose generation uses the
+room and opens it with `tools/map.sh`. **Play here** saves, then enters Play
+mode with dev mode on at that seed and level.
+
+**Format:** `RoomData` (`Assets/Scripts/RoomData.cs`) is a list of ops, each
+one `ForestRoomBuilder` call in its chunk's local units: `cave`, `hall`,
+`door`, `landing`, `treasure`, `trap`, `enemy`, `hazard`, `laser`, `wait`,
+`leap`, `tile`. Two commands help scripts and agents:
+- `dotnet tools/MapGen/bin/out/MapGen.dll export <world> <templateId> [shape]`
+  prints a built-in room as this JSON.
+- `MapGen.dll roundtrip` checks that every built-in room converts to data and
+  carves identically. All 185 currently do.
+
 ## Desktop replay and terrain profile
 
 Add `-insectum-record-run /private/tmp/run.replay` to the production verification
