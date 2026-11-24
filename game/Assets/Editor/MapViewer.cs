@@ -52,17 +52,42 @@ namespace Insectum.Game.Editor
 
         private void Render()
         {
-            LevelLayout layout;
             try
             {
-                layout = RunWorlds.Generate(seed, level);
+                map = Draw(seed, level, pixelsPerUnit, map, out info);
             }
             catch (Exception exception)
             {
                 info = $"Generation failed: {exception.Message}";
                 map = null;
-                return;
             }
+            Repaint();
+        }
+
+        // Command line: Unity -batchmode -quit -projectPath game -executeMethod Insectum.Game.Editor.MapViewer.Export
+        //   [-mapSeed N] [-mapLevel N] [-mapZoom N] [-mapOut path.png]
+        // Seed defaults to random.
+        internal static void Export()
+        {
+            string[] args = Environment.GetCommandLineArgs();
+            string Arg(string name, string fallback)
+            {
+                int i = Array.IndexOf(args, name);
+                return i >= 0 && i + 1 < args.Length ? args[i + 1] : fallback;
+            }
+            int seed = int.TryParse(Arg("-mapSeed", ""), out int s) ? s : new System.Random().Next(int.MinValue, int.MaxValue);
+            int level = Mathf.Clamp(int.Parse(Arg("-mapLevel", "1")), 1, RunWorlds.LevelCount);
+            float zoom = float.Parse(Arg("-mapZoom", "6"), System.Globalization.CultureInfo.InvariantCulture);
+            string output = System.IO.Path.GetFullPath(Arg("-mapOut", $"Builds/Maps/seed{seed}_level{level}.png"));
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(output));
+            Texture2D texture = Draw(seed, level, zoom, null, out string info);
+            System.IO.File.WriteAllBytes(output, texture.EncodeToPNG());
+            Debug.Log($"INSECTUM_MAP {output}\nINSECTUM_MAP_INFO {info}");
+        }
+
+        private static Texture2D Draw(int seed, int level, float pixelsPerUnit, Texture2D map, out string info)
+        {
+            LevelLayout layout = RunWorlds.Generate(seed, level);
 
             Rect bounds = layout.Bounds;
             bounds.xMin -= 2f; bounds.yMin -= 2f; bounds.xMax += 2f; bounds.yMax += 2f;
@@ -72,7 +97,7 @@ namespace Insectum.Game.Editor
             if (map == null || map.width != width || map.height != height)
             {
                 if (map != null)
-                    DestroyImmediate(map);
+                    UnityEngine.Object.DestroyImmediate(map);
                 map = new Texture2D(width, height, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point };
             }
 
@@ -120,7 +145,7 @@ namespace Insectum.Game.Editor
             info = $"Seed {seed} · {DevMode.LevelName(level)} · variant {layout.Variant}" +
                    (layout.UsedFallback ? " · FALLBACK" : "") +
                    $" · {bounds.width:0}x{bounds.height:0} units · " + string.Join(", ", Describe(counts));
-            Repaint();
+            return map;
         }
 
         private static IEnumerable<string> Describe(Dictionary<LevelMarkerKind, int> counts)
