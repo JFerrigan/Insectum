@@ -14,6 +14,9 @@ internal static class Program
     {
         string repo = FindRepo();
         Resources.Root = Path.Combine(repo, "game", "Assets", "Resources");
+        if (args.Length > 0 && args[0] == "stats")
+            return Stats(args.Length > 1 ? int.Parse(args[1], CultureInfo.InvariantCulture) : 200,
+                args.Length > 2 ? int.Parse(args[2], CultureInfo.InvariantCulture) : 1);
 
         int seed = args.Length > 0 && args[0] != "random"
             ? int.Parse(args[0], CultureInfo.InvariantCulture)
@@ -50,6 +53,89 @@ internal static class Program
             }
         }
         return failures == 0 ? 0 : 1;
+    }
+
+    // Multi-chunk rooms (suites) grouped from the tunnel's chunk -> suite anchor map. Anchor first.
+    private static List<List<Vector2Int>> Suites(LevelLayout layout)
+    {
+        var groups = new Dictionary<Vector2Int, List<Vector2Int>>();
+        if (layout.Tunnel == null)
+            return new List<List<Vector2Int>>();
+        foreach (var pair in layout.Tunnel.SuiteOf)
+        {
+            if (!groups.TryGetValue(pair.Value, out var list)) groups[pair.Value] = list = new List<Vector2Int>();
+            list.Add(pair.Key);
+        }
+        var suites = new List<List<Vector2Int>>();
+        foreach (var pair in groups)
+            if (pair.Value.Count > 1)
+            {
+                pair.Value.Remove(pair.Key);
+                pair.Value.Insert(0, pair.Key);
+                suites.Add(pair.Value);
+            }
+        return suites;
+    }
+
+    private static string TemplateAt(LevelLayout layout, Vector2Int chunk)
+    {
+        foreach (MacroChunk c in layout.Chunks)
+            if (c.Coordinate == chunk) return c.TemplateId;
+        return "?";
+    }
+
+    //   MapGen stats [seedCount] [firstSeed]: how often multi-chunk rooms appear, per world.
+    private static int Stats(int seedCount, int firstSeed)
+    {
+        var worlds = new SortedDictionary<int, (string name, int levels, int withSuite, int suites, int failures)>();
+        var sizes = new SortedDictionary<int, int>();
+        var templates = new Dictionary<string, int>();
+        var perLevel = new SortedDictionary<int, int>();
+        int totalLevels = 0, totalSuites = 0;
+        for (int seed = firstSeed; seed < firstSeed + seedCount; seed++)
+            for (int level = 1; level <= RunWorlds.LevelCount; level++)
+            {
+                if (RunWorlds.LocalLevel(level) == RunWorlds.LevelsPerWorld)
+                    continue; // boss arenas have no rooms
+                int worldIndex = (level - 1) / RunWorlds.LevelsPerWorld;
+                var w = worlds.TryGetValue(worldIndex, out var existing) ? existing : (name: RunWorlds.AtLevel(level).ToString(), levels: 0, withSuite: 0, suites: 0, failures: 0);
+                LevelLayout layout;
+                try { layout = RunWorlds.Generate(seed, level); }
+                catch { w.failures++; worlds[worldIndex] = w; continue; }
+                List<List<Vector2Int>> suites = Suites(layout);
+                w.levels++;
+                if (suites.Count > 0) w.withSuite++;
+                w.suites += suites.Count;
+                worlds[worldIndex] = w;
+                totalLevels++;
+                totalSuites += suites.Count;
+                perLevel[suites.Count] = perLevel.TryGetValue(suites.Count, out int n) ? n + 1 : 1;
+                foreach (var suite in suites)
+                {
+                    sizes[suite.Count] = sizes.TryGetValue(suite.Count, out int s) ? s + 1 : 1;
+                    string id = TemplateAt(layout, suite[0]);
+                    templates[id] = templates.TryGetValue(id, out int t) ? t + 1 : 1;
+                }
+            }
+
+        Console.WriteLine($"Multi-chunk rooms over seeds {firstSeed}..{firstSeed + seedCount - 1} (boss levels skipped)\n");
+        Console.WriteLine($"{"World",-8} {"levels",7} {"with any",9} {"%",6} {"per level",10} {"failed",7}");
+        foreach (var w in worlds.Values)
+            Console.WriteLine($"{w.name,-8} {w.levels,7} {w.withSuite,9} {100.0 * w.withSuite / Math.Max(1, w.levels),5:0.0}% " +
+                              $"{(double)w.suites / Math.Max(1, w.levels),10:0.00} {w.failures,7}");
+        Console.WriteLine($"{"All",-8} {totalLevels,7} {"",9} {"",6} {(double)totalSuites / Math.Max(1, totalLevels),10:0.00}");
+        Console.WriteLine("\nSuites per level:");
+        foreach (var pair in perLevel)
+            Console.WriteLine($"  {pair.Key,2}: {pair.Value,6} levels ({100.0 * pair.Value / totalLevels:0.0}%)");
+        Console.WriteLine("\nSuite sizes (chunks):");
+        foreach (var pair in sizes)
+            Console.WriteLine($"  {pair.Key,2}: {pair.Value,6}");
+        Console.WriteLine("\nTemplates:");
+        var ordered = new List<KeyValuePair<string, int>>(templates);
+        ordered.Sort((a, b) => b.Value.CompareTo(a.Value));
+        foreach (var pair in ordered)
+            Console.WriteLine($"  {pair.Value,6}  {pair.Key}");
+        return 0;
     }
 
     private static string FindRepo()
@@ -187,6 +273,12 @@ internal static class Program
             text.AppendLine($"  {key,-9} (no chunk)");
             AppendContents(text, key, checkpoints, markers, hazards);
         }
+
+        List<List<Vector2Int>> suites = Suites(layout);
+        text.AppendLine();
+        text.AppendLine($"MULTI-CHUNK ROOMS ({suites.Count})");
+        foreach (var suite in suites)
+            text.AppendLine($"  {TemplateAt(layout, suite[0]),-28} {suite.Count} chunks: {string.Join(" ", suite)}");
 
         if (layout.Tunnel != null)
         {

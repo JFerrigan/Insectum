@@ -156,6 +156,12 @@ dotnet build tools/MapGen/MapGen.csproj -v q -o tools/MapGen/bin/out
 dotnet tools/MapGen/bin/out/MapGen.dll <seed|random> [level|all] [zoom] [outDir]
 ```
 
+`MapGen.dll stats [seedCount] [firstSeed]` (default 200 seeds from 1) skips
+the PNGs. It prints how often multi-chunk rooms (suites) spawn per world,
+the suites-per-level and suite-size distributions, and which suite templates
+were picked. 200 seeds takes about 2 minutes. Each level's `.txt` also has a
+`MULTI-CHUNK ROOMS` section.
+
 It exits non-zero when a level fails to generate and prints the exception to
 stderr, so it can also serve as a quick generation smoke test (for example
 `random all` in a loop).
