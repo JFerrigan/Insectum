@@ -253,8 +253,9 @@ namespace Insectum.Game
         }
 
         // Finds runs of main-route rooms that a suite's footprint matches, in either mirroring, and claims as
-        // many of them as fit without overlap, in seeded random order. Every member must be an ordinary main
-        // room, so suites never take the start, the finish, or a room where a side tunnel branches off.
+        // many of them as fit without overlap, largest first and in seeded random order within a size. Every
+        // member must be an ordinary main room, so suites never take the start, the finish, or a room where a
+        // side tunnel branches off.
         private static List<RoomSuite> PickSuites(WorldId world, List<Vector2Int> route,
             IReadOnlyDictionary<Vector2Int, ForestRoomProfile> rooms, LevelSeeds seeds)
         {
@@ -282,18 +283,23 @@ namespace Insectum.Game
                 }
             }
 
+            // Bigger suites claim their chunks first, so the plentiful two-chunk runs fill in around them.
             var random = new SeededRandom(seeds.Layout ^ SuiteSalt);
             var picked = new List<RoomSuite>();
             var used = new HashSet<Vector2Int>();
-            while (matches.Count > 0)
+            foreach (int size in matches.Select(match => match.Chunks.Count).Distinct().OrderByDescending(size => size).ToList())
             {
-                int choice = random.Next(matches.Count);
-                RoomSuite suite = matches[choice];
-                matches.RemoveAt(choice);
-                if (suite.Chunks.Any(used.Contains))
-                    continue;
-                picked.Add(suite);
-                used.UnionWith(suite.Chunks);
+                List<RoomSuite> sized = matches.Where(match => match.Chunks.Count == size).ToList();
+                while (sized.Count > 0)
+                {
+                    int choice = random.Next(sized.Count);
+                    RoomSuite suite = sized[choice];
+                    sized.RemoveAt(choice);
+                    if (suite.Chunks.Any(used.Contains))
+                        continue;
+                    picked.Add(suite);
+                    used.UnionWith(suite.Chunks);
+                }
             }
             return picked;
         }
