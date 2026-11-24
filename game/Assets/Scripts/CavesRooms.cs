@@ -15,7 +15,8 @@ namespace Insectum.Game
             new("Caves.StalactiteGallery", 2, Shape("Main.Span"), CarveStalactiteGallery),
             new("Caves.CrystalWell", 2, Shape("Main.Switchback"), CarveCrystalWell),
             new("Caves.ShardRise", 2, Shape("Main.Ascent", "SideTunnel.Ascent"), CarveShardRise),
-            new("Caves.EchoChamber", 2, Shape("Main.Switchback", "Main.ClimbBack", "SideTunnel.ClimbBack"), CarveEchoChamber)
+            new("Caves.EchoChamber", 2, Shape("Main.Switchback", "Main.ClimbBack", "SideTunnel.ClimbBack"), CarveEchoChamber),
+            HazardRooms.SpikeGallery, HazardRooms.SpikeHollow, HazardRooms.SpikeChasm
         };
 
         // Crossing. A cracked-open geode with a faceted dome, floating crystals, and crystal-guarded wings above

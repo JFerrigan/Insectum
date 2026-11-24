@@ -21,15 +21,27 @@ cavern of root terraces, and the Sunken Glade Valley turns a dip in the route
 into a wide basin between two ordinary rooms. Each world has its own
 themed set (Forest hollows and fungus shelves, Swamp fens and lily pads, Caves
 geodes and stalactites, Desert dunes and temple halls, Alien bubbles and
-pods), with traps and Nektar caches placed off the walking route. Forest
-levels also put brambles on the route: up to two bramble rooms on Forest 1,
-four on Forest 2, and six on Forest 3, with the first one near the start.
-Touching brambles costs a heart and throws you clear, and a downward strike
-(S + J in the air) bounces off them unhurt. Bramble rooms hop over floor beds,
-walk under hanging thorns, leap across a thorny bowl, hop beds on both floors
-of a tall hollow, or take a cliff at a run so you clear the bed below without
-jumping into the thorns above. The first
-chest vault in each level stands on a plug of the world's soft material with
+pods), with traps and Nektar caches placed off the walking route. Every world
+also puts its own hazard on the route: up to two hazard rooms on a world's
+first level, four on its second, and six on its third, with the first one near
+the start.
+
+- Forest brambles cost a heart and throw you clear. Hop over floor beds, walk
+  under hanging thorns, leap a thorny bowl, or take a cliff at a run.
+- Swamp flytraps kill whatever enters their open mouths, enemies included, then
+  stay shut for three seconds. Some hang from low roofs, so do not jump under
+  them.
+- Caves spikes kill you if you land on them, but you can walk through them.
+  Falling into the spike chasm is fatal.
+- Desert cacti cost a heart and throw you hard. A pit full of them bounces you
+  around until you climb out.
+- Alien lasers sweep around their emitters and kill what they touch, enemies
+  included. Their beams stop at rock. Wait for a gap, then run.
+
+A downward strike (S + J in the air) bounces off brambles and cacti unhurt, and
+Dune Mantle blocks any hazard hit, deadly ones included.
+
+The first chest vault in each level stands on a plug of the world's soft material with
 Nektar buried in it. Level 4 is the world's boss arena. Press Esc during a run to pause and see the controls,
 current item, and seed. Press Esc again or click Resume to continue. Leave
 the seed field blank for a random layout, or enter a seed to replay it. Click
@@ -81,14 +93,17 @@ Run the production verification from this directory on macOS.
 ```
 
 Add `-insectum-tunnel-only` to run only the room-template checks, the
-Forest 1 tunnel checks, the bramble checks, and the Forest 1 to 3 crossings.
+Forest 1 tunnel checks, the hazard checks, and the Forest 1 to 3 crossings.
 The room checks generate 200 Forest 1 seeds and 300
 levels across all worlds, and require every room shape, every template, the
 buried plug, and at least 1.5 units of rock between unlinked rooms. The
-bramble checks generate 90 Forest tunnels and require every bramble to rest on
-rock clear of the landings, at most two bramble rooms per world level, and all
-five bramble rooms in use. They also check bramble damage, invulnerability,
-the pogo bounce, hanging thorns, and Dune Mantle. Each
+hazard checks generate 60 tunnels per world and require each world to use only
+its own hazard, floor and roof hazards to rest on rock clear of the landings,
+lasers to float clear of rock, at most two hazard rooms per world level, and
+every hazard room in use. They also check bramble and cactus hits and pogo
+bounces, walking through and landing on spikes, flytraps snapping and
+reopening, lasers, and Dune Mantle. Walkers jump at each room's marked
+take-off points and wait at each laser room's marked spot for a clear run. Each
 world's suite crosses 12 of its tunnels and the fallback with all five insects
 damage-free, opens a vault chest, digs the plug as Worm, and fights the boss.
 The suite also completes the 20-level run on seed 1051 with ordinary

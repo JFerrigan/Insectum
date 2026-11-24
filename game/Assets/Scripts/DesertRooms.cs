@@ -15,7 +15,8 @@ namespace Insectum.Game
             new("Desert.DuneSea", 2, Shape("Main.Span"), CarveDuneSea),
             new("Desert.CinderTerraces", 2, Shape("Main.Switchback"), CarveCinderTerraces),
             new("Desert.WindRise", 2, Shape("Main.Ascent", "SideTunnel.Ascent"), CarveWindRise),
-            new("Desert.OasisWell", 2, Shape("Main.Switchback", "Main.ClimbBack", "SideTunnel.ClimbBack"), CarveOasisWell)
+            new("Desert.OasisWell", 2, Shape("Main.Switchback", "Main.ClimbBack", "SideTunnel.ClimbBack"), CarveOasisWell),
+            HazardRooms.CactusGarden, HazardRooms.CactusRavine, HazardRooms.CactusPit
         };
 
         // Crossing. A buried temple: ramps up to a central dais under a stepped, coffered roof, fallen lintels

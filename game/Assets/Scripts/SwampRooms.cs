@@ -15,7 +15,8 @@ namespace Insectum.Game
             new("Swamp.ReedTerraces", 2, Shape("Main.Descent"), CarveReedTerraces),
             new("Swamp.BogBasin", 2, Shape("Main.Span"), CarveBogBasin),
             new("Swamp.RootTangle", 2, Shape("Main.Switchback", "Main.ClimbBack", "SideTunnel.ClimbBack"), CarveRootTangle),
-            new("Swamp.HummockRise", 2, Shape("Main.Ascent", "SideTunnel.Ascent"), CarveHummockRise)
+            new("Swamp.HummockRise", 2, Shape("Main.Ascent", "SideTunnel.Ascent"), CarveHummockRise),
+            HazardRooms.FlytrapFen, HazardRooms.FlytrapHollow, HazardRooms.HangingGardens
         };
 
         // Crossing. A wide fen of hummocks and shallow dips under root curtains, with two lily pads to hop onto.

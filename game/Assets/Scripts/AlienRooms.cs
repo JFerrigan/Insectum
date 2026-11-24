@@ -15,7 +15,8 @@ namespace Insectum.Game
             new("Alien.RibbedGut", 2, Shape("Main.Span"), CarveRibbedGut),
             new("Alien.HiveSpiral", 2, Shape("Main.Switchback"), CarveHiveSpiral),
             new("Alien.PodRise", 2, Shape("Main.Ascent", "SideTunnel.Ascent"), CarvePodRise),
-            new("Alien.NerveWell", 2, Shape("Main.Switchback", "Main.ClimbBack", "SideTunnel.ClimbBack"), CarveNerveWell)
+            new("Alien.NerveWell", 2, Shape("Main.Switchback", "Main.ClimbBack", "SideTunnel.ClimbBack"), CarveNerveWell),
+            HazardRooms.Lighthouse, HazardRooms.LaserHollow
         };
 
         // Crossing. One great bubble with a round roof, a shallow round floor, floating spore pods, and two small
