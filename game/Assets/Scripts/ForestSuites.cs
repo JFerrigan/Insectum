@@ -15,7 +15,13 @@ namespace Insectum.Game
         internal static readonly ForestRoomTemplate GreatRootStair = new("Forest.Suite.GreatRootStair", 1,
             new SuiteFootprint(RoomDoor.HighLeft, new[] { 1 }, RoomDoor.LowRight), CarveGreatRootStair);
 
-        private static readonly ForestRoomTemplate[] Forest = { GreatRootStair };
+        // Down into a chunk and back up out of it: a wide sunken glade between two ordinary rooms. The way in
+        // may come from either left door and the way out may leave by either right door.
+        internal static readonly ForestRoomTemplate SunkenGladeValley = new("Forest.Suite.SunkenGladeValley", 1,
+            new SuiteFootprint(new[] { RoomDoor.HighLeft, RoomDoor.LowLeft }, new[] { 1, 0 },
+                new[] { RoomDoor.HighRight, RoomDoor.LowRight }), CarveSunkenGladeValley);
+
+        private static readonly ForestRoomTemplate[] Forest = { GreatRootStair, SunkenGladeValley };
 
         internal static IReadOnlyList<ForestRoomTemplate> For(WorldId world) =>
             world == WorldId.Forest ? Forest : Array.Empty<ForestRoomTemplate>();
@@ -50,6 +56,45 @@ namespace Insectum.Game
             room.Treasure(new Vector2(b.x + 0.3f, b.y + 4.6f));
             room.Door(0, RoomDoor.HighLeft, Clearance);
             room.Door(1, RoomDoor.LowRight, Clearance);
+        }
+
+        // The first chunk is the way in: the Tumbling Glade from a high door or a level hall from a low one, both
+        // ending at the floor of the door toward the glade. From there a short ledge drops into a wide basin
+        // across the middle chunk, with a root islet floating over it holding Nektar for climbers and fliers.
+        // A long bank climbs out into the last chunk, which is the way out: the Sunlit Rise to a high door, with
+        // its jump from the landing, or a level hall to a low one. Each end reuses its single-room template on
+        // that member.
+        private static void CarveSunkenGladeValley(ForestRoomBuilder room)
+        {
+            Vector2 b = room.MemberCenter(1);
+            Vector2 c = room.MemberCenter(2);
+            if (room.Has(0, RoomDoor.HighLeft))
+                CarveTumblingGlade(room);
+            else
+                CarveLevelHall(room, false);
+
+            // The middle chunk sits 1.5 units lower in one mirroring, so the basin follows it halfway. The drop
+            // stays under 5 units and the climb out under 37 degrees either way.
+            float basin = -8.2f + 0.5f * (b.y + 7.5f);
+            Vector2[] floor =
+            {
+                new(DoorX, -DoorY), new(7.0f, -DoorY), new(7.0f, basin), new(b.x + 1.0f, basin), new(c.x - DoorX, c.y - DoorY)
+            };
+            // The roof stays under the chunk the three members wrap around, and rises to meet the last chunk.
+            Vector2[] roof =
+            {
+                new(DoorX, 0.5f), new(7.0f, 0f), new(8.4f, b.y + 6.6f), new(b.x + 3.5f, b.y + 6.6f),
+                new(c.x - 6.5f, c.y + 1.0f), new(c.x - DoorX, c.y + 1.0f)
+            };
+            room.Cave(Profile(floor, roof), Islet(b.x - 3.4f, b.x - 1.4f, basin + 4.6f, 0.7f));
+            room.SetLanding(1, new Vector2(b.x - 1.5f, basin));
+            room.Treasure(new Vector2(b.x - 2.4f, basin + 4.6f));
+
+            ForestRoomBuilder exit = room.ForMember(2);
+            if (exit.Has(RoomDoor.HighRight))
+                CarveSunlitRise(exit);
+            else
+                CarveLevelHall(exit, false);
         }
 
         // Merges a floor line and a roof line, each listed left to right, into the profile Cave takes. The floor

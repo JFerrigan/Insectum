@@ -271,8 +271,8 @@ namespace Insectum.Game
                         fits = rooms[route[i]].Role == RoomRole.Main;
                     int entry = Side(route[first], route[first - 1]);
                     bool mirrored = Rightward(entry);
-                    fits &= ForestRoomProfile.Door(entry, mirrored) == footprint.Entry
-                        && ForestRoomProfile.Door(Side(route[last], route[last + 1]), mirrored) == footprint.Exit;
+                    fits &= footprint.Enters(ForestRoomProfile.Door(entry, mirrored))
+                        && footprint.Leaves(ForestRoomProfile.Door(Side(route[last], route[last + 1]), mirrored));
                     for (int step = 0; step < footprint.Steps.Count && fits; step++)
                     {
                         int side = Side(route[first + step], route[first + step + 1]);

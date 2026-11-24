@@ -169,7 +169,7 @@ namespace Insectum.Game
         }
 
         // Two doors at the same height on opposite sides: one hall between them. A low hall gets an arched roof.
-        private static void CarveLevelHall(ForestRoomBuilder room, bool high)
+        internal static void CarveLevelHall(ForestRoomBuilder room, bool high)
         {
             float floor = high ? DoorY : -DoorY;
             float rise = high ? 0f : 1f;
@@ -315,7 +315,7 @@ namespace Insectum.Game
 
         // Descent. Broad terraces breaking down under a dome, then a ramp to the low door. A high island above
         // the first drop is a perch for anyone who jumps from the top terrace.
-        private static void CarveTumblingGlade(ForestRoomBuilder room)
+        internal static void CarveTumblingGlade(ForestRoomBuilder room)
         {
             room.Cave(new[]
             {
@@ -357,7 +357,7 @@ namespace Insectum.Game
         }
 
         // Ascent. A long slope up to a landing, a jump onto the upper slope, and a high dome over both.
-        private static void CarveSunlitRise(ForestRoomBuilder room)
+        internal static void CarveSunlitRise(ForestRoomBuilder room)
         {
             room.Cave(new[]
             {

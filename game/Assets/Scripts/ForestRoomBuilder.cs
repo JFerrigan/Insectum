@@ -14,7 +14,7 @@ namespace Insectum.Game
     //
     // A suite spans one or more chunks, its members. Each member has its own landing and its own doors to
     // chunks outside the suite, and the template carves the space between members itself. The single-room
-    // calls below act on the first member.
+    // calls below act on the focused member: the first one, or the one a ForMember view is centered on.
     internal sealed class ForestRoomBuilder
     {
         internal const float DoorX = 5.2f;
@@ -22,10 +22,15 @@ namespace Insectum.Game
 
         private readonly ForestTunnelSpace space;
         private readonly RoomSuite suite;
+        // The world center of the suite's first chunk, and every member's center in suite-local units.
+        private readonly Vector2 anchor;
         private readonly Vector2[] offsets;
+        private readonly ForestRoomProfile[] profiles;
         private readonly IReadOnlyCollection<RoomDoor>[] openings;
         private readonly Vector2[] landings;
         private readonly Dictionary<RoomDoor, (float clearance, Vector2? lip)>[] doors;
+        // The member the single-room calls act on. Local units are measured from its center.
+        private readonly int focus;
 
         // Centers are in world space, one per member. Openings name each member's doors to chunks outside the
         // suite in the suite's canonical orientation.
@@ -35,35 +40,60 @@ namespace Insectum.Game
             this.space = space;
             this.suite = suite;
             int count = suite.Chunks.Count;
-            Center = centers[0];
-            Profile = profiles[0];
+            anchor = centers[0];
             Level = level;
             offsets = new Vector2[count];
+            this.profiles = new ForestRoomProfile[count];
             this.openings = new IReadOnlyCollection<RoomDoor>[count];
             landings = new Vector2[count];
             doors = new Dictionary<RoomDoor, (float clearance, Vector2? lip)>[count];
             for (int i = 0; i < count; i++)
             {
-                Vector2 offset = centers[i] - Center;
+                Vector2 offset = centers[i] - anchor;
                 offsets[i] = new Vector2(suite.Mirrored ? -offset.x : offset.x, offset.y);
+                this.profiles[i] = profiles[i];
                 this.openings[i] = openings[i];
                 doors[i] = new Dictionary<RoomDoor, (float clearance, Vector2? lip)>();
             }
+            TrapSpots = new List<Vector2>();
+            TreasureSpots = new List<Vector2>();
         }
 
-        // The first member's profile, for templates that carve a single chunk.
-        internal ForestRoomProfile Profile { get; }
+        // A view of the same suite centered on another member. Whatever it carves, lands, or opens belongs to
+        // the whole suite.
+        private ForestRoomBuilder(ForestRoomBuilder whole, int focus)
+        {
+            space = whole.space;
+            suite = whole.suite;
+            anchor = whole.anchor;
+            offsets = whole.offsets;
+            profiles = whole.profiles;
+            openings = whole.openings;
+            landings = whole.landings;
+            doors = whole.doors;
+            Level = whole.Level;
+            TrapSpots = whole.TrapSpots;
+            TreasureSpots = whole.TreasureSpots;
+            this.focus = focus;
+        }
+
+        // The focused member's profile, for templates that carve a single chunk.
+        internal ForestRoomProfile Profile => profiles[focus];
         // The level's place within its world, from 1 to 3, so a template can ease in on a world's first level.
         internal int Level { get; }
-        internal Vector2 Center { get; }
+        internal Vector2 Center => World(Vector2.zero);
         internal int Members => offsets.Length;
-        internal Vector2 Landing => landings[0];
-        internal IReadOnlyDictionary<RoomDoor, (float clearance, Vector2? lip)> Doors => doors[0];
-        internal List<Vector2> TrapSpots { get; } = new();
-        internal List<Vector2> TreasureSpots { get; } = new();
+        internal Vector2 Landing => landings[focus];
+        internal IReadOnlyDictionary<RoomDoor, (float clearance, Vector2? lip)> Doors => doors[focus];
+        internal List<Vector2> TrapSpots { get; }
+        internal List<Vector2> TreasureSpots { get; }
 
-        // A member's center in the suite's local units. The first member sits at the origin.
-        internal Vector2 MemberCenter(int member) => offsets[member];
+        // Lets a suite template carve one member with a single-room template: the view's local units and
+        // single-room calls are centered on that member.
+        internal ForestRoomBuilder ForMember(int member) => member == focus ? this : new ForestRoomBuilder(this, member);
+
+        // A member's center in local units.
+        internal Vector2 MemberCenter(int member) => offsets[member] - offsets[focus];
 
         internal Vector2 LandingOf(int member) => landings[member];
 
@@ -81,16 +111,20 @@ namespace Insectum.Game
         internal static bool IsHigh(RoomDoor door) => door is RoomDoor.HighLeft or RoomDoor.HighRight;
         internal static int SideOf(RoomDoor door) => door is RoomDoor.HighRight or RoomDoor.LowRight ? 1 : -1;
 
-        internal bool Has(RoomDoor door) => Has(0, door);
+        internal bool Has(RoomDoor door) => Has(focus, door);
 
         // True when the member has this door to a chunk outside the suite.
         internal bool Has(int member, RoomDoor door) => door != RoomDoor.None && openings[member].Contains(door);
 
-        internal Vector2 World(Vector2 local) => new(Center.x + (suite.Mirrored ? -local.x : local.x), Center.y + local.y);
+        internal Vector2 World(Vector2 local)
+        {
+            Vector2 suiteLocal = offsets[focus] + local;
+            return new Vector2(anchor.x + (suite.Mirrored ? -suiteLocal.x : suiteLocal.x), anchor.y + suiteLocal.y);
+        }
 
-        internal Vector2 WorldAnchor(RoomDoor door) => WorldAnchor(0, door);
+        internal Vector2 WorldAnchor(RoomDoor door) => WorldAnchor(focus, door);
 
-        internal Vector2 WorldAnchor(int member, RoomDoor door) => World(offsets[member] + Anchor(door));
+        internal Vector2 WorldAnchor(int member, RoomDoor door) => World(MemberCenter(member) + Anchor(door));
 
         // Carves a space with vertical end walls. The floor runs between the two points, and each end has its
         // own headroom, so the floor and ceiling can both slope.
@@ -206,16 +240,16 @@ namespace Insectum.Game
         }
 
         // The room's main standing point, used for checkpoints, route markers, spawn and exit.
-        internal void SetLanding(Vector2 local) => SetLanding(0, local);
+        internal void SetLanding(Vector2 local) => SetLanding(focus, local);
 
-        // A member's standing point, in the suite's local units.
+        // A member's standing point, in local units.
         internal void SetLanding(int member, Vector2 local) => landings[member] = World(local);
 
         // Declares a door with the headroom at its anchor. Lip marks the ledge a player must jump onto when
         // leaving the landing through this door.
-        internal void Door(RoomDoor door, float clearance, Vector2? lip = null) => Door(0, door, clearance, lip);
+        internal void Door(RoomDoor door, float clearance, Vector2? lip = null) => Door(focus, door, clearance, lip);
 
-        // Declares one of a member's doors. Lip is in the suite's local units.
+        // Declares one of a member's doors. Lip is in local units.
         internal void Door(int member, RoomDoor door, float clearance, Vector2? lip = null) =>
             doors[member].Add(door, (clearance, lip.HasValue ? World(lip.Value) : (Vector2?)null));
     }
