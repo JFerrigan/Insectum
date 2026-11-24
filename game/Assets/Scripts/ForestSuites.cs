@@ -21,10 +21,26 @@ namespace Insectum.Game
             new SuiteFootprint(new[] { RoomDoor.HighLeft, RoomDoor.LowLeft }, new[] { 1, 0 },
                 new[] { RoomDoor.HighRight, RoomDoor.LowRight }), CarveSunkenGladeValley);
 
-        private static readonly ForestRoomTemplate[] Forest = { GreatRootStair, SunkenGladeValley };
+        // Two switchbacks stacked down and back: the commonest two-room run on any route, so nearly every level
+        // has room for one. Built only from caves and islets, so every world uses it under its own name.
+        private static ForestRoomTemplate Gorge(WorldId world) => new($"{world}.Suite.SwitchbackGorge", 1,
+            new SuiteFootprint(RoomDoor.HighLeft, new[] { 3 }, RoomDoor.LowRight), CarveSwitchbackGorge);
 
-        internal static IReadOnlyList<ForestRoomTemplate> For(WorldId world) =>
-            world == WorldId.Forest ? Forest : Array.Empty<ForestRoomTemplate>();
+        private static readonly ForestRoomTemplate[] Forest = { GreatRootStair, SunkenGladeValley, Gorge(WorldId.Forest) };
+        private static readonly ForestRoomTemplate[] Swamp = { Gorge(WorldId.Swamp) };
+        private static readonly ForestRoomTemplate[] Caves = { Gorge(WorldId.Caves) };
+        private static readonly ForestRoomTemplate[] Desert = { Gorge(WorldId.Desert) };
+        private static readonly ForestRoomTemplate[] Alien = { Gorge(WorldId.Alien) };
+
+        internal static IReadOnlyList<ForestRoomTemplate> For(WorldId world) => world switch
+        {
+            WorldId.Forest => Forest,
+            WorldId.Swamp => Swamp,
+            WorldId.Caves => Caves,
+            WorldId.Desert => Desert,
+            WorldId.Alien => Alien,
+            _ => Array.Empty<ForestRoomTemplate>()
+        };
 
         // Enter high in the upper chunk and walk off one root terrace after another: down to the first landing,
         // down again, along a long root slope across into the lower chunk, off its top terrace to the second
@@ -95,6 +111,48 @@ namespace Insectum.Game
                 CarveSunlitRise(exit);
             else
                 CarveLevelHall(exit, false);
+        }
+
+        // Enter high in the first chunk and walk its upper shelf, as in the Great Hollow: drop onto the floating
+        // island, drop again to the chamber floor and its landing. Then turn back along the floor under the
+        // shelf, across the seam into the second chunk, which sits down and to the left. Step off the end onto a
+        // long root islet, run left along it and drop to the second chunk's floor and landing, then walk back
+        // right beneath the islet and down to the low door. Every drop stays under 5 units.
+        private static void CarveSwitchbackGorge(ForestRoomBuilder room)
+        {
+            // The second chunk sits at (-13.9, -9.0) in one mirroring and (-14.7, -7.5) in the other.
+            Vector2 b = room.MemberCenter(1);
+            const float chamber = -DoorY;
+            const float seamRoof = chamber + 3.1f;
+            float seam = b.x + 6.3f;
+
+            // Upper shelf from the high door.
+            room.Cave(new[] { (-DoorX, DoorY, 7.2f), (-3.4f, DoorY, 7.15f), (-1.2f, DoorY, 7.1f), (0.6f, DoorY, 7.0f) });
+            // The chamber, running left under the shelf to the seam.
+            room.Cave(new[]
+            {
+                (seam - 0.4f, chamber, seamRoof), (-DoorX, chamber, seamRoof + 0.4f), (-3.2f, chamber, 1.4f),
+                (-1.2f, chamber, 2.5f), (0.6f, chamber, 3.1f), (0.6f, chamber, 7.0f), (1.8f, chamber, 7.15f),
+                (3.2f, chamber, 7.05f), (4.6f, chamber, 6.4f), (5.4f, -4.1f, 5.3f), (6.0f, -3.85f, 3.9f),
+                (6.4f, -3.6f, 1.6f), (6.6f, -3.3f, -0.2f)
+            }, Islet(-0.6f, 4.6f, 0.6f, 1.3f));
+
+            // The lower chunk, in its own local units. Its roof rises to meet the chamber at the seam.
+            float meet = seamRoof - b.y;
+            var lower = new (float x, float floor, float ceiling)[]
+            {
+                (-6.0f, -1.6f, 3.6f), (-4.6f, -1.6f, 5.6f), (-2.4f, -1.6f, 6.6f), (0.4f, -1.9f, 6.8f),
+                (2.0f, -2.6f, Mathf.Max(6.8f, meet - 0.6f)), (DoorX, -DoorY, meet), (6.3f, -DoorY, meet)
+            };
+            ForestRoomBuilder low = room.ForMember(1);
+            low.Cave(lower, Islet(-1.5f, 6.3f, 2.5f, 0.8f));
+
+            room.SetLanding(0, new Vector2(5.0f, chamber));
+            room.SetLanding(1, b + new Vector2(-3.0f, -1.6f));
+            room.Treasure(new Vector2(2.0f, 0.6f));
+            room.Treasure(b + new Vector2(-5.0f, -1.6f));
+            room.Door(0, RoomDoor.HighLeft, Clearance);
+            room.Door(1, RoomDoor.LowRight, Clearance);
         }
 
         // Merges a floor line and a roof line, each listed left to right, into the profile Cave takes. The floor
