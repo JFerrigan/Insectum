@@ -17,6 +17,8 @@ namespace Insectum.Game
         // over them.
         internal readonly List<TunnelHazard> Hazards = new();
         internal readonly List<(Vector2 takeoff, int direction)> Leaps = new();
+        // The first chunk of the suite each carved chunk belongs to. That chunk owns all the suite's passages.
+        internal readonly Dictionary<Vector2Int, Vector2Int> SuiteOf = new();
         internal Rect Bounds { get; private set; } = Rect.MinMaxRect(0, 0, 0, 0);
 
         private sealed class Passage

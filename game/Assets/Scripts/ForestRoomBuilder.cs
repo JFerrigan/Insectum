@@ -1,41 +1,73 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Insectum.Game
 {
     // Templates carve a room in its canonical orientation, entered from the left (a start room leaves to the
-    // right), using local units around the chunk center. The builder mirrors that into world space.
+    // right), using local units around the center of the suite's first chunk. The builder mirrors that into world
+    // space.
     //
     // Every door sits at a fixed anchor, so any two templates can be joined: the layout carves a short link
     // between the anchors of neighboring rooms. A template must carve open floor at each of its door anchors.
+    //
+    // A suite spans one or more chunks, its members. Each member has its own landing and its own doors to
+    // chunks outside the suite, and the template carves the space between members itself. The single-room
+    // calls below act on the first member.
     internal sealed class ForestRoomBuilder
     {
         internal const float DoorX = 5.2f;
         internal const float DoorY = 4.125f;
 
         private readonly ForestTunnelSpace space;
-        private readonly Vector2Int chunk;
-        private readonly Dictionary<RoomDoor, (float clearance, Vector2? lip)> doors = new();
+        private readonly RoomSuite suite;
+        private readonly Vector2[] offsets;
+        private readonly IReadOnlyCollection<RoomDoor>[] openings;
+        private readonly Vector2[] landings;
+        private readonly Dictionary<RoomDoor, (float clearance, Vector2? lip)>[] doors;
 
-        internal ForestRoomBuilder(ForestTunnelSpace space, Vector2Int chunk, Vector2 center, ForestRoomProfile profile,
-            int level = 1)
+        // Centers are in world space, one per member. Openings name each member's doors to chunks outside the
+        // suite in the suite's canonical orientation.
+        internal ForestRoomBuilder(ForestTunnelSpace space, RoomSuite suite, IReadOnlyList<Vector2> centers,
+            IReadOnlyList<ForestRoomProfile> profiles, IReadOnlyList<IReadOnlyCollection<RoomDoor>> openings, int level = 1)
         {
             this.space = space;
-            this.chunk = chunk;
-            Center = center;
-            Profile = profile;
+            this.suite = suite;
+            int count = suite.Chunks.Count;
+            Center = centers[0];
+            Profile = profiles[0];
             Level = level;
+            offsets = new Vector2[count];
+            this.openings = new IReadOnlyCollection<RoomDoor>[count];
+            landings = new Vector2[count];
+            doors = new Dictionary<RoomDoor, (float clearance, Vector2? lip)>[count];
+            for (int i = 0; i < count; i++)
+            {
+                Vector2 offset = centers[i] - Center;
+                offsets[i] = new Vector2(suite.Mirrored ? -offset.x : offset.x, offset.y);
+                this.openings[i] = openings[i];
+                doors[i] = new Dictionary<RoomDoor, (float clearance, Vector2? lip)>();
+            }
         }
 
+        // The first member's profile, for templates that carve a single chunk.
         internal ForestRoomProfile Profile { get; }
         // The level's place within its world, from 1 to 3, so a template can ease in on a world's first level.
         internal int Level { get; }
         internal Vector2 Center { get; }
-        internal Vector2 Landing { get; private set; }
-        internal IReadOnlyDictionary<RoomDoor, (float clearance, Vector2? lip)> Doors => doors;
+        internal int Members => offsets.Length;
+        internal Vector2 Landing => landings[0];
+        internal IReadOnlyDictionary<RoomDoor, (float clearance, Vector2? lip)> Doors => doors[0];
         internal List<Vector2> TrapSpots { get; } = new();
         internal List<Vector2> TreasureSpots { get; } = new();
+
+        // A member's center in the suite's local units. The first member sits at the origin.
+        internal Vector2 MemberCenter(int member) => offsets[member];
+
+        internal Vector2 LandingOf(int member) => landings[member];
+
+        internal IReadOnlyDictionary<RoomDoor, (float clearance, Vector2? lip)> DoorsOf(int member) => doors[member];
 
         internal static Vector2 Anchor(RoomDoor door) => door switch
         {
@@ -49,12 +81,16 @@ namespace Insectum.Game
         internal static bool IsHigh(RoomDoor door) => door is RoomDoor.HighLeft or RoomDoor.HighRight;
         internal static int SideOf(RoomDoor door) => door is RoomDoor.HighRight or RoomDoor.LowRight ? 1 : -1;
 
-        internal bool Has(RoomDoor door) =>
-            door != RoomDoor.None && (Profile.Entry == door || Profile.Exit == door || Profile.Branch == door);
+        internal bool Has(RoomDoor door) => Has(0, door);
 
-        internal Vector2 World(Vector2 local) => new(Center.x + (Profile.Mirrored ? -local.x : local.x), Center.y + local.y);
+        // True when the member has this door to a chunk outside the suite.
+        internal bool Has(int member, RoomDoor door) => door != RoomDoor.None && openings[member].Contains(door);
 
-        internal Vector2 WorldAnchor(RoomDoor door) => World(Anchor(door));
+        internal Vector2 World(Vector2 local) => new(Center.x + (suite.Mirrored ? -local.x : local.x), Center.y + local.y);
+
+        internal Vector2 WorldAnchor(RoomDoor door) => WorldAnchor(0, door);
+
+        internal Vector2 WorldAnchor(int member, RoomDoor door) => World(offsets[member] + Anchor(door));
 
         // Carves a space with vertical end walls. The floor runs between the two points, and each end has its
         // own headroom, so the floor and ceiling can both slope.
@@ -63,9 +99,9 @@ namespace Insectum.Game
             Vector2 a = World(from);
             Vector2 b = World(to);
             if (a.x <= b.x)
-                space.AddPassage(a, b, fromHeight, toHeight, chunk);
+                space.AddPassage(a, b, fromHeight, toHeight, suite.Anchor);
             else
-                space.AddPassage(b, a, toHeight, fromHeight, chunk);
+                space.AddPassage(b, a, toHeight, fromHeight, suite.Anchor);
         }
 
         // Carves the space between a floor line and a ceiling line, both sampled left to right at the profile
@@ -157,23 +193,30 @@ namespace Insectum.Game
         // A take-off point on the route where a player heading in the given direction (1 right, -1 left) jumps
         // to clear a hazard. The verification walker leaps from exactly here.
         internal void Leap(Vector2 takeoff, int direction) =>
-            space.Leaps.Add((World(takeoff), Profile.Mirrored ? -direction : direction));
+            space.Leaps.Add((World(takeoff), suite.Mirrored ? -direction : direction));
 
+        // Hazards belong to the suite's first chunk, so a suite counts once toward a level's hazard rooms.
         private void AddHazard(HazardKind kind, float from, float to, float bottom, float top, bool hanging)
         {
             float a = World(new Vector2(from, 0f)).x;
             float b = World(new Vector2(to, 0f)).x;
             float y = Center.y;
             space.Hazards.Add(new TunnelHazard(kind,
-                Rect.MinMaxRect(Mathf.Min(a, b), y + bottom, Mathf.Max(a, b), y + top), hanging, chunk));
+                Rect.MinMaxRect(Mathf.Min(a, b), y + bottom, Mathf.Max(a, b), y + top), hanging, suite.Anchor));
         }
 
         // The room's main standing point, used for checkpoints, route markers, spawn and exit.
-        internal void SetLanding(Vector2 local) => Landing = World(local);
+        internal void SetLanding(Vector2 local) => SetLanding(0, local);
+
+        // A member's standing point, in the suite's local units.
+        internal void SetLanding(int member, Vector2 local) => landings[member] = World(local);
 
         // Declares a door with the headroom at its anchor. Lip marks the ledge a player must jump onto when
         // leaving the landing through this door.
-        internal void Door(RoomDoor door, float clearance, Vector2? lip = null) =>
-            doors.Add(door, (clearance, lip.HasValue ? World(lip.Value) : (Vector2?)null));
+        internal void Door(RoomDoor door, float clearance, Vector2? lip = null) => Door(0, door, clearance, lip);
+
+        // Declares one of a member's doors. Lip is in the suite's local units.
+        internal void Door(int member, RoomDoor door, float clearance, Vector2? lip = null) =>
+            doors[member].Add(door, (clearance, lip.HasValue ? World(lip.Value) : (Vector2?)null));
     }
 }

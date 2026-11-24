@@ -134,11 +134,14 @@ namespace Insectum.Game.Editor
             CheckSpacing(level, tunnel, ref closest, ref steepest);
         }
 
-        // Each passage belongs to a room (its chunk) or a link (its two chunks). Spaces that are not joined by
-        // a link must keep MinimumRock between them, and every floor must stay walkable.
+        // Each passage belongs to a room suite (its first chunk) or a link (its two chunks, read as the suites
+        // they join). Spaces that are not joined by a link must keep MinimumRock between them, and every floor
+        // must stay walkable.
         private static void CheckSpacing(string level, ForestTunnelSpace tunnel, ref float closest, ref float steepest)
         {
-            var passages = tunnel.Passages.ToList();
+            object Suite(object owner) => owner is ValueTuple<Vector2Int, Vector2Int> link
+                ? (tunnel.SuiteOf[link.Item1], tunnel.SuiteOf[link.Item2]) : owner;
+            var passages = tunnel.Passages.Select(passage => (owner: Suite(passage.owner), passage.outline)).ToList();
             var links = new HashSet<(Vector2Int, Vector2Int)>();
             foreach (var (owner, _) in passages)
                 if (owner is ValueTuple<Vector2Int, Vector2Int> link)

@@ -117,7 +117,8 @@ namespace Insectum.Game
         private static bool Rightward(int side) => side is 0 or 1;
         private static int Mirror(int side) => side switch { 0 => 4, 1 => 3, 3 => 1, 4 => 0, _ => side };
 
-        private static RoomDoor Door(int side, bool mirrored)
+        // The door a world side becomes in a room or suite with this mirroring.
+        internal static RoomDoor Door(int side, bool mirrored)
         {
             if (side < 0)
                 return RoomDoor.None;

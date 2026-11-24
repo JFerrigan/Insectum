@@ -288,10 +288,23 @@ namespace Insectum.Game
             var templateIds = new Dictionary<Vector2Int, string>();
             var trapSpots = new List<(Vector2 position, Vector2Int chunk)>();
             var treasureSpots = new List<(Vector2 position, Vector2Int chunk)>();
+            // Every carved chunk belongs to one suite, carved by one template. For now each suite is a single
+            // room, chosen in the same order as the chunks were connected.
+            var suites = new List<RoomSuite>(ports.Count);
             foreach (var entry in ports)
-                CarveRoom(entry.Key);
+            {
+                ForestRoomProfile profile = space.Rooms[entry.Key];
+                ForestRoomTemplate template = ForestRoomCatalog.Choose(world, profile, worldLevel,
+                    hazardRooms.Contains(entry.Key), ref roomRandom);
+                suites.Add(new RoomSuite(template, new[] { entry.Key }, profile.Mirrored));
+            }
+            foreach (RoomSuite suite in suites)
+                CarveSuite(suite);
             foreach (var link in links)
             {
+                // A suite carves the space between its own chunks.
+                if (space.SuiteOf[link.from] == space.SuiteOf[link.to])
+                    continue;
                 CarveLink(link.from, link.to);
                 MarkJump(link.from, link.to);
                 MarkJump(link.to, link.from);
@@ -407,29 +420,60 @@ namespace Insectum.Game
                 ports[to] = ports.GetValueOrDefault(to) | (MacroPort)(1 << Side(to, from));
             }
 
-            void CarveRoom(Vector2Int chunk)
+            void CarveSuite(RoomSuite suite)
             {
-                ForestRoomProfile profile = space.Rooms[chunk];
-                ForestRoomTemplate template = ForestRoomCatalog.Choose(world, profile, worldLevel,
-                    hazardRooms.Contains(chunk), ref roomRandom);
-                templateIds.Add(chunk, template.Id);
-                var room = new ForestRoomBuilder(space, chunk, Center(chunk), profile, worldLevel);
-                template.Carve(room);
-                landings.Add(chunk, room.Landing);
-                foreach (Vector2 spot in room.TrapSpots)
-                    trapSpots.Add((spot, chunk));
-                foreach (Vector2 spot in room.TreasureSpots)
-                    treasureSpots.Add((spot, chunk));
-                foreach (int side in Sides)
+                int count = suite.Chunks.Count;
+                var centers = new Vector2[count];
+                var profiles = new ForestRoomProfile[count];
+                var openings = new List<RoomDoor>[count];
+                for (int i = 0; i < count; i++)
                 {
-                    if ((profile.Ports & (MacroPort)(1 << side)) == 0)
-                        continue;
-                    RoomDoor door = profile.DoorAt(side);
-                    if (!room.Doors.TryGetValue(door, out var carved))
-                        throw new InvalidOperationException($"{template.Id} did not carve the {door} door of {profile}.");
-                    arms.Add((chunk, side), new Arm(room.WorldAnchor(door), carved.clearance, carved.lip));
+                    Vector2Int chunk = suite.Chunks[i];
+                    centers[i] = Center(chunk);
+                    profiles[i] = space.Rooms[chunk];
+                    openings[i] = new List<RoomDoor>();
+                    foreach (int side in OuterSides(suite, chunk))
+                        openings[i].Add(ForestRoomProfile.Door(side, suite.Mirrored));
+                }
+
+                var room = new ForestRoomBuilder(space, suite, centers, profiles, openings, worldLevel);
+                suite.Template.Carve(room);
+                for (int i = 0; i < count; i++)
+                {
+                    Vector2Int chunk = suite.Chunks[i];
+                    space.SuiteOf.Add(chunk, suite.Anchor);
+                    templateIds.Add(chunk, suite.Template.Id);
+                    landings.Add(chunk, room.LandingOf(i));
+                }
+                foreach (Vector2 spot in room.TrapSpots)
+                    trapSpots.Add((spot, Nearest(suite, spot)));
+                foreach (Vector2 spot in room.TreasureSpots)
+                    treasureSpots.Add((spot, Nearest(suite, spot)));
+                for (int i = 0; i < count; i++)
+                {
+                    Vector2Int chunk = suite.Chunks[i];
+                    foreach (int side in OuterSides(suite, chunk))
+                    {
+                        RoomDoor door = ForestRoomProfile.Door(side, suite.Mirrored);
+                        if (!room.DoorsOf(i).TryGetValue(door, out var carved))
+                            throw new InvalidOperationException(
+                                $"{suite.Template.Id} did not carve the {door} door of {space.Rooms[chunk]}.");
+                        arms.Add((chunk, side), new Arm(room.WorldAnchor(i, door), carved.clearance, carved.lip));
+                    }
                 }
             }
+
+            // The sides where a suite's chunk links to a chunk outside the suite.
+            IEnumerable<int> OuterSides(RoomSuite suite, Vector2Int chunk)
+            {
+                foreach (int side in Sides)
+                    if ((ports[chunk] & (MacroPort)(1 << side)) != 0 && !suite.Contains(HexGrid.Neighbor(chunk, side)))
+                        yield return side;
+            }
+
+            // Markers name the suite chunk whose center lies nearest their spot.
+            Vector2Int Nearest(RoomSuite suite, Vector2 spot) =>
+                suite.Chunks.OrderBy(chunk => (Center(chunk) - spot).sqrMagnitude).First();
 
             // Door anchors are fixed, so every link is a short, nearly level passage between two rooms.
             void CarveLink(Vector2Int from, Vector2Int to)
