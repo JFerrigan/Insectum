@@ -108,6 +108,13 @@ namespace Insectum.Game
             Physics2D.SyncTransforms();
         }
 
+        // Pogo off a downward air strike: fresh upward speed, and the fall so far no longer counts.
+        public void Bounce(float speed)
+        {
+            highestFallPoint = Body.position.y;
+            Launch(new Vector2(Body.linearVelocity.x, speed));
+        }
+
         public void ApplyImpulse(Vector2 velocity) => Launch(Body.linearVelocity + velocity);
 
         public void Step(PlayerCommand command, MotorControl control = default)

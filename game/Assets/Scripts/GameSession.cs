@@ -259,6 +259,8 @@ namespace Insectum.Game
             Content = null;
         }
 
+        private const float PogoSpeed = 10.5f;
+
         private void StepMelee(PlayerCommand command)
         {
             if (MeleePoseSteps > 0)
@@ -282,9 +284,11 @@ namespace Insectum.Game
             HeavyPose = heavy;
             attackCooldown = heavy ? tuning.heavyRecoverySteps : tuning.meleeRecoverySteps;
             float reachBonus = Run.Inventory.MeleeReachBonus;
-            Combat.Melee(heavy
+            bool hit = Combat.Melee(heavy
                 ? new MeleeStrike(origin, direction, 2.1f + reachBonus, 0.83f, tuning.fireAntAttackDamage, 7f)
                 : new MeleeStrike(origin, direction, 1.3f + reachBonus, 0.38f, 1, 4f));
+            if (hit && direction == Vector2.down)
+                Motor.Bounce(PogoSpeed);
         }
 
         private bool AbsorbDamage(DamageHit hit)

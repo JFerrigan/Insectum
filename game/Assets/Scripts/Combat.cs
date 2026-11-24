@@ -153,8 +153,9 @@ namespace Insectum.Game
                 target.Step();
         }
 
-        public void Melee(MeleeStrike strike)
+        public bool Melee(MeleeStrike strike)
         {
+            bool hit = false;
             int count = targets.Count;
             var across = new Vector2(-strike.Direction.y, strike.Direction.x);
             for (int i = 0; i < count; i++)
@@ -167,10 +168,14 @@ namespace Insectum.Game
                 float forward = Vector2.Dot(strike.Direction, offset);
                 float lateral = Mathf.Abs(Vector2.Dot(across, offset));
                 if (forward >= 0f && forward - target.Radius <= strike.Reach && lateral <= strike.HalfWidth + target.Radius)
+                {
                     target.Receive(strike.Hit);
+                    hit = true;
+                }
             }
 
             MeleePerformed?.Invoke(strike);
+            return hit;
         }
 
         public void Crush(Vector2 previous, Vector2 current, float attackerRadius, int damage)
