@@ -153,8 +153,26 @@ def hazards():
     atlas.image.save(OUT / "AlienHazards.png")
 
 
+
+def lasers():
+    """A laser emitter centered in a 16-pixel cel, then a beam a unit long and four pixels thick in the top rows of
+    the next cel, drawn from its left edge so it can be stretched and turned."""
+    atlas = Cel(32, 16)
+    atlas.oval((3, 3, 12, 12), "#3b2f6b", INK)
+    atlas.oval((5, 5, 10, 10), PINK, "#a04f97")
+    atlas.dot((7, 7), "#fff3fb")
+    for x, y in ((2, 7), (13, 8), (7, 2), (8, 13)):
+        atlas.dot((x, y), CYAN)
+    atlas.line([(16, 0), (31, 0)], "#a04f97")
+    atlas.line([(16, 1), (31, 1)], PINK)
+    atlas.line([(16, 2), (31, 2)], "#fff3fb")
+    atlas.line([(16, 3), (31, 3)], "#a04f97")
+    atlas.image.save(OUT / "AlienLasers.png")
+
+
 if __name__ == "__main__":
     backdrop()
     terrain()
     actors()
     hazards()
+    lasers()

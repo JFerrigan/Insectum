@@ -147,8 +147,37 @@ def hazards():
     atlas.image.save(OUT / "CavesHazards.png")
 
 
+
+def spikes():
+    """Stalagmite spike tiles, half a unit wide and standing on their bottom edge: four middle variants, then the
+    left and right end caps, laid out like the Forest bramble sheet."""
+    atlas = Cel(48, 16)
+    rock, shade = "#4a4380", "#332e5f"
+    tips = (
+        ((1, 9), (4, 8), (6, 10)),
+        ((2, 8), (5, 9), (7, 11)),
+        ((0, 10), (3, 8), (6, 9)),
+        ((1, 8), (4, 10), (6, 8)),
+        ((3, 12), (6, 9)),
+    )
+    for index in range(6):
+        cel = Cel(8, 16)
+        spikes_here = tips[min(index, 4)]
+        if index == 5:
+            spikes_here = tuple((7 - x, top) for x, top in tips[4])
+        cel.box((0, 14, 7, 15), shade)
+        for x, top in spikes_here:
+            cel.shape([(x - 1, 15), (x, top), (x + 1, 15)], rock, INK)
+            cel.line([(x, top + 1), (x, 14)], ICE)
+            cel.dot((x, top), WHITE)
+        cel.line([(0, 15), (7, 15)], INK)
+        atlas.image.paste(cel.image, (index * 8, 0))
+    atlas.image.save(OUT / "CavesSpikes.png")
+
+
 if __name__ == "__main__":
     backdrop()
     terrain()
     actors()
     hazards()
+    spikes()

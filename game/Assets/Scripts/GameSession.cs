@@ -127,8 +127,6 @@ namespace Insectum.Game
                 }
             }
             Combat = new CombatArena();
-            Hazards = layout?.Tunnel is { Hazards: { Count: > 0 } } tunnel
-                ? new LevelHazards(level.transform, pixel, tunnel.Hazards) : null;
             attackCooldown = 0;
             MeleePoseSteps = 0;
 
@@ -142,6 +140,9 @@ namespace Insectum.Game
             Motor = new PlayerMotor(actor, character.Radius, surface, layout?.RouteDirection ?? 1,
                 followSlopes: layout?.Tunnel != null);
             Motor.Landed += ApplyFallDamage;
+            Hazards = layout?.Tunnel is { Hazards: { Count: > 0 } } tunnel
+                ? new LevelHazards(level.transform, pixel, tunnel.Hazards, level.scene.GetPhysicsScene2D(), Motor.Shape)
+                : null;
             Abilities = new PlayerAbilities(Run, Motor, Terrain, Combat);
             PlayerMotor player = Motor;
             PlayerDamage = new DamageReceiver(Run.Vitality, character.Radius, () => player.Body.position,
@@ -174,7 +175,7 @@ namespace Insectum.Game
                 StepMelee(command);
                 Content?.Step(command);
                 if (Run.Alive)
-                    Hazards?.Step(PlayerDamage, Motor.Body.linearVelocity);
+                    Hazards?.Step(PlayerDamage, Motor.Body.linearVelocity, Motor.LastVerticalSpeed, Content?.Enemies);
                 if (Run.Alive)
                     Motor.Step(command, control);
                 if (Motor.Body.position.y < (Layout?.KillHeight ?? ForestRoute.KillHeight))

@@ -7,13 +7,16 @@ using static Insectum.Game.Editor.ProductionVerification;
 namespace Insectum.Game.Editor
 {
     // Drives the player through a tunnel level the way it is built: landing to landing along the room graph,
-    // jumping where a door starts from a ledge or a room marks a leap over a hazard, and striking enemies that
-    // stand in the way.
+    // jumping where a door starts from a ledge or a room marks a leap over a hazard, waiting where a room marks
+    // a laser sweep until a run across is clear, and striking enemies that stand in the way.
     internal static class TunnelWalker
     {
         private const int SegmentLimit = 420;
         // A walker crossing a take-off point leaps on its first grounded step inside this window.
         private const float LeapWindow = 0.6f;
+        // A walker arriving at a wait spot may stop up to a unit past it, and may give up after this many steps.
+        private const float WaitWindow = 1f;
+        private const int WaitLimit = 600;
 
         // Walks toward the level exit until reached() holds.
         internal static void Walk(PhysicsFixture fixture, Func<bool> reached, bool useHeavy = false)
@@ -84,6 +87,9 @@ namespace Insectum.Game.Editor
             bool jump = session.Layout.Tunnel.Jumps.ContainsKey((from, to));
             bool jumped = false;
             bool leaping = false;
+            int waited = 0;
+            float crossFrom = 0f;
+            float crossing = 0f;
             if (jump && !reached())
             {
                 // Settle on the landing so the jump starts from rest, as a player would.
@@ -91,7 +97,7 @@ namespace Insectum.Game.Editor
                 Steps += 12;
             }
 
-            for (int step = 0; step < SegmentLimit; step++)
+            for (int step = 0; step < SegmentLimit + waited; step++)
             {
                 if (reached() || session.Phase != RunPhase.Playing || !session.Run.Alive)
                     return;
@@ -101,10 +107,27 @@ namespace Insectum.Game.Editor
 
                 float dx = to.x - feet.x;
                 int move = Mathf.Abs(dx) > 0.13f ? Math.Sign(dx) : 0;
+                // At a laser's wait spot, stop, then go once a run across is clear and do not stop until across.
+                if (crossing == 0f && AtWait(session, to, out int heading, out float distance))
+                {
+                    if (Mathf.Abs(session.Motor.Body.linearVelocity.x) > 0.3f
+                        || !session.Hazards.ClearRun(session.Motor.Body.position, heading, distance, session.Run.Character.Radius))
+                    {
+                        Require(++waited < WaitLimit, $"{Where(session)}: no gap in the laser sweep at {feet}.");
+                        fixture.Step(new PlayerCommand());
+                        Steps++;
+                        continue;
+                    }
+                    crossFrom = feet.x;
+                    crossing = distance;
+                }
+
                 PlayerCommand command;
-                // Mid-leap the walker keeps running, since stopping to strike would drop it short.
+                // Mid-leap or mid-run under a laser the walker keeps going, since stopping to strike could drop it
+                // short or leave it in a beam's path.
                 bool airborne = leaping && !session.Motor.Grounded;
-                if (!airborne && Fight(session, move, useHeavy) is PlayerCommand strike)
+                bool running = Mathf.Abs(feet.x - crossFrom) < crossing;
+                if (!airborne && !running && Fight(session, move, useHeavy) is PlayerCommand strike)
                     command = strike;
                 else
                 {
@@ -147,6 +170,29 @@ namespace Insectum.Game.Editor
                     return new PlayerCommand(aim: 1, attackPressed: true, abilityPressed: heavy);
             }
             return null;
+        }
+
+        // True when the grounded player stands at a spot where a room says to wait for a laser gap on the way to
+        // this goal. Heading and distance describe the run to make once the sweep allows it.
+        private static bool AtWait(GameSession session, Vector2 goal, out int heading, out float distance)
+        {
+            heading = 0;
+            distance = 0f;
+            if (!session.Motor.Grounded || session.Hazards == null)
+                return false;
+            Vector2 feet = Feet(session);
+            foreach (var (spot, direction, run) in session.Layout.Tunnel.Waits)
+            {
+                float along = (feet.x - spot.x) * direction;
+                if (along >= -0.4f && along < WaitWindow && Mathf.Abs(feet.y - spot.y) < 0.5f
+                    && (goal.x - spot.x) * direction > 0f)
+                {
+                    heading = direction;
+                    distance = run;
+                    return true;
+                }
+            }
+            return false;
         }
 
         // True when the grounded player has just crossed a take-off point that a room marks toward this goal.

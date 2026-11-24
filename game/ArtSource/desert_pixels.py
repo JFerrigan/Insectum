@@ -150,8 +150,36 @@ def hazards():
     atlas.image.save(OUT / "DesertHazards.png")
 
 
+
+def cacti():
+    """Cacti standing on their bottom edge: a barrel 0.8 wide and 0.9 tall, then a tall one 0.6 wide and 1.3 tall."""
+    atlas = Cel(32, 32)
+    dark, mid, light, spine = "#2f6a4c", "#4f9a5e", "#8ac66e", "#f6e6b4"
+    barrel = Cel(16, 32)
+    barrel.oval((2, 17, 13, 31), mid, INK)
+    for x in (5, 8, 11):
+        barrel.line([(x, 19), (x, 29)], dark)
+    barrel.line([(4, 21), (4, 27)], light)
+    for x, y in ((3, 20), (12, 21), (2, 25), (13, 26), (6, 18), (10, 18), (3, 29), (12, 29)):
+        barrel.dot((x, y), spine)
+    barrel.dot((7, 16), CORAL)
+    barrel.dot((8, 16), CORAL)
+    barrel.dot((7, 17), GOLD)
+    atlas.image.paste(barrel.image, (0, 0))
+    tall = Cel(16, 32)
+    tall.shape([(4, 31), (4, 13), (6, 11), (9, 11), (11, 13), (11, 31)], mid, INK)
+    tall.shape([(11, 22), (13, 22), (14, 20), (14, 16), (13, 15), (12, 16), (12, 20), (11, 20)], mid, INK)
+    tall.line([(7, 13), (7, 30)], dark)
+    tall.line([(5, 14), (5, 29)], light)
+    for x, y in ((3, 15), (12, 14), (3, 20), (12, 25), (3, 26), (15, 17), (6, 10), (9, 10), (3, 30)):
+        tall.dot((x, y), spine)
+    atlas.image.paste(tall.image, (16, 0))
+    atlas.image.save(OUT / "DesertCacti.png")
+
+
 if __name__ == "__main__":
     backdrop()
     terrain()
     actors()
     hazards()
+    cacti()

@@ -10,6 +10,8 @@ namespace Insectum.Game
         private static Texture2D actorAtlas;
         private static Texture2D ventAtlas;
         private static Sprite backdrop;
+        private static Texture2D flytrapAtlas;
+        private static readonly Sprite[] flytraps = new Sprite[3];
 
         internal static Texture2D Terrain => terrain ??= ForestArt.Load("SwampTerrain");
 
@@ -33,5 +35,10 @@ namespace Insectum.Game
         internal static Sprite Vent(int phase) =>
             vents[phase] ??= ForestArt.Frame(ventAtlas ??= ForestArt.Load("SwampVents"),
                 phase, 0, 32, 32, Vector2.one * 0.5f);
+
+        // A flytrap rooted at its bottom edge: 0 open, 1 twitching or reopening, 2 shut.
+        internal static Sprite Flytrap(int frame) =>
+            flytraps[frame] ??= ForestArt.Frame(flytrapAtlas ??= ForestArt.Load("SwampFlytraps"), frame, 0, 32, 32,
+                new Vector2(0.5f, 0f));
     }
 }

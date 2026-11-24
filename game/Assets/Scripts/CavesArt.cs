@@ -10,6 +10,8 @@ namespace Insectum.Game
         private static Texture2D actorAtlas;
         private static Texture2D hazardAtlas;
         private static Sprite backdrop;
+        private static Texture2D spikeAtlas;
+        private static readonly Sprite[] spikes = new Sprite[ForestArt.BrambleVariants + 2];
 
         internal static Texture2D Terrain => terrain ??= ForestArt.Load("CavesTerrain");
 
@@ -35,5 +37,9 @@ namespace Insectum.Game
                 frame, 0, 32, 32, Vector2.one * 0.5f);
 
         internal static Sprite Pulse => Crystal(3);
+
+        // A half-unit spike tile standing on its bottom edge, numbered like the Forest bramble tiles.
+        internal static Sprite Spike(int cel) =>
+            spikes[cel] ??= ForestArt.Frame(spikeAtlas ??= ForestArt.Load("CavesSpikes"), cel, 0, 8, 16, new Vector2(0.5f, 0f));
     }
 }

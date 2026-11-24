@@ -40,6 +40,10 @@ namespace Insectum.Game
         public const float FallDamageDistance = 2.5f * FallDamageSpeed * FallDamageSpeed / (2f * Gravity);
 
         private const float GroundSpeed = 6.5f;
+        private const float GroundAcceleration = 55f;
+        // Running speed and the ground acceleration toward it, for walkers that predict a run.
+        internal const float RunSpeed = GroundSpeed;
+        internal const float RunAcceleration = GroundAcceleration;
         private const float JumpSpeed = 12.5f;
         private const float ReleasedJumpSpeed = 4.2f;
         private const float Gravity = 38f;
@@ -167,7 +171,7 @@ namespace Insectum.Game
             Facing = FacingFor(command);
 
             float horizontal = Mathf.Clamp(command.Move, -1, 1);
-            float acceleration = grounded ? (horizontal == 0f ? 65f : 55f) : 28f;
+            float acceleration = grounded ? (horizontal == 0f ? 65f : GroundAcceleration) : 28f;
             velocity.x = Mathf.MoveTowards(velocity.x, horizontal * GroundSpeed, acceleration * StepSeconds);
             if (followSlopes && grounded)
                 velocity.y = -floor.x * velocity.x / floor.y;

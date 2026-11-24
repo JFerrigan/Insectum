@@ -147,8 +147,36 @@ def vents():
     atlas.image.save(OUT / "SwampVents.png")
 
 
+
+def flytraps():
+    """A Venus flytrap rooted at the bottom edge: open with its lure lit, twitching, and shut."""
+    atlas = Cel(96, 32)
+    stem, leaf, jaw, inside, tooth = "#3f7a4b", "#5ca875", "#78b85a", "#e0607e", "#f2f0c8"
+    for frame in range(3):
+        cel = Cel(32, 32)
+        cel.line([(16, 31), (16, 24)], stem, 2)
+        cel.shape([(16, 30), (9, 27), (6, 29), (12, 31)], leaf, INK)
+        cel.shape([(16, 30), (23, 27), (26, 29), (20, 31)], leaf, INK)
+        if frame == 2:
+            cel.shape([(8, 24), (10, 17), (16, 14), (22, 17), (24, 24), (16, 26)], jaw, INK)
+            cel.line([(10, 21), (16, 18), (22, 21)], inside)
+            for x in (10, 13, 16, 19, 22):
+                cel.dot((x, 20 + (x % 2)), tooth)
+        else:
+            gap = 0 if frame == 0 else 2
+            cel.shape([(16, 25), (7, 22 - gap), (5, 15 + gap), (9, 13 + gap), (15, 20)], jaw, INK)
+            cel.shape([(16, 25), (25, 22 - gap), (27, 15 + gap), (23, 13 + gap), (17, 20)], jaw, INK)
+            cel.shape([(15, 23), (9, 18), (16, 20), (23, 18), (17, 23)], inside)
+            for x, y in ((5, 15 + gap), (7, 13 + gap), (9, 12 + gap), (27, 15 + gap), (25, 13 + gap), (23, 12 + gap)):
+                cel.dot((x, y - 1), tooth)
+            cel.dot((16, 21), GOLD if frame == 0 else LIME)
+        atlas.image.paste(cel.image, (frame * 32, 0))
+    atlas.image.save(OUT / "SwampFlytraps.png")
+
+
 if __name__ == "__main__":
     backdrop()
     terrain()
     actors()
     vents()
+    flytraps()

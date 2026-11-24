@@ -224,6 +224,43 @@ namespace Insectum.Game
         internal void HangingBrambles(float from, float to, float roof) =>
             AddHazard(HazardKind.Bramble, from, to, roof - LevelHazards.BrambleHeight, roof, true);
 
+        // A cactus on a flat floor, centered at x: a barrel 0.8 wide and 0.9 tall, or a tall one 0.6 wide and 1.3 tall.
+        internal void Cactus(float x, float floor, bool tall)
+        {
+            float half = tall ? 0.3f : 0.4f;
+            AddHazard(HazardKind.Cactus, x - half, x + half, floor, floor + (tall ? 1.3f : 0.9f), false);
+        }
+
+        // A spike bed on a flat floor between two x positions. Keep the approach flat too: a body walking down a
+        // slope comes down fast enough to die on spikes.
+        internal void Spikes(float from, float to, float floor) =>
+            AddHazard(HazardKind.Spikes, from, to, floor, floor + LevelHazards.SpikeHeight, false);
+
+        // A flytrap rooted in a flat floor, its open mouth a unit square centered at x.
+        internal void Flytrap(float x, float floor) =>
+            AddHazard(HazardKind.Flytrap, x - LevelHazards.MouthSize / 2f, x + LevelHazards.MouthSize / 2f, floor,
+                floor + LevelHazards.MouthSize, false);
+
+        // A flytrap hanging from a flat roof, its mouth opening downward.
+        internal void HangingFlytrap(float x, float roof) =>
+            AddHazard(HazardKind.Flytrap, x - LevelHazards.MouthSize / 2f, x + LevelHazards.MouthSize / 2f,
+                roof - LevelHazards.MouthSize, roof, true);
+
+        // A laser emitter floating at a point, with arms of the given reach evenly spaced around it. Phase is the
+        // first arm's starting angle in degrees and spin its turn in degrees a second, counterclockwise when
+        // positive, both in local orientation.
+        internal void Laser(Vector2 emitter, float reach, float spin, int arms, float phase)
+        {
+            Vector2 at = World(emitter);
+            space.Hazards.Add(new TunnelHazard(HazardKind.Laser, new Rect(at.x - 0.25f, at.y - 0.25f, 0.5f, 0.5f), false,
+                suite.Anchor, reach, suite.Mirrored ? -spin : spin, arms, suite.Mirrored ? 180f - phase : phase));
+        }
+
+        // A standing point on the route where a walker heading in the given direction waits for a laser gap, then
+        // runs the given distance in one go. The verification walker waits from exactly here.
+        internal void Wait(Vector2 spot, int direction, float distance) =>
+            space.Waits.Add((World(spot), suite.Mirrored ? -direction : direction, distance));
+
         // A take-off point on the route where a player heading in the given direction (1 right, -1 left) jumps
         // to clear a hazard. The verification walker leaps from exactly here.
         internal void Leap(Vector2 takeoff, int direction) =>
