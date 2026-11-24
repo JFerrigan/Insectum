@@ -18,6 +18,8 @@
 9. `art/references/` — selected prior concept art, including a direct crop of the top-left preferred style, the chunky low-resolution test, shop screenshot, boss arena, and a swamp scene.
 10. `art/concepts/` — simple palette and material-reference boards made to organize the visuals; they are **not production tiles or sprites**.
 
+Tooling: `tools/map.sh <seed> [level|all]` renders generated levels to PNG and a text listing without Unity. See `game/README.md` → *Map generator*.
+
 ## Important qualifications
 
 - **Decided** = something specified by the game designer in the conversation.

@@ -131,6 +131,64 @@ Other aspect ratios use letterboxing. With Pillow
 installed, run the matching `*_pixels.py` script in `ArtSource` to
 regenerate that world's textures in `Assets/Resources/PixelArt`.
 
+## Map generator (no Unity needed)
+
+`tools/map.sh` renders any seed's levels to PNG plus a text listing, using
+the game's own generator source compiled under plain .NET. It works while the
+Unity editor has the project open, takes about a second per level and needs
+only the `dotnet` SDK (9.0+). Agents can use it to check generation changes
+without launching Unity. Run it from the repo root:
+
+```sh
+tools/map.sh                  # random seed, level 1
+tools/map.sh 1234             # seed 1234, level 1
+tools/map.sh 1234 7           # seed 1234, level 7 (1-20; 4, 8, 12, 16, 20 are boss arenas)
+tools/map.sh random all       # random seed, all 20 levels
+tools/map.sh 1234 13 10       # level 13 at 10 px per world unit (default 6)
+```
+
+For each level it writes `game/Builds/Maps/seed<N>_level<NN>.png` and `.txt`,
+prints the text listing and opens the PNGs. Agents that only need the data
+can skip the image viewer and call the program directly:
+
+```sh
+dotnet build tools/MapGen/MapGen.csproj -v q -o tools/MapGen/bin/out
+dotnet tools/MapGen/bin/out/MapGen.dll <seed|random> [level|all] [zoom] [outDir]
+```
+
+It exits non-zero when a level fails to generate and prints the exception to
+stderr, so it can also serve as a quick generation smoke test (for example
+`random all` in a loop).
+
+**Image:** up is up. Dark is open air (cells with no tile, or inside a
+tunnel passage). Muted colors are rock, one hue per `TerrainMaterial`. Grey
+outlines are the tunnel lining, yellow is the main route and white the side
+branches. Green dot is spawn, red is exit, small blue dots are checkpoints.
+Markers are encounter red, trap orange, shop cyan, treasure gold, boss
+magenta, branch/shortcut white.
+
+**Text listing:** a header with seed, level name, variant, fallback flag,
+size and marker counts, then spawn, exit, bounds, route direction and tile
+count. `CHUNKS` lists each macro chunk as `(q, r)`, its role
+(main/branch/filler), template id and ports, plus its tunnel room
+role/shape. Under each chunk are its checkpoint, markers and hazards with
+world positions. `ROUTE`, `BRANCH` and `LEAP` lines follow for tunnel
+levels. Boss arenas have no chunks, so their markers appear under
+`(no chunk)`.
+
+**How it works:** `tools/MapGen/MapGen.csproj` links the generator files from
+`Assets/Scripts` and defines `MAPGEN`. `tools/MapGen/Unity.cs` supplies small
+stand-ins for the UnityEngine types they use (`Vector2`, `Vector2Int`,
+`Rect`, `Mathf`, `Resources.Load` reading `Assets/Resources` from disk).
+Unity-only code in `RunWorlds`, `LevelHazards`, `ForestTunnelSpace` and
+`PixelViewport` is fenced with `#if !MAPGEN`. When a generator change pulls
+in a new file, add it to the csproj. If that file touches Unity runtime
+types, fence those parts with `#if !MAPGEN` or add the missing member to
+`Unity.cs`. Keep stand-ins faithful to Unity's math, because the output
+must match the game seed for seed.
+
+The Unity editor has the same view under **Insectum → Map Viewer**.
+
 ## Desktop replay and terrain profile
 
 Add `-insectum-record-run /private/tmp/run.replay` to the production verification
