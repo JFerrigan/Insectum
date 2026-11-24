@@ -224,30 +224,74 @@ namespace Insectum.Game
             DrawWorldPrompt(camera, shop.Position + Vector2.up * 1.4f, label, shop.Available ? Gold : Muted);
         }
 
-        // Faint control hints painted into the world above the first level's spawn.
-        // They sit still and fade out as the player walks away.
-        private static readonly string[] TutorialLines =
-        {
-            "A/D MOVE   SPACE JUMP",
-            "J HIT   W+J HIT UP",
-            "IN AIR S+J HIT DOWN - BOUNCE OFF FOES",
-            "K ABILITY   E INTERACT   L ITEM"
-        };
+        // Faint control hints painted into the opening room of the first level. They are placed
+        // once per level inside the open air around the spawn and fade out as the player leaves.
+        private static readonly string[] TutorialLines = { "SPACE JUMP   J HIT", "K ABILITY   L ITEM", "E INTERACT" };
+        private const float TutorialScale = 0.75f;
+        private static Vector2 tutorialSpawn = new(float.NaN, float.NaN);
+        private static Vector2 tutorialAnchor;
 
         private static void DrawTutorial(Camera camera, GameSession session)
         {
             if (session.Run.LevelNumber != 1)
                 return;
-            Vector2 anchor = session.LevelSpawn + Vector2.up * 4.2f;
-            float distance = Vector2.Distance(session.Motor.Body.position, session.LevelSpawn);
-            float alpha = 0.45f * Mathf.Clamp01(1f - (distance - 4f) / 6f);
+            if (session.LevelSpawn != tutorialSpawn)
+            {
+                tutorialSpawn = session.LevelSpawn;
+                tutorialAnchor = PlaceTutorial(session.LevelSpawn, session.Motor.Body);
+            }
+            float distance = Vector2.Distance(session.Motor.Body.position, tutorialSpawn);
+            float alpha = 0.4f * Mathf.Clamp01(1f - (distance - 4f) / 6f);
             if (alpha <= 0.01f)
                 return;
+            Color color = Muted;
+            color.a = alpha;
+            Vector3 view = camera.WorldToViewportPoint(tutorialAnchor);
+            float x = view.x * PixelViewport.Width;
+            float y = (1f - view.y) * PixelViewport.Height;
+            float lineHeight = 9f * TutorialScale;
             for (int i = 0; i < TutorialLines.Length; i++)
+                WriteScaled(TutorialLines[i], x - (TutorialLines[i].Length * 6 - 1) * TutorialScale / 2f,
+                    y + i * lineHeight, color, TutorialScale);
+        }
+
+        // Finds open air above the spawn: below the ceiling, centred between the side walls.
+        private static Vector2 PlaceTutorial(Vector2 spawn, Rigidbody2D player)
+        {
+            const float blockHeight = 1.4f;
+            float ceiling = OpenDistance(spawn + Vector2.up * 0.5f, Vector2.up, 8f, player) + 0.5f;
+            float top = Mathf.Min(3.4f, ceiling - 0.5f);
+            float middle = Mathf.Max(top - blockHeight / 2f, 1.2f);
+            Vector2 probe = spawn + Vector2.up * middle;
+            float left = OpenDistance(probe, Vector2.left, 10f, player);
+            float right = OpenDistance(probe, Vector2.right, 10f, player);
+            return new Vector2(probe.x + (right - left) / 2f, spawn.y + Mathf.Max(top, 1.2f + blockHeight / 2f));
+        }
+
+        private static readonly RaycastHit2D[] tutorialHits = new RaycastHit2D[8];
+
+        private static float OpenDistance(Vector2 from, Vector2 direction, float max, Rigidbody2D player)
+        {
+            var filter = new ContactFilter2D { useTriggers = false };
+            int count = Physics2D.Raycast(from, direction, filter, tutorialHits, max);
+            float best = max;
+            for (int i = 0; i < count; i++)
+                if (tutorialHits[i].rigidbody != player && tutorialHits[i].distance < best)
+                    best = tutorialHits[i].distance;
+            return best;
+        }
+
+        private static void WriteScaled(string text, float x, float y, Color color, float scale)
+        {
+            GUI.color = color;
+            Texture2D font = ForestArt.Glyphs;
+            foreach (char character in text)
             {
-                Color color = Muted;
-                color.a = alpha;
-                DrawWorldPrompt(camera, anchor + Vector2.down * (i * 0.6f), TutorialLines[i], color, alpha);
+                int code = char.ToUpperInvariant(character) - 32;
+                if (code > 0 && code <= 63 && x >= 0f && x + 5f * scale <= PixelViewport.Width)
+                    GUI.DrawTextureWithTexCoords(new Rect(x, y, 5f * scale, 7f * scale), font,
+                        ForestArt.TexCoords(font, (code % 16) * 6, (code / 16) * 8, 5, 7));
+                x += 6f * scale;
             }
         }
 
