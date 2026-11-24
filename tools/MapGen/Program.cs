@@ -14,6 +14,15 @@ internal static class Program
     {
         string repo = FindRepo();
         Resources.Root = Path.Combine(repo, "game", "Assets", "Resources");
+        if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
+        {
+            Console.WriteLine(Usage);
+            return args.Length == 0 ? 1 : 0;
+        }
+        if (args[0] == "chunks")
+            return Chunks(args.Length > 1 ? args[1] : "all", args.Length > 2 ? args[2] : "",
+                args.Length > 3 ? float.Parse(args[3], CultureInfo.InvariantCulture) : 16f,
+                args.Length > 4 ? args[4] : Path.Combine(repo, "game", "Builds", "Chunks"));
         if (args.Length > 0 && args[0] == "stats")
             return Stats(args.Length > 1 ? int.Parse(args[1], CultureInfo.InvariantCulture) : 200,
                 args.Length > 2 ? int.Parse(args[2], CultureInfo.InvariantCulture) : 1);
@@ -160,6 +169,117 @@ internal static class Program
         return 0;
     }
 
+    private const string Usage = @"MapGen: render Insectum levels without Unity.
+
+  MapGen <seed|random> [level|all] [zoom] [outDir]
+      Map of one level (1-20) or all 20: PNG plus a text listing per level.
+      zoom is pixels per world unit (default 6). outDir defaults to game/Builds/Maps.
+  MapGen chunks [world|all] [filter] [zoom] [outDir]
+      One cropped PNG per room template and multi-chunk suite, found in real generated levels.
+      world is forest, swamp, caves, desert, alien or all. filter keeps names containing it
+      (for example Suite or Cascade). zoom defaults to 16. outDir defaults to game/Builds/Chunks.
+  MapGen stats [seedCount] [firstSeed]
+      How often multi-chunk suites spawn, per world (default 200 seeds from 1).
+  MapGen -h
+      This help.";
+
+    // Finds a real example of every room template (one per room shape it fits) and every suite, then renders
+    // each cropped to its own chunks.
+    private static int Chunks(string worldArg, string filter, float zoom, string outDir)
+    {
+        var worlds = new List<WorldId>();
+        foreach (WorldId world in Enum.GetValues(typeof(WorldId)))
+            if (worldArg == "all" || string.Equals(worldArg, world.ToString(), StringComparison.OrdinalIgnoreCase))
+                worlds.Add(world);
+        worlds.RemoveAll(world => !TryFirstLevel(world, out _));
+        if (worlds.Count == 0)
+        {
+            Console.Error.WriteLine($"Unknown world '{worldArg}'.\n\n{Usage}");
+            return 1;
+        }
+
+        int missingTotal = 0;
+        foreach (WorldId world in worlds)
+        {
+            TryFirstLevel(world, out int firstLevel);
+            var wanted = new HashSet<string>();
+            foreach (ForestRoomTemplate template in ForestRoomCatalog.For(world)) wanted.Add(template.Id);
+            foreach (ForestRoomTemplate template in ForestSuites.For(world)) wanted.Add(template.Id);
+            wanted.RemoveWhere(id => !id.Contains(filter, StringComparison.OrdinalIgnoreCase));
+
+            // key -> (seed, level, chunks, description)
+            var found = new SortedDictionary<string, (int seed, int level, List<Vector2Int> chunks, string text)>();
+            var seenIds = new HashSet<string>();
+            for (int seed = 1; seed <= 400 && (seed <= 40 || !wanted.IsSubsetOf(seenIds)); seed++)
+                for (int level = firstLevel; level < firstLevel + RunWorlds.LevelsPerWorld - 1; level++)
+                {
+                    LevelLayout layout = RunWorlds.Generate(seed, level);
+                    if (layout.Tunnel == null) continue;
+                    var inSuite = new HashSet<Vector2Int>();
+                    foreach (List<Vector2Int> suite in Suites(layout))
+                    {
+                        inSuite.UnionWith(suite);
+                        string id = TemplateAt(layout, suite[0]);
+                        if (!wanted.Contains(id)) continue;
+                        seenIds.Add(id);
+                        if (!found.ContainsKey(id))
+                            found[id] = (seed, level, suite, $"{suite.Count} chunks");
+                    }
+                    foreach (MacroChunk chunk in layout.Chunks)
+                    {
+                        if (inSuite.Contains(chunk.Coordinate) || !wanted.Contains(chunk.TemplateId)) continue;
+                        if (!layout.Tunnel.Rooms.TryGetValue(chunk.Coordinate, out ForestRoomProfile room)) continue;
+                        seenIds.Add(chunk.TemplateId);
+                        string key = $"{chunk.TemplateId} {room.Shape}";
+                        if (!found.ContainsKey(key))
+                            found[key] = (seed, level, new List<Vector2Int> { chunk.Coordinate },
+                                $"{room.Role}/{room.Shape}{(room.Mirrored ? " mirrored" : "")}");
+                    }
+                }
+
+            string dir = Path.Combine(outDir, world.ToString());
+            Directory.CreateDirectory(dir);
+            var index = new System.Text.StringBuilder();
+            foreach (var pair in found)
+            {
+                var (seed, level, chunks, text) = pair.Value;
+                LevelLayout layout = RunWorlds.Generate(seed, level);
+                Vector2 lo = new(float.MaxValue, float.MaxValue), hi = new(float.MinValue, float.MinValue);
+                foreach (Vector2Int chunk in chunks)
+                {
+                    Vector2 center = HexGrid.Center(ForestTemplates.MacroCenter(chunk));
+                    lo = Vector2.Min(lo, center);
+                    hi = Vector2.Max(hi, center);
+                }
+                var view = Rect.MinMaxRect(lo.x - 10f, lo.y - 9f, hi.x + 10f, hi.y + 9f);
+                string file = Path.Combine(dir, pair.Key.Replace(' ', '_').Replace('/', '-') + ".png");
+                Render(layout, zoom, file, out _, view);
+                string line = $"{pair.Key,-50} {text,-34} seed {seed} level {level} chunks {string.Join(" ", chunks)}";
+                index.AppendLine(line);
+                Console.WriteLine(line);
+            }
+            var missing = new List<string>(wanted);
+            missing.RemoveAll(seenIds.Contains);
+            foreach (string id in missing)
+            {
+                index.AppendLine($"{id,-50} NOT FOUND in 400 seeds");
+                Console.WriteLine($"{id,-50} NOT FOUND in 400 seeds");
+            }
+            missingTotal += missing.Count;
+            File.WriteAllText(Path.Combine(dir, "index.txt"), index.ToString());
+            Console.WriteLine($"  {found.Count} images in {dir}\n");
+        }
+        return missingTotal == 0 ? 0 : 2;
+    }
+
+    private static bool TryFirstLevel(WorldId world, out int level)
+    {
+        for (level = 1; level <= RunWorlds.LevelCount; level += RunWorlds.LevelsPerWorld)
+            if (RunWorlds.AtLevel(level) == world)
+                return true;
+        return false;
+    }
+
     private static string FindRepo()
     {
         string dir = AppContext.BaseDirectory;
@@ -171,10 +291,13 @@ internal static class Program
     private static string LevelName(int level) =>
         $"{RunWorlds.AtLevel(level)} {(Math.Max(1, level) - 1) / RunWorlds.LevelsPerWorld + 1}-{RunWorlds.LocalLevel(level)}";
 
-    private static void Render(LevelLayout layout, float pixelsPerUnit, string path, out string info)
+    private static void Render(LevelLayout layout, float pixelsPerUnit, string path, out string info, Rect? view = null)
     {
-        Rect bounds = layout.Bounds;
-        bounds.xMin -= 2f; bounds.yMin -= 2f; bounds.xMax += 2f; bounds.yMax += 2f;
+        Rect bounds = view ?? layout.Bounds;
+        if (view == null)
+        {
+            bounds.xMin -= 2f; bounds.yMin -= 2f; bounds.xMax += 2f; bounds.yMax += 2f;
+        }
         float ppu = MathF.Min(pixelsPerUnit, 8192f / MathF.Max(bounds.width, bounds.height));
         int width = Math.Max(1, (int)MathF.Ceiling(bounds.width * ppu));
         int height = Math.Max(1, (int)MathF.Ceiling(bounds.height * ppu));

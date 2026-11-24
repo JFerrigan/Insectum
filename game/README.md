@@ -156,6 +156,15 @@ dotnet build tools/MapGen/MapGen.csproj -v q -o tools/MapGen/bin/out
 dotnet tools/MapGen/bin/out/MapGen.dll <seed|random> [level|all] [zoom] [outDir]
 ```
 
+`tools/chunks.sh [world|all] [filter] [zoom]` renders every room template
+(once per room shape it fits) and every multi-chunk suite on its own. Each is
+cropped from a real generated level into `game/Builds/Chunks/<World>/`, with
+an `index.txt` giving the template, shape, seed, level and chunks for each, so
+any example can be reopened in full with `tools/map.sh <seed> <level>`. It
+exits 2 if a template never appears in 400 seeds, which makes it a check
+that new templates are reachable. `tools/map.sh -h` and `tools/chunks.sh -h`
+print usage, as does `MapGen.dll -h`.
+
 `MapGen.dll stats [seedCount] [firstSeed]` (default 200 seeds from 1) skips
 the PNGs. It prints how often multi-chunk rooms (suites) spawn per world,
 the suites-per-level and suite-size distributions, and which suite templates
