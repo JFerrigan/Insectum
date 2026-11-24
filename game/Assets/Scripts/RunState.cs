@@ -35,6 +35,8 @@ namespace Insectum.Game
         {
             if (cost < 0f || !float.IsFinite(cost) || cost > Energy)
                 return false;
+            if (DevMode.Enabled && DevMode.Invincible)
+                return true; // dev god mode: abilities are free
             Energy -= cost;
             return true;
         }
