@@ -14,7 +14,10 @@ a fall of about 7.4 world units cost one heart.
 Levels 1 to 3 of every world are winding tunnels. Each 37-chunk board has a
 28-room main route and three side tunnels: one leads to a shop and two to
 chest vaults. Every room is built from a template that matches where its doors
-are, so the same seed always gives the same rooms. Each world has its own
+are, so the same seed always gives the same rooms. A suite template can carve
+several route rooms as one big set piece: when a Forest level has two straight
+descents in a row, it may join them into the Great Root Stair, a huge sloping
+cavern of root terraces. Each world has its own
 themed set (Forest hollows and fungus shelves, Swamp fens and lily pads, Caves
 geodes and stalactites, Desert dunes and temple halls, Alien bubbles and
 pods), with traps and Nektar caches placed off the walking route. Forest

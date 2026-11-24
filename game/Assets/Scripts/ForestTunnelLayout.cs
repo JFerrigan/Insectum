@@ -13,6 +13,8 @@ namespace Insectum.Game
         private const uint RoomSalt = 0x6C8E9CF5u;
         private const uint SpotSalt = 0x2F9A51C3u;
         private const uint HazardSalt = 0x4B1D7A63u;
+        private const uint SuiteSalt = 0x7E3A91B5u;
+        private const int SuitesPerLevel = 1;
         private const int MaxTraps = 5;
         private const int MaxTreasures = 6;
         internal const float Height = 3.1f;
@@ -226,7 +228,8 @@ namespace Insectum.Game
         // stretch. The first stretch takes its earliest suitable room, so every level shows its hazard early;
         // later stretches pick at random. A stretch with no main room that suits a hazard template goes without.
         private static HashSet<Vector2Int> PickHazardRooms(WorldId world, int worldLevel, List<Vector2Int> route,
-            IReadOnlyDictionary<Vector2Int, ForestRoomProfile> rooms, LevelSeeds seeds)
+            IReadOnlyDictionary<Vector2Int, ForestRoomProfile> rooms, LevelSeeds seeds,
+            IReadOnlyDictionary<Vector2Int, RoomSuite> claimed)
         {
             const int first = 2;
             var picked = new HashSet<Vector2Int>();
@@ -240,11 +243,58 @@ namespace Insectum.Game
                 for (int i = first + (last - first) * stretch / stretches; i < first + (last - first) * (stretch + 1) / stretches; i++)
                 {
                     ForestRoomProfile room = rooms[route[i]];
-                    if (room.Role == RoomRole.Main && ForestRoomCatalog.HasHazard(world, room, worldLevel))
+                    if (room.Role == RoomRole.Main && !claimed.ContainsKey(route[i])
+                        && ForestRoomCatalog.HasHazard(world, room, worldLevel))
                         candidates.Add(route[i]);
                 }
                 if (candidates.Count > 0)
                     picked.Add(candidates[stretch == 0 ? 0 : random.Next(candidates.Count)]);
+            }
+            return picked;
+        }
+
+        // Finds runs of main-route rooms that a suite's footprint matches, in either mirroring, and claims up to
+        // SuitesPerLevel of them without overlap. Every member must be an ordinary main room, so suites never
+        // take the start, the finish, or a room where a side tunnel branches off.
+        private static List<RoomSuite> PickSuites(WorldId world, List<Vector2Int> route,
+            IReadOnlyDictionary<Vector2Int, ForestRoomProfile> rooms, LevelSeeds seeds)
+        {
+            var matches = new List<RoomSuite>();
+            foreach (ForestRoomTemplate template in ForestSuites.For(world))
+            {
+                SuiteFootprint footprint = template.Footprint;
+                for (int first = 1; first + footprint.Length < route.Count; first++)
+                {
+                    int last = first + footprint.Length - 1;
+                    bool fits = true;
+                    for (int i = first; i <= last && fits; i++)
+                        fits = rooms[route[i]].Role == RoomRole.Main;
+                    int entry = Side(route[first], route[first - 1]);
+                    bool mirrored = Rightward(entry);
+                    fits &= ForestRoomProfile.Door(entry, mirrored) == footprint.Entry
+                        && ForestRoomProfile.Door(Side(route[last], route[last + 1]), mirrored) == footprint.Exit;
+                    for (int step = 0; step < footprint.Steps.Count && fits; step++)
+                    {
+                        int side = Side(route[first + step], route[first + step + 1]);
+                        fits = (mirrored ? ForestRoomProfile.Mirror(side) : side) == footprint.Steps[step];
+                    }
+                    if (fits)
+                        matches.Add(new RoomSuite(template, route.GetRange(first, footprint.Length), mirrored));
+                }
+            }
+
+            var random = new SeededRandom(seeds.Layout ^ SuiteSalt);
+            var picked = new List<RoomSuite>();
+            var used = new HashSet<Vector2Int>();
+            while (matches.Count > 0 && picked.Count < SuitesPerLevel)
+            {
+                int choice = random.Next(matches.Count);
+                RoomSuite suite = matches[choice];
+                matches.RemoveAt(choice);
+                if (suite.Chunks.Any(used.Contains))
+                    continue;
+                picked.Add(suite);
+                used.UnionWith(suite.Chunks);
             }
             return picked;
         }
@@ -284,15 +334,26 @@ namespace Insectum.Game
             // Templates draw from their own stream so adding one never changes a seed's route.
             var roomRandom = new SeededRandom(seeds.Layout ^ RoomSalt);
             int worldLevel = RunWorlds.LocalLevel(level);
-            HashSet<Vector2Int> hazardRooms = PickHazardRooms(world, worldLevel, route, space.Rooms, seeds);
+            var claimed = new Dictionary<Vector2Int, RoomSuite>();
+            foreach (RoomSuite suite in PickSuites(world, route, space.Rooms, seeds))
+                foreach (Vector2Int chunk in suite.Chunks)
+                    claimed.Add(chunk, suite);
+            HashSet<Vector2Int> hazardRooms = PickHazardRooms(world, worldLevel, route, space.Rooms, seeds, claimed);
             var templateIds = new Dictionary<Vector2Int, string>();
             var trapSpots = new List<(Vector2 position, Vector2Int chunk)>();
             var treasureSpots = new List<(Vector2 position, Vector2Int chunk)>();
-            // Every carved chunk belongs to one suite, carved by one template. For now each suite is a single
-            // room, chosen in the same order as the chunks were connected.
+            // Every carved chunk belongs to one suite, carved by one template. A claimed set piece joins the list
+            // at its first chunk, and every other chunk is a suite of one, chosen in the order the chunks were
+            // connected.
             var suites = new List<RoomSuite>(ports.Count);
             foreach (var entry in ports)
             {
+                if (claimed.TryGetValue(entry.Key, out RoomSuite setPiece))
+                {
+                    if (setPiece.Anchor == entry.Key)
+                        suites.Add(setPiece);
+                    continue;
+                }
                 ForestRoomProfile profile = space.Rooms[entry.Key];
                 ForestRoomTemplate template = ForestRoomCatalog.Choose(world, profile, worldLevel,
                     hazardRooms.Contains(entry.Key), ref roomRandom);

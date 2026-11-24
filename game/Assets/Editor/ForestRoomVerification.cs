@@ -54,6 +54,8 @@ namespace Insectum.Game.Editor
             int levels = 0;
             foreach (WorldId world in Enum.GetValues(typeof(WorldId)))
             {
+                // Rooms and the suites that span several chunks, all of which should turn up.
+                List<ForestRoomTemplate> catalog = ForestRoomCatalog.For(world).Concat(ForestSuites.For(world)).ToList();
                 templates[world] = new HashSet<string>();
                 for (int seed = -30; seed < 30; seed++)
                 {
@@ -64,14 +66,14 @@ namespace Insectum.Game.Editor
                     Check(layout, new Dictionary<string, int>(counts), ref closest, ref steepest);
                     foreach (MacroChunk chunk in layout.Chunks.Where(chunk => chunk.Ports != MacroPort.None))
                     {
-                        Require(ForestRoomCatalog.For(world).Any(template => template.Id == chunk.TemplateId),
+                        Require(catalog.Any(template => template.Id == chunk.TemplateId),
                             $"{world} seed {seed} used {chunk.TemplateId}, which is not one of its templates.");
                         templates[world].Add(chunk.TemplateId);
                     }
                     levels++;
                 }
-                Require(templates[world].Count == ForestRoomCatalog.For(world).Count,
-                    $"{world} never used {string.Join(", ", ForestRoomCatalog.For(world).Select(t => t.Id).Except(templates[world]))}.");
+                Require(templates[world].Count == catalog.Count,
+                    $"{world} never used {string.Join(", ", catalog.Select(t => t.Id).Except(templates[world]))}.");
             }
 
             return $"Insectum room profiles verified across {SeedCount} Forest 1 seeds, the fallback, and {levels} levels "

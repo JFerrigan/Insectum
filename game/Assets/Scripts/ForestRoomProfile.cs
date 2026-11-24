@@ -115,7 +115,7 @@ namespace Insectum.Game
 
         // Sides 0, 1, 3 and 4 are the four diagonal ports. Mirroring swaps left and right at the same height.
         private static bool Rightward(int side) => side is 0 or 1;
-        private static int Mirror(int side) => side switch { 0 => 4, 1 => 3, 3 => 1, 4 => 0, _ => side };
+        internal static int Mirror(int side) => side switch { 0 => 4, 1 => 3, 3 => 1, 4 => 0, _ => side };
 
         // The door a world side becomes in a room or suite with this mirroring.
         internal static RoomDoor Door(int side, bool mirrored)

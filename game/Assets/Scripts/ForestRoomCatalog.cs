@@ -19,7 +19,15 @@ namespace Insectum.Game
             HazardLevel = hazardLevel;
         }
 
+        // A suite template carves a run of chunks matching its footprint. It never fits a single room.
+        internal ForestRoomTemplate(string id, int weight, SuiteFootprint footprint, Action<ForestRoomBuilder> carve)
+            : this(id, weight, _ => false, carve)
+        {
+            Footprint = footprint;
+        }
+
         internal string Id { get; }
+        internal SuiteFootprint Footprint { get; }
         internal int Weight { get; }
         // Hazard rooms put a hazard on the walking route. The layout chooses them only for the rooms it sets
         // aside for hazards, and only from this world level on. Zero marks an ordinary room.
