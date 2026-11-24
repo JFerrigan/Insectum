@@ -26,6 +26,7 @@ namespace Insectum.Game
         private int lastLevel;
         private int nextCheckpoint;
         private Vector2 respawnPosition;
+        internal Vector2 LevelSpawn { get; private set; }
 
         internal int MeleePoseSteps { get; private set; }
         internal Vector2 MeleeAim { get; private set; }
@@ -132,6 +133,7 @@ namespace Insectum.Game
             var actor = new GameObject(character.Name);
             actor.transform.SetParent(level.transform, false);
             respawnPosition = layout?.Spawn ?? ForestRoute.Spawn;
+            LevelSpawn = respawnPosition;
             actor.transform.localPosition = respawnPosition + Vector2.up * (character.Radius + 0.06f);
             nextCheckpoint = 0;
             Motor = new PlayerMotor(actor, character.Radius, surface, layout?.RouteDirection ?? 1,

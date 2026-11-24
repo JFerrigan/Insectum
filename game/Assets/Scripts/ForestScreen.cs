@@ -62,6 +62,7 @@ namespace Insectum.Game
                     DrawWorldPrompt(camera, session.Motor.Body.position + Vector2.up * 1.2f, feedback, Gold);
                 if (!paused)
                 {
+                    DrawTutorial(camera, session);
                     DrawPickupName(camera, session);
                     DrawVariantBanner(session);
                 }
@@ -221,6 +222,33 @@ namespace Insectum.Game
             string label = !shop.Available ? "SOLD OUT"
                 : session.Content.ClosestInteractable() == shop ? shop.InteractPrompt : shop.ShopOffer;
             DrawWorldPrompt(camera, shop.Position + Vector2.up * 1.4f, label, shop.Available ? Gold : Muted);
+        }
+
+        // Faint control hints painted into the world above the first level's spawn.
+        // They sit still and fade out as the player walks away.
+        private static readonly string[] TutorialLines =
+        {
+            "A/D MOVE   SPACE JUMP",
+            "J HIT   W+J HIT UP",
+            "IN AIR S+J HIT DOWN - BOUNCE OFF FOES",
+            "K ABILITY   E INTERACT   L ITEM"
+        };
+
+        private static void DrawTutorial(Camera camera, GameSession session)
+        {
+            if (session.Run.LevelNumber != 1)
+                return;
+            Vector2 anchor = session.LevelSpawn + Vector2.up * 4.2f;
+            float distance = Vector2.Distance(session.Motor.Body.position, session.LevelSpawn);
+            float alpha = 0.45f * Mathf.Clamp01(1f - (distance - 4f) / 6f);
+            if (alpha <= 0.01f)
+                return;
+            for (int i = 0; i < TutorialLines.Length; i++)
+            {
+                Color color = Muted;
+                color.a = alpha;
+                DrawWorldPrompt(camera, anchor + Vector2.down * (i * 0.6f), TutorialLines[i], color, alpha);
+            }
         }
 
         private const float PickupSeconds = 1.6f;
