@@ -169,7 +169,7 @@ stderr, so it can also serve as a quick generation smoke test (for example
 **Image:** up is up. Dark is open air (cells with no tile, or inside a
 tunnel passage). Muted colors are rock, one hue per `TerrainMaterial`. Grey
 outlines are the tunnel lining, yellow is the main route and white the side
-branches. Green dot is spawn, red is exit, small blue dots are checkpoints.
+branches. Pale lines are chunk borders, and a pink outline surrounds each multi-chunk room, with no line between its members. Green dot is spawn, red is exit, small blue dots are checkpoints.
 Markers are encounter red, trap orange, shop cyan, treasure gold, boss
 magenta, branch/shortcut white.
 

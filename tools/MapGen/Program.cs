@@ -77,6 +77,28 @@ internal static class Program
         return suites;
     }
 
+    // The macro chunk whose hexagon holds a cell: chunk centers sit on the lattice cell = (11q + 5r, -5q + 6r).
+    private static Vector2Int ChunkAt(Vector2Int cell)
+    {
+        float q = (6f * cell.x - 5f * cell.y) / 91f;
+        float r = (5f * cell.x + 11f * cell.y) / 91f;
+        var guess = new Vector2Int((int)MathF.Round(q), (int)MathF.Round(r));
+        Vector2Int best = guess;
+        int bestDistance = int.MaxValue;
+        for (int dq = -1; dq <= 1; dq++)
+            for (int dr = -1; dr <= 1; dr++)
+            {
+                var macro = new Vector2Int(guess.x + dq, guess.y + dr);
+                int distance = HexGrid.Distance(cell, ForestTemplates.MacroCenter(macro));
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = macro;
+                }
+            }
+        return best;
+    }
+
     private static string TemplateAt(LevelLayout layout, Vector2Int chunk)
     {
         foreach (MacroChunk c in layout.Chunks)
@@ -177,6 +199,49 @@ internal static class Program
                         if (box.Contains(world) && Inside(outline, world)) { open = true; break; }
                 image.Set(x, y, open ? air : MaterialColor(material));
             }
+
+        // Chunk outlines: a faint line between ordinary chunks, a bright one around each multi-chunk room, and
+        // none between members of the same room so it reads as one space.
+        var chunkOf = new Vector2Int[width * height];
+        for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+                chunkOf[y * width + x] = ChunkAt(HexGrid.CellAt(
+                    new Vector2(bounds.xMin + (x + 0.5f) / ppu, bounds.yMin + (y + 0.5f) / ppu)));
+        var suiteOf = new Dictionary<Vector2Int, int>();
+        List<List<Vector2Int>> suiteList = Suites(layout);
+        for (int i = 0; i < suiteList.Count; i++)
+            foreach (Vector2Int chunk in suiteList[i])
+                suiteOf[chunk] = i;
+        int SuiteAt(Vector2Int chunk) => suiteOf.TryGetValue(chunk, out int i) ? i : -1;
+        var chunkLine = new Color32(150, 170, 120, 255);
+        var suiteLine = new Color32(255, 80, 200, 255);
+        var suiteEdges = new List<(int x, int y)>();
+        for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+            {
+                Vector2Int here = chunkOf[y * width + x];
+                Vector2Int right = x + 1 < width ? chunkOf[y * width + x + 1] : here;
+                Vector2Int up = y + 1 < height ? chunkOf[(y + 1) * width + x] : here;
+                foreach (Vector2Int other in new[] { right, up })
+                {
+                    if (other == here)
+                        continue;
+                    int a = SuiteAt(here), b = SuiteAt(other);
+                    if (a >= 0 && a == b)
+                        continue;
+                    if (a >= 0 || b >= 0)
+                        suiteEdges.Add((x, y));
+                    else
+                        image.Set(x, y, chunkLine);
+                }
+            }
+        // Suite outlines go on top, two pixels thick.
+        foreach (var (x, y) in suiteEdges)
+        {
+            image.Set(x, y, suiteLine);
+            image.Set(x + 1, y, suiteLine);
+            image.Set(x, y + 1, suiteLine);
+        }
 
         (int, int) P(Vector2 p) => ((int)MathF.Floor((p.x - bounds.xMin) * ppu), (int)MathF.Floor((p.y - bounds.yMin) * ppu));
         void Line(Vector2 a, Vector2 b, Color32 c) => image.Line(P(a), P(b), c);
