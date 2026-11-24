@@ -21,16 +21,34 @@ namespace Insectum.Game
             new SuiteFootprint(new[] { RoomDoor.HighLeft, RoomDoor.LowLeft }, new[] { 1, 0 },
                 new[] { RoomDoor.HighRight, RoomDoor.LowRight }), CarveSunkenGladeValley);
 
-        // Two switchbacks stacked down and back: the commonest two-room run on any route, so nearly every level
-        // has room for one. Built only from caves and islets, so every world uses it under its own name.
+        // Chains of switchbacks stacked down and back, the commonest runs on any route: two chunks fit about 97%
+        // of levels, three about 95% and four about 60%. Built only from caves and platforms, so every world
+        // carves them, each with its own platforms and name.
         private static ForestRoomTemplate Gorge(WorldId world) => new($"{world}.Suite.SwitchbackGorge", 1,
-            new SuiteFootprint(RoomDoor.HighLeft, new[] { 3 }, RoomDoor.LowRight), CarveSwitchbackGorge);
+            new SuiteFootprint(RoomDoor.HighLeft, new[] { 3 }, RoomDoor.LowRight),
+            room => CarveChain(room, 2, RoomDoor.LowRight, world));
 
-        private static readonly ForestRoomTemplate[] Forest = { GreatRootStair, SunkenGladeValley, Gorge(WorldId.Forest) };
-        private static readonly ForestRoomTemplate[] Swamp = { Gorge(WorldId.Swamp) };
-        private static readonly ForestRoomTemplate[] Caves = { Gorge(WorldId.Caves) };
-        private static readonly ForestRoomTemplate[] Desert = { Gorge(WorldId.Desert) };
-        private static readonly ForestRoomTemplate[] Alien = { Gorge(WorldId.Alien) };
+        private static ForestRoomTemplate Cascade(WorldId world, string name) => new($"{world}.Suite.{name}", 1,
+            new SuiteFootprint(RoomDoor.HighLeft, new[] { 3, 1 }, RoomDoor.LowLeft),
+            room => CarveChain(room, 3, RoomDoor.LowLeft, world));
+
+        private static ForestRoomTemplate Descent(WorldId world, string name) => new($"{world}.Suite.{name}", 1,
+            new SuiteFootprint(RoomDoor.HighLeft, new[] { 3, 1, 3 }, RoomDoor.LowRight),
+            room => CarveChain(room, 4, RoomDoor.LowRight, world));
+
+        private static readonly ForestRoomTemplate[] Forest =
+        {
+            GreatRootStair, SunkenGladeValley, Gorge(WorldId.Forest),
+            Cascade(WorldId.Forest, "RootCascade"), Descent(WorldId.Forest, "GreatRootDescent")
+        };
+        private static readonly ForestRoomTemplate[] Swamp =
+            { Gorge(WorldId.Swamp), Cascade(WorldId.Swamp, "LilyCascade"), Descent(WorldId.Swamp, "MireDescent") };
+        private static readonly ForestRoomTemplate[] Caves =
+            { Gorge(WorldId.Caves), Cascade(WorldId.Caves, "CrystalCascade"), Descent(WorldId.Caves, "CrystalDescent") };
+        private static readonly ForestRoomTemplate[] Desert =
+            { Gorge(WorldId.Desert), Cascade(WorldId.Desert, "RuinCascade"), Descent(WorldId.Desert, "SunkenStairDescent") };
+        private static readonly ForestRoomTemplate[] Alien =
+            { Gorge(WorldId.Alien), Cascade(WorldId.Alien, "PodCascade"), Descent(WorldId.Alien, "HiveDescent") };
 
         internal static IReadOnlyList<ForestRoomTemplate> For(WorldId world) => world switch
         {
@@ -113,46 +131,86 @@ namespace Insectum.Game
                 CarveLevelHall(exit, false);
         }
 
-        // Enter high in the first chunk and walk its upper shelf, as in the Great Hollow: drop onto the floating
-        // island, drop again to the chamber floor and its landing. Then turn back along the floor under the
-        // shelf, across the seam into the second chunk, which sits down and to the left. Step off the end onto a
-        // long root islet, run left along it and drop to the second chunk's floor and landing, then walk back
-        // right beneath the islet and down to the low door. Every drop stays under 5 units.
-        private static void CarveSwitchbackGorge(ForestRoomBuilder room)
+        // A walkable platform with a flat top, and a smaller perch off the route, in each world's style.
+        private static (float x, float bottom, float top)[] Platform(WorldId world, float left, float right, float top,
+            float depth) => world switch
         {
-            // The second chunk sits at (-13.9, -9.0) in one mirroring and (-14.7, -7.5) in the other.
-            Vector2 b = room.MemberCenter(1);
-            const float chamber = -DoorY;
-            const float seamRoof = chamber + 3.1f;
-            float seam = b.x + 6.3f;
+            WorldId.Swamp or WorldId.Alien => Pad(left, right, top),
+            WorldId.Desert => Slab(left, right, top - depth, top),
+            _ => Islet(left, right, top, depth)
+        };
 
-            // Upper shelf from the high door.
-            room.Cave(new[] { (-DoorX, DoorY, 7.2f), (-3.4f, DoorY, 7.15f), (-1.2f, DoorY, 7.1f), (0.6f, DoorY, 7.0f) });
-            // The chamber, running left under the shelf to the seam.
-            room.Cave(new[]
+        private static (float x, float bottom, float top)[] Perch(WorldId world, float left, float right, float top) => world switch
+        {
+            WorldId.Swamp => Pad(left, right, top),
+            WorldId.Caves => Crystal(left, right, top - 0.3f, 0.3f),
+            WorldId.Desert => Slab(left, right, top - 0.6f, top),
+            WorldId.Alien => Pod((left + right) / 2f, top - (right - left) / 2f, (right - left) / 2f),
+            _ => Islet(left, right, top, 0.6f)
+        };
+
+        private const float Chamber = -DoorY;
+        private const float SeamRoof = Chamber + 3.1f;
+
+        // Members alternate down and back: even members are upper chambers, odd members the pits below and to
+        // their left. Each upper chamber is entered high on the left: walk its shelf, drop onto a platform, drop
+        // again to the chamber floor and landing, then turn back along the floor under the shelf. Across the seam
+        // the floor ends over the pit's long platform: run left along it and drop to the pit's landing, then walk
+        // back right beneath it. A pit with a member after it runs on into that member's high door. The last
+        // member leaves by the suite's exit: a pit by its low right door, an upper chamber by its low left one.
+        // Every drop stays under 5 units. Positions come from MemberCenter, because members sit about 1.5 units
+        // higher or lower depending on the mirroring.
+        private static void CarveChain(ForestRoomBuilder room, int members, RoomDoor exit, WorldId world)
+        {
+            for (int i = 0; i < members; i++)
             {
-                (seam - 0.4f, chamber, seamRoof), (-DoorX, chamber, seamRoof + 0.4f), (-3.2f, chamber, 1.4f),
-                (-1.2f, chamber, 2.5f), (0.6f, chamber, 3.1f), (0.6f, chamber, 7.0f), (1.8f, chamber, 7.15f),
-                (3.2f, chamber, 7.05f), (4.6f, chamber, 6.4f), (5.4f, -4.1f, 5.3f), (6.0f, -3.85f, 3.9f),
-                (6.4f, -3.6f, 1.6f), (6.6f, -3.3f, -0.2f)
-            }, Islet(-0.6f, 4.6f, 0.6f, 1.3f));
+                ForestRoomBuilder member = room.ForMember(i);
+                Vector2? next = i + 1 < members ? member.MemberCenter(i + 1) : null;
+                if (i % 2 == 0)
+                    CarveUpper(member, next, world);
+                else
+                {
+                    CarvePit(member, member.MemberCenter(i - 1), world);
+                    if (next.HasValue)
+                        member.Hall(new Vector2(DoorX, -DoorY), next.Value + new Vector2(-DoorX, DoorY), Clearance, Clearance);
+                }
+            }
+            room.Door(0, RoomDoor.HighLeft, Clearance);
+            room.Door(members - 1, exit, Clearance);
+        }
 
-            // The lower chunk, in its own local units. Its roof rises to meet the chamber at the seam.
-            float meet = seamRoof - b.y;
-            var lower = new (float x, float floor, float ceiling)[]
+        // An upper chamber in its own local units. With a pit after it, the floor runs left to the seam over the
+        // pit; without one, it ends at the low left door.
+        private static void CarveUpper(ForestRoomBuilder room, Vector2? pit, WorldId world)
+        {
+            room.Cave(new[] { (-DoorX, DoorY, 7.2f), (-3.4f, DoorY, 7.15f), (-1.2f, DoorY, 7.1f), (0.6f, DoorY, 7.0f) });
+            var chamber = new List<(float x, float floor, float ceiling)>();
+            if (pit.HasValue)
+                chamber.Add((pit.Value.x + 6.3f - 0.4f, Chamber, SeamRoof));
+            chamber.AddRange(new[]
+            {
+                (-DoorX, Chamber, SeamRoof + (pit.HasValue ? 0.4f : 0f)), (-3.2f, Chamber, 1.4f), (-1.2f, Chamber, 2.5f),
+                (0.6f, Chamber, 3.1f), (0.6f, Chamber, 7.0f), (1.8f, Chamber, 7.15f), (3.2f, Chamber, 7.05f),
+                (4.6f, Chamber, 6.4f), (5.4f, -4.1f, 5.3f), (6.0f, -3.85f, 3.9f), (6.4f, -3.6f, 1.6f), (6.6f, -3.3f, -0.2f)
+            });
+            room.Cave(chamber.ToArray(), Platform(world, -0.6f, 4.6f, 0.6f, 1.3f));
+            room.SetLanding(new Vector2(5.0f, Chamber));
+            room.Treasure(new Vector2(2.0f, 0.6f));
+        }
+
+        // A pit in its own local units, below and left of the upper chamber at the given center. Its roof rises
+        // to meet the chamber at the seam, and a perch over the landing holds Nektar.
+        private static void CarvePit(ForestRoomBuilder room, Vector2 upper, WorldId world)
+        {
+            float meet = SeamRoof + upper.y;
+            room.Cave(new (float x, float floor, float ceiling)[]
             {
                 (-6.0f, -1.6f, 3.6f), (-4.6f, -1.6f, 5.6f), (-2.4f, -1.6f, 6.6f), (0.4f, -1.9f, 6.8f),
                 (2.0f, -2.6f, Mathf.Max(6.8f, meet - 0.6f)), (DoorX, -DoorY, meet), (6.3f, -DoorY, meet)
-            };
-            ForestRoomBuilder low = room.ForMember(1);
-            low.Cave(lower, Islet(-1.5f, 6.3f, 2.5f, 0.8f));
-
-            room.SetLanding(0, new Vector2(5.0f, chamber));
-            room.SetLanding(1, b + new Vector2(-3.0f, -1.6f));
-            room.Treasure(new Vector2(2.0f, 0.6f));
-            room.Treasure(b + new Vector2(-5.0f, -1.6f));
-            room.Door(0, RoomDoor.HighLeft, Clearance);
-            room.Door(1, RoomDoor.LowRight, Clearance);
+            }, Platform(world, -1.5f, 6.3f, 2.5f, 0.8f), Perch(world, -4.4f, -2.8f, 4.2f));
+            room.SetLanding(new Vector2(-3.0f, -1.6f));
+            room.Treasure(new Vector2(-5.0f, -1.6f));
+            room.Treasure(new Vector2(-3.6f, 4.2f));
         }
 
         // Merges a floor line and a roof line, each listed left to right, into the profile Cave takes. The floor
