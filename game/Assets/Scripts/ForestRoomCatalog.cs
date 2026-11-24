@@ -68,7 +68,8 @@ namespace Insectum.Game
             new("Forest.Open.BracketFungi", 1, Shape("Main.Descent"), CarveBracketFungi),
             new("Forest.Open.ThornHollow", 1, Shape("Main.Switchback", "Main.ClimbBack", "SideTunnel.ClimbBack"), CarveThornHollow),
             new("Forest.Open.CanopyLoft", 1, Shape("Main.Ascent", "SideTunnel.Ascent"), CarveCanopyLoft),
-            ForestBrambleRooms.Hop, ForestBrambleRooms.Canopy, ForestBrambleRooms.Bowl, ForestBrambleRooms.Drop
+            ForestBrambleRooms.Hop, ForestBrambleRooms.Canopy, ForestBrambleRooms.Bowl, ForestBrambleRooms.Drop,
+            ForestBrambleRooms.Hollow
         };
 
         internal static IReadOnlyList<ForestRoomTemplate> For(WorldId world) => world switch

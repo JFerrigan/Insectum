@@ -20,8 +20,10 @@ namespace Insectum.Game
             new("Forest.Bramble.Bowl", 1, Shape("Main.Span"), CarveBowl, hazardLevel: 2);
         internal static readonly ForestRoomTemplate Drop =
             new("Forest.Bramble.Drop", 1, Shape("Main.Descent"), CarveDrop, hazardLevel: 2);
+        internal static readonly ForestRoomTemplate Hollow =
+            new("Forest.Bramble.Hollow", 1, Shape("Main.Switchback"), CarveHollow, hazardLevel: 1);
 
-        internal static readonly ForestRoomTemplate[] Templates = { Hop, Canopy, Bowl, Drop };
+        internal static readonly ForestRoomTemplate[] Templates = { Hop, Canopy, Bowl, Drop, Hollow };
 
         // Crossing. A flat hall under an arched roof with bramble beds to hop. On a world's first level one bed
         // lies in the middle. Deeper levels have two, with the landing between them.
@@ -106,6 +108,24 @@ namespace Insectum.Game
             room.SetLanding(new Vector2(0.5f, terrace));
             room.Door(RoomDoor.HighLeft, Clearance);
             room.Door(RoomDoor.LowRight, Clearance);
+        }
+
+        // Switchback. A tall hollow like the Great Hollow: hop a bed on the upper shelf, drop onto the island and
+        // then the floor, and hop a second bed in the low gallery on the way back to the lower door.
+        private static void CarveHollow(ForestRoomBuilder room)
+        {
+            room.Cave(new[]
+            {
+                (-DoorX, -DoorY, 0f), (-3.2f, -DoorY, 1.4f), (-1.2f, -DoorY, 2.5f), (0.6f, -DoorY, 3.1f),
+                (0.6f, -DoorY, 7.0f), (1.8f, -DoorY, 7.15f), (3.2f, -DoorY, 7.05f), (4.6f, -DoorY, 6.4f),
+                (5.4f, -4.1f, 5.3f), (6.0f, -3.85f, 3.9f), (6.4f, -3.6f, 1.6f), (6.6f, -3.3f, -0.2f)
+            }, Islet(-0.6f, 4.6f, 0.6f, 1.3f));
+            room.Cave(new[] { (-DoorX, DoorY, 7.2f), (-1.2f, DoorY, 7.2f), (0.6f, DoorY, 7.0f) });
+            Bed(room, -2.9f, -1.4f, DoorY);
+            Bed(room, -3.0f, -1.5f, -DoorY);
+            room.SetLanding(new Vector2(5.0f, -DoorY));
+            room.Door(RoomDoor.HighLeft, Clearance);
+            room.Door(RoomDoor.LowLeft, Clearance);
         }
 
         // A bed on level floor with a take-off Lead units before each end, so it can be jumped either way.

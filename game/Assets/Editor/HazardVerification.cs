@@ -15,11 +15,11 @@ namespace Insectum.Game.Editor
             int beds = VerifyPlacement();
             VerifyBrambles();
             Debug.Log($"Insectum brambles verified: {beds} bramble patches across 90 Forest tunnels rest on rock clear of "
-                + "every landing, one hazard room per world level at most, all four bramble rooms in use, and contact, "
+                + "every landing, at most two hazard rooms per world level, all five bramble rooms in use, and contact, "
                 + "invulnerability, pogo, roof thorns and Dune Mantle behave.");
         }
 
-        // Each Forest tunnel level sets aside at most one hazard room per world level, all on the main route,
+        // Each Forest tunnel level sets aside at most two hazard rooms per world level, all on the main route,
         // and a world's first level uses only the gentlest. Every bramble rests on rock, and floor brambles stay
         // clear of the landings where checkpoints and enemies stand.
         private static int VerifyPlacement()
@@ -35,7 +35,7 @@ namespace Insectum.Game.Editor
                     ForestTunnelSpace tunnel = layout.Tunnel;
                     string where = $"Forest seed {seed}/{level}";
                     Vector2Int[] rooms = tunnel.Hazards.Select(hazard => hazard.Chunk).Distinct().ToArray();
-                    Require(rooms.Length <= level && rooms.All(chunk => tunnel.Rooms[chunk].Role == RoomRole.Main),
+                    Require(rooms.Length <= ForestTunnelLayout.HazardRooms(level) && rooms.All(chunk => tunnel.Rooms[chunk].Role == RoomRole.Main),
                         $"{where} has {rooms.Length} hazard rooms, or one off the main route.");
                     foreach (Vector2Int chunk in rooms)
                     {

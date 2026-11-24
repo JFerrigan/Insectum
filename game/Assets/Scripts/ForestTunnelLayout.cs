@@ -219,8 +219,12 @@ namespace Insectum.Game
             return pool.GetRange(0, Mathf.Min(count, pool.Count));
         }
 
-        // A level sets aside one hazard room per world level, one in each equal stretch of the main route past
-        // its first two rooms. A stretch with no main room that suits a hazard template goes without.
+        // How many rooms a level sets aside for hazards: two per world level.
+        internal static int HazardRooms(int worldLevel) => 2 * worldLevel;
+
+        // Hazard rooms are spread over equal stretches of the main route past its first two rooms, one per
+        // stretch. The first stretch takes its earliest suitable room, so every level shows its hazard early;
+        // later stretches pick at random. A stretch with no main room that suits a hazard template goes without.
         private static HashSet<Vector2Int> PickHazardRooms(WorldId world, int worldLevel, List<Vector2Int> route,
             IReadOnlyDictionary<Vector2Int, ForestRoomProfile> rooms, LevelSeeds seeds)
         {
@@ -228,18 +232,19 @@ namespace Insectum.Game
             var picked = new HashSet<Vector2Int>();
             var random = new SeededRandom(seeds.Layout ^ HazardSalt);
             int last = route.Count - 1;
+            int stretches = HazardRooms(worldLevel);
             var candidates = new List<Vector2Int>();
-            for (int stretch = 0; stretch < worldLevel; stretch++)
+            for (int stretch = 0; stretch < stretches; stretch++)
             {
                 candidates.Clear();
-                for (int i = first + (last - first) * stretch / worldLevel; i < first + (last - first) * (stretch + 1) / worldLevel; i++)
+                for (int i = first + (last - first) * stretch / stretches; i < first + (last - first) * (stretch + 1) / stretches; i++)
                 {
                     ForestRoomProfile room = rooms[route[i]];
                     if (room.Role == RoomRole.Main && ForestRoomCatalog.HasHazard(world, room, worldLevel))
                         candidates.Add(route[i]);
                 }
                 if (candidates.Count > 0)
-                    picked.Add(candidates[random.Next(candidates.Count)]);
+                    picked.Add(candidates[stretch == 0 ? 0 : random.Next(candidates.Count)]);
             }
             return picked;
         }
