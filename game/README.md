@@ -43,10 +43,11 @@ Dune Mantle blocks any hazard hit, deadly ones included.
 
 The first chest vault in each level stands on a plug of the world's soft material with
 Nektar buried in it. Level 4 is the world's boss arena: one sealed hall, about 50 units wide and 18 tall,
-walled in bedrock on every side, with the camera held inside it. A flat floor runs between two stepped
-terraces, and platforms of the world's diggable materials climb one hex row at a time to a bedrock perch in
-the middle, so an ordinary jump reaches every tier. Two higher islands need Spider's leap or Dragonfly's
-flight. Edit the hall's hex map in `Assets/Scripts/BossArenaLayout.cs`. Press Esc during a run to pause and see the controls,
+walled in bedrock on every side. The camera can show more rock above the ceiling and below the floor.
+A flat floor runs between two stepped terraces, and platforms of the world's diggable materials climb
+one hex row at a time to a bedrock perch in the middle, so an ordinary jump reaches every tier.
+Two higher islands need Spider's leap or Dragonfly's flight. Edit the hall's hex map in
+`Assets/Scripts/BossArenaLayout.cs`. Press Esc during a run to pause and see the controls,
 current item, and seed. Press Esc again or click Resume to continue. Leave
 the seed field blank for a random layout, or enter a seed to replay it. Type
 digits at character select to enter one, and Backspace to erase. Click the seed

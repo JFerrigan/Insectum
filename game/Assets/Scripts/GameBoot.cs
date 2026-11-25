@@ -304,10 +304,20 @@ namespace Insectum.Game
             }
 
             Vector2 position = session.Motor.Body.position;
+            Rect? cameraBounds = session.Layout?.CameraBounds;
+            if (cameraBounds.HasValue && session.Content?.MainBoss is LevelEnemy boss && boss.Damage.Health.Alive)
+            {
+                // Follow a rising boss while reserving space between the player and the boss health bar.
+                const float bossHeadroom = 2f;
+                const float playerFootroom = 3.25f;
+                float bossFocus = boss.Position.y + bossHeadroom - PixelViewport.WorldHalfHeight;
+                float highestFocus = position.y + PixelViewport.WorldHalfHeight - playerFootroom;
+                position.y = Mathf.Clamp(bossFocus, position.y, highestFocus);
+            }
 #if DEVELOPMENT_BUILD
             position = terrainProfile?.Focus ?? position;
 #endif
-            Vector2 cameraCenter = PixelViewport.Snap(Frame(position, session.Layout?.CameraBounds) + session.ShakeOffset);
+            Vector2 cameraCenter = PixelViewport.Snap(Frame(position, cameraBounds) + session.ShakeOffset);
             routeCamera.transform.position = new Vector3(cameraCenter.x, cameraCenter.y, -10f);
             float driftX = Mathf.Sin(cameraCenter.x * 0.033f) * 1.65f;
             float driftY = Mathf.Sin(cameraCenter.y * 0.045f) * 0.32f;

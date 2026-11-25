@@ -19,11 +19,12 @@ namespace Insectum.Game
         internal const float EchoX = -6f;
         private const float SpawnX = -15.5f;
         private const float ExitX = 16f;
-        // The inner walls stand about 25 units from the center, the floor's top near y = 1 and the ceiling near
-        // y = 18.5. The view shows the whole floor row and ceiling row and two units of each side wall.
+        // Extend the rock above and below the hall by one terrain region. Keep four tile rows below
+        // the fighting floor in the lowest camera view so the boss HUD sits over the rock.
+        private const float VerticalRockPadding = HexGrid.RegionSize * HexGrid.RowSpacing;
         private const float ViewHalfWidth = 27.2f;
-        private const float ViewBottom = -0.9f;
-        private const float ViewTop = 20.6f;
+        private const float ViewBottom = FloorY - 4 * HexGrid.RowSpacing;
+        private const float ViewTop = CeilingY + VerticalRockPadding;
 
         // One hex cell per character, two characters apart. Odd rows sit half a cell to the right, so they're
         // indented by one space, and the map reads the way it plays. The bottom line is hex row -1, and the floor
@@ -78,10 +79,11 @@ namespace Insectum.Game
                 }
             }
 
-            // Fill well past the walls with unbreakable rock, so no camera position or dig ever finds an edge.
             Rect hall = Footprint(tiles.Keys);
-            int firstRow = Mathf.FloorToInt((hall.yMin - PixelViewport.WorldHalfHeight) / HexGrid.RowSpacing) - 1;
-            int lastRow = Mathf.CeilToInt((hall.yMax + PixelViewport.WorldHalfHeight) / HexGrid.RowSpacing) + 1;
+            Rect bounds = Rect.MinMaxRect(hall.xMin, hall.yMin - VerticalRockPadding, hall.xMax, hall.yMax + VerticalRockPadding);
+            // Fill past the expanded bounds with unbreakable rock so the camera never reaches the terrain edge.
+            int firstRow = Mathf.FloorToInt((bounds.yMin - PixelViewport.WorldHalfHeight) / HexGrid.RowSpacing) - 1;
+            int lastRow = Mathf.CeilToInt((bounds.yMax + PixelViewport.WorldHalfHeight) / HexGrid.RowSpacing) + 1;
             for (int r = firstRow; r <= lastRow; r++)
             {
                 int firstColumn = Mathf.FloorToInt((hall.xMin - PixelViewport.WorldHalfWidth) / HexGrid.ColumnSpacing - r / 2f) - 1;
@@ -94,12 +96,11 @@ namespace Insectum.Game
                 }
             }
 
-            // The camera keeps to the hall plus a sliver of its walls, so the fight fills the screen.
             Rect view = Rect.MinMaxRect(-ViewHalfWidth, ViewBottom, ViewHalfWidth, ViewTop);
             var markers = new List<LevelMarker> { new(LevelMarkerKind.Boss, new Vector2(BossX, FloorY), Vector2Int.zero) };
             return new LevelLayout(seed, level, new LevelSeeds(seed, level), tiles, new List<MacroChunk>(),
                 new List<RouteCheckpoint>(), markers, new Vector2(SpawnX, FloorY), new Vector2(ExitX, FloorY + 0.55f),
-                hall, 1, false, world, cameraBounds: view);
+                bounds, 1, false, world, cameraBounds: view);
         }
 
         // Platforms are carved from each world's own diggable pair, so Worm and blasts can reshape them.
