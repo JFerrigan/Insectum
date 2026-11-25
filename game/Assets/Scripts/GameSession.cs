@@ -37,6 +37,8 @@ namespace Insectum.Game
         internal bool HeavyPose { get; private set; }
 
         public RunPhase Phase { get; private set; } = RunPhase.Selection;
+        // Boss rush skips straight from one world's boss arena to the next.
+        public bool BossRush { get; private set; }
         public RunState Run { get; private set; }
         public PlayerMotor Motor { get; private set; }
         public HexTerrain Terrain { get; private set; }
@@ -97,6 +99,12 @@ namespace Insectum.Game
             BeginRun(character, seed, true, 1);
             lastLevel = RunWorlds.LevelCount;
             LoadLevel(ForestTunnelLayout.Generate(seed));
+        }
+
+        internal void StartBossRush(Character character, int seed)
+        {
+            StartRun(character, seed, RunWorlds.LevelCount, RunWorlds.NextBossLevel(0));
+            BossRush = true;
         }
 
         internal void StartForest(Character character, int seed) =>
@@ -244,9 +252,11 @@ namespace Insectum.Game
                 return;
             }
 
-            if (fullRun && Run.LevelNumber < lastLevel)
+            int nextLevel = BossRush ? RunWorlds.NextBossLevel(Run.LevelNumber) : Run.LevelNumber + 1;
+            if (fullRun && nextLevel <= lastLevel)
             {
-                Run.EnterNextLevel();
+                while (Run.LevelNumber < nextLevel)
+                    Run.EnterNextLevel();
                 LoadLevel(RunWorlds.Generate(Run.Seed, Run.LevelNumber));
             }
             else
@@ -271,6 +281,7 @@ namespace Insectum.Game
             ReleaseLevel();
             Run = null;
             fullRun = false;
+            BossRush = false;
             Phase = RunPhase.Selection;
         }
 
@@ -352,7 +363,9 @@ namespace Insectum.Game
             var passives = new List<KeyValuePair<ItemId, int>>(old.Passives);
             ItemId active = old.Active;
             int nektar = old.Nektar;
+            bool bossRush = BossRush;
             StartGenerated(Run.Character, Run.Seed, Mathf.Clamp(levelNumber, 1, RunWorlds.LevelCount));
+            BossRush = bossRush;
             foreach (var passive in passives)
                 for (int i = 0; i < passive.Value; i++)
                     Run.Inventory.Acquire(passive.Key);
