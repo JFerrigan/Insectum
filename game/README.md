@@ -164,6 +164,10 @@ shared boss effects, and writes a contact sheet to `Builds/BossPreviews/`.
 
 ## Boss check (no Unity needed)
 
+`docs/09_BOSS_DESIGN_HANDOFF.md` is the recipe for building a boss. `tools/compilecheck.sh` compiles every
+game and editor script against the installed Unity's DLLs, which works while the editor has the project
+open.
+
 `tools/bosscheck.sh [seeds]` steps the reworked bosses' fight logic
 (`Assets/Scripts/Bosses`) under plain .NET, like the map generator. It
 checks that each attack's warning lasts at least 24 steps with nothing live

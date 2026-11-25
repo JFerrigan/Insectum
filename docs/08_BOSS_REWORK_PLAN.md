@@ -1,7 +1,8 @@
 # Boss Rework — Implementation Plan
 
 **Status:** Step 0 and the stag beetle (Step 1) are built, November 2026. Swamp, Caves, Desert and Alien
-are not started. What changed from this plan while building:
+are not started. **To build the next one, follow `docs/09_BOSS_DESIGN_HANDOFF.md`.** What changed from this plan
+while building:
 
 - **Art:** the beetle is not a runtime rig. `ArtSource/boss_forest_pixels.py` poses a parametric beetle
   and draws each frame crisply, so nothing is rotated at runtime. Runtime work is frame playback, the

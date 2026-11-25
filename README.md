@@ -18,7 +18,9 @@
 9. `art/references/` — selected prior concept art, including a direct crop of the top-left preferred style, the chunky low-resolution test, shop screenshot, boss arena, and a swamp scene.
 10. `art/concepts/` — simple palette and material-reference boards made to organize the visuals; they are **not production tiles or sprites**.
 
-Tooling: `tools/map.sh <seed> [level|all]` renders generated levels to PNG and a text listing without Unity. See `game/README.md` → *Map generator*.
+Tooling: `tools/map.sh <seed> [level|all]` renders generated levels to PNG and a text listing without Unity. See `game/README.md` → *Map generator*. `tools/bosscheck.sh` runs the bosses' fight logic headless, and `tools/compilecheck.sh` compiles every script against Unity's DLLs while the editor is open.
+
+Bosses: `docs/08_BOSS_REWORK_PLAN.md` says what each world's boss does; `docs/09_BOSS_DESIGN_HANDOFF.md` says how to build one (the designer's preferences, workflow, recipe, numbers and lessons from Old Oakhorn).
 
 ## Important qualifications
 

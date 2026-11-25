@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Compiles every game and editor script against the installed Unity's DLLs, without Unity running.
+       tools/compilecheck.sh passes UnityManaged; see that script. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <OutputType>Library</OutputType>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>CS0162;CS0414;CS0649;CS0169;CS8632;CS0618</NoWarn>
+    <DefineConstants>$(DefineConstants);UNITY_EDITOR;DEVELOPMENT_BUILD</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../game/Assets/Scripts/**/*.cs" />
+    <Compile Include="../../game/Assets/Editor/**/*.cs" />
+    <Reference Include="$(UnityManaged)/*.dll" Private="false" />
+  </ItemGroup>
+</Project>
