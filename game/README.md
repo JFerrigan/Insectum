@@ -78,9 +78,9 @@ at the start. Every attack has a warning first:
   after two quick pogos.
 - **Flying** (at least 10 s apart): it either hovers over you behind a red
   target and slams down, sending a jumpable shockwave each way, or makes
-  Air Gore passes. On the platforms it rams across at your height, marked by
-  a dotted line; on the floor it flies high and drops bark with shadows
-  beneath.
+  Air Gore passes. On the platforms it settles to your height, its jaws
+  glow, and it rams across; on the floor it flies high and drops bark with
+  shadows beneath.
 
 Touching it hurts, except while it's stuck or recovering, when it looks
 dull. Its hurtboxes are fitted to each pose's art and reach a little past it,

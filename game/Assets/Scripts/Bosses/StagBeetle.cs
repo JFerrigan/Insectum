@@ -137,9 +137,6 @@ namespace Insectum.Game
             Act.DiveLock => 1f,
             _ => null
         };
-        // The height the next ramming dash will cross at, while the beetle aims. A bombing run has no line:
-        // its falling bark shows its own shadows.
-        internal float? GoreLine => CurrentAct == Act.GoreAim && !bombing ? Position.y + 1f : null;
         // How far the charge streak has drawn along the floor during the wind-up.
         internal float? ChargeLine => CurrentAct == Act.ChargeWindup ? ActProgress : null;
         internal float ChargeTarget => chargeLimit;

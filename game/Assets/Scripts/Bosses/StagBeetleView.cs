@@ -217,15 +217,6 @@ namespace Insectum.Game
             }
 
             int used = 0;
-            if (beetle.GoreLine is float line)
-            {
-                // A dotted line at the dash's height, flowing in its direction.
-                float alpha = 0.35f + 0.3f * Mathf.Sin(tick * 0.4f);
-                int offset = tick / 4 % 2;
-                for (float x = -16f; x <= 16f; x += 0.75f)
-                    PlaceDot(used++, new Vector2(x + offset * beetle.Facing * 0.375f, line), new Vector2(0.375f, 0.125f),
-                        new Color(Amber.r, Amber.g, Amber.b, alpha));
-            }
             if (beetle.ChargeLine is float drawn)
             {
                 // Dust scuffs along the floor showing where the charge will run.

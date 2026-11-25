@@ -243,7 +243,7 @@ worn-wood grain. Six legs with knobby joints.
 5. **Wing Leap → Air Gore** *(air, stays airborne; weight about 8 % P1, 14 % P2–P3)*
    - *Telegraph:* the same wing opening, but it rises only to mid-height and drifts to one side of the
      arena.
-   - *Attack (×2, ×3 in P3):* hovers, horns glow, and a faint line shows its flight height (0.6 s). It then
+   - *Attack (×2, ×3 in P3):* hovers at its flight height with its horns glowing (0.6 s); no line is drawn. It then
      dashes horizontally across the arena at that height (16 units/s), horns-first. The height is taken from
      where the player was when the telegraph started, so changing height dodges it: drop off a platform,
      jump, or climb.
