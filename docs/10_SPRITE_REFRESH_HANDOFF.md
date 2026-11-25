@@ -61,8 +61,8 @@ boss row of every biome sheet, are pixel-identical to the PNGs in the repo.
 
 ### Another session is working on bosses in this repo
 
-It has uncommitted changes in `game/ArtSource/boss_forest_pixels.py`, `ForestBoss.png` and
-`ForestBossGlow.png`, and commits often. See `docs/09_BOSS_DESIGN_HANDOFF.md`.
+It edits `game/ArtSource/boss_forest_pixels.py`, `ForestBoss.png`, `ForestBossGlow.png` and the boss
+scripts, and commits often. See `docs/09_BOSS_DESIGN_HANDOFF.md`.
 
 - **Never stage those files**, or any boss art.
 - **Stage only explicit paths.** The tree also has unrelated untracked files (`game/Insectum/`,
