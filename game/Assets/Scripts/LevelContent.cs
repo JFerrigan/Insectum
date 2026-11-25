@@ -23,6 +23,7 @@ namespace Insectum.Game
         public bool Available { get; private set; } = true;
         public bool Interactable => Kind >= LevelFeatureKind.Shop;
         private readonly SpriteRenderer art;
+        private readonly SpriteRenderer offer;
 
         internal string ShopOffer => $"{Items.Name(Item)}  ({Amount} Nektar)";
 
@@ -34,20 +35,39 @@ namespace Insectum.Game
             _ => null
         };
 
-        public LevelFeature(LevelFeatureKind kind, Vector2 position, ItemId item, int amount, SpriteRenderer art)
+        public LevelFeature(LevelFeatureKind kind, Vector2 position, ItemId item, int amount, SpriteRenderer art,
+            SpriteRenderer offer)
         {
             Kind = kind;
             Position = position;
             Item = item;
             Amount = amount;
             this.art = art;
+            this.offer = offer;
         }
 
         public void Consume()
         {
             Available = false;
-            if (art != null && Kind != LevelFeatureKind.Shop)
-                art.gameObject.SetActive(false);
+            if (art == null)
+                return;
+
+            switch (Kind)
+            {
+                case LevelFeatureKind.Shop:
+                    if (offer != null)
+                        offer.enabled = false;
+                    break;
+                case LevelFeatureKind.Chest:
+                    art.sprite = ForestArt.Prop(ForestProp.ChestOpen);
+                    break;
+                case LevelFeatureKind.BossReward:
+                    art.sprite = ForestArt.Prop(ForestProp.BossRewardOpen);
+                    break;
+                default:
+                    art.gameObject.SetActive(false);
+                    break;
+            }
         }
     }
 
@@ -157,9 +177,16 @@ namespace Insectum.Game
         {
             var art = pixel == null ? null : ForestArt.Place(parent, kind.ToString(), position,
                 ForestArt.Prop((ForestProp)kind), 3);
+            SpriteRenderer offer = null;
             if (art != null && kind < LevelFeatureKind.Shop)
                 art.transform.localScale = Vector3.one * (kind == LevelFeatureKind.Nektar ? 0.52f : 0.75f);
-            features.Add(new LevelFeature(kind, position, item, amount, art));
+            else if (art != null && kind == LevelFeatureKind.Shop && Items.IsKnown(item))
+            {
+                offer = ForestArt.Place(art.transform, "Offer", Vector2.up * (20f / PixelViewport.PixelsPerUnit),
+                    ForestArt.Item(item), 4);
+                offer.gameObject.AddComponent<HoverBob>();
+            }
+            features.Add(new LevelFeature(kind, position, item, amount, art, offer));
         }
 
         internal void BuryNektar(Vector2Int cell, int amount)

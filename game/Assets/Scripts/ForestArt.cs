@@ -6,18 +6,20 @@ namespace Insectum.Game
     {
         Nektar, HeartSap, EnergySap, Shop, Chest, BossReward,
         Exit, LockedExit, Thorn, ThornWarning, ThornStrike, Dart,
-        Warning, Blast, Slash, SidePath
+        Warning, Blast, Slash, SidePath, ChestOpen, BossRewardOpen
     }
 
     internal static class ForestArt
     {
         private static Texture2D actors;
         private static Texture2D props;
+        private static Texture2D items;
         private static Texture2D terrain;
         private static Texture2D cavern;
         private static Texture2D glyphs;
         private static readonly Sprite[,] actorFrames = new Sprite[8, 6];
-        private static readonly Sprite[] propSprites = new Sprite[16];
+        private static readonly Sprite[] propSprites = new Sprite[System.Enum.GetValues(typeof(ForestProp)).Length];
+        private static readonly Sprite[] itemSprites = new Sprite[12];
         private static Sprite backdrop;
         private static Texture2D hazards;
         private static readonly Sprite[] brambleCels = new Sprite[BrambleVariants + 2];
@@ -46,6 +48,13 @@ namespace Insectum.Game
             return propSprites[index] ??= Frame(props, index % 8, index / 8, 32, 32, Vector2.one * 0.5f);
         }
 
+        internal static Sprite Item(ItemId id)
+        {
+            int index = (int)id - 1;
+            items ??= Load("Items");
+            return itemSprites[index] ??= Frame(items, index % 6, index / 6, 32, 32, Vector2.one * 0.5f);
+        }
+
         internal static Sprite Backdrop =>
             backdrop ??= Frame(Cavern, 0, 0, Cavern.width, Cavern.height, Vector2.one * 0.5f);
 
@@ -69,6 +78,25 @@ namespace Insectum.Game
                 pivot, PixelViewport.PixelsPerUnit, 0, SpriteMeshType.FullRect);
 
         internal static Texture2D Load(string name) => Resources.Load<Texture2D>($"PixelArt/{name}");
+    }
+
+    internal sealed class HoverBob : MonoBehaviour
+    {
+        private Vector3 rest;
+        private float phase;
+
+        private void Start()
+        {
+            rest = transform.localPosition;
+            phase = transform.position.x * 1.7f;
+        }
+
+        private void LateUpdate()
+        {
+            float angle = Time.time * (2f * Mathf.PI / 1.6f) + phase;
+            int pixels = Mathf.RoundToInt((Mathf.Sin(angle) + 1f) * 1.5f);
+            transform.localPosition = rest + Vector3.up * (pixels / PixelViewport.PixelsPerUnit);
+        }
     }
 
     internal sealed class InsectActorView : MonoBehaviour

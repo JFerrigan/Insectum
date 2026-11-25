@@ -26,8 +26,8 @@ namespace Insectum.Game
         internal static Rect DevCheckbox => new(250, 163, 62, 10);
         internal static Rect RetryButton => new(57, 132, 97, 19);
         internal static Rect RosterButton => new(166, 132, 97, 19);
-        internal static Rect ResumeButton => new(38, 145, 118, 19);
-        internal static Rect QuitToRosterButton => new(164, 145, 118, 19);
+        internal static Rect ResumeButton => new(38, 159, 118, 17);
+        internal static Rect QuitToRosterButton => new(164, 159, 118, 17);
         internal static Rect PlayButton => new(110, 80, 100, 19);
         internal static Rect SettingsButton => new(110, 105, 100, 19);
         internal static Rect QuitButton => new(110, 130, 100, 19);
@@ -228,7 +228,7 @@ namespace Insectum.Game
         {
             string label = !shop.Available ? "SOLD OUT"
                 : session.Content.ClosestInteractable() == shop ? shop.InteractPrompt : shop.ShopOffer;
-            DrawWorldPrompt(camera, shop.Position + Vector2.up * 1.4f, label, shop.Available ? Gold : Muted);
+            DrawWorldPrompt(camera, shop.Position + Vector2.up * 2.6f, label, shop.Available ? Gold : Muted);
         }
 
         // Faint control hints painted into the opening room of the first level. They are placed
@@ -527,14 +527,14 @@ namespace Insectum.Game
         private static void DrawPause(GameSession session)
         {
             RunState run = session.Run;
-            Frame(new Rect(14, 26, 292, 144), Edge, Panel);
-            Center("PAUSED", 160, 33, Light, 2);
+            Frame(new Rect(14, 20, 292, 159), Edge, Panel);
+            Center("PAUSED", 160, 25, Light, 2);
 
-            Write("CONTROLS", 24, 55, Gold);
-            Write("A/D  MOVE", 24, 66, Light);
-            Write("SPACE  JUMP (HOLD HIGHER)", 24, 75, Light);
-            Write("J HIT / W+J UP / AIR S+J DOWN", 24, 84, Light);
-            Write("E  INTERACT  /  L  ITEM", 24, 93, Light);
+            Write("CONTROLS", 24, 44, Gold);
+            Write("A/D  MOVE", 24, 53, Light);
+            Write("SPACE  JUMP (HOLD HIGHER)", 24, 62, Light);
+            Write("J HIT / W+J UP / AIR S+J DOWN", 24, 71, Light);
+            Write("E  INTERACT  /  L  ITEM", 24, 80, Light);
             Write(run.Character.Insect switch
             {
                 Insect.Spider => "K  HIGH JUMP",
@@ -542,18 +542,16 @@ namespace Insectum.Game
                 Insect.Dragonfly => "K  FLY  /  WASD  STEER",
                 Insect.FireAnt => "K  HEAVY HIT",
                 _ => "K  DIG AHEAD  /  S+K  DIG DOWN"
-            }, 24, 102, Mint);
+            }, 24, 89, Mint);
 
             if (run.Character.Insect == Insect.Spider)
             {
-                Write("WALK INTO WALL TO CLIMB", 24, 111, Muted);
-                Write("RELEASE MOVE TO DROP", 176, 111, Muted);
+                Write("WALK INTO WALL TO CLIMB", 24, 98, Muted);
+                Write("RELEASE MOVE TO DROP", 176, 98, Muted);
             }
 
-            Write(run.Character.Name, 176, 55, Gold);
-            Write($"SEED {run.Seed}", 176, 66, Light);
-            Write($"ITEM  {Items.Name(run.Inventory.Active)}", 176, 75, Light);
-            int itemY = 84;
+            Write(run.Character.Name, 198, 44, Gold);
+            Write($"SEED {run.Seed}", 198, 53, Light);
             string variant = session.Variant switch
             {
                 LevelVariant.Night => "NIGHT",
@@ -562,27 +560,59 @@ namespace Insectum.Game
                 _ => null
             };
             if (variant != null)
-            {
-                Write(variant, 176, 84, Mint);
-                itemY += 9;
-            }
-            // Stop above the spider's climb hint and the interaction prompt.
-            int lastY = run.Character.Insect == Insect.Spider ? 102 : 113;
-            foreach (var passive in run.Inventory.Passives)
-            {
-                if (passive.Value <= 0 || itemY > lastY)
-                    continue;
-                string entry = passive.Value > 1 ? $"{Items.Name(passive.Key)} X{passive.Value}" : Items.Name(passive.Key);
-                Write(entry, 176, itemY, Muted);
-                itemY += 9;
-            }
+                Write(variant, 198, 62, Mint);
+            DrawPauseInventory(run.Inventory);
 
             if (session.InteractionPrompt is string prompt)
-                Center(prompt, 160, 122, Gold);
+                Center(prompt, 160, 142, Gold);
             if (session.Status is string status)
-                Center(status, 160, 133, Muted);
+                Center(status, 160, 150, Muted);
             Button(ResumeButton, "ESC  RESUME");
             Button(QuitToRosterButton, "Q  CHARACTERS");
+        }
+
+        private static void DrawPauseInventory(RunInventory inventory)
+        {
+            const int iconSize = 22;
+            const int iconY = 115;
+            const int passiveX = 76;
+            Write("ACTIVE", 24, 106, Gold);
+            Write("PASSIVE", passiveX, 106, Gold);
+            var activeSlot = new Rect(24, iconY, iconSize, iconSize);
+            Frame(activeSlot, Edge, Ink);
+            if (Items.IsActive(inventory.Active))
+                DrawItemIcon(inventory.Active, activeSlot);
+            else
+                Center("-", (int)activeSlot.center.x, iconY + 8, Muted);
+
+            int x = passiveX;
+            foreach (var passive in inventory.Passives)
+            {
+                if (passive.Value <= 0)
+                    continue;
+                DrawItemIcon(passive.Key, new Rect(x, iconY, iconSize, iconSize));
+                if (passive.Value > 1)
+                {
+                    string count = passive.Value.ToString();
+                    int right = x + iconSize;
+                    int width = TextWidth(count) + 2;
+                    Fill(new Rect(right - width, 132, width, 9), Ink);
+                    Right(count, right - 1, 133, Light);
+                }
+                x += iconSize;
+            }
+            if (x == passiveX)
+                Center("-", passiveX + iconSize / 2, iconY + 8, Muted);
+        }
+
+        private static void DrawItemIcon(ItemId id, Rect target)
+        {
+            Sprite sprite = ForestArt.Item(id);
+            Texture2D atlas = sprite.texture;
+            Rect source = sprite.rect;
+            GUI.color = Color.white;
+            GUI.DrawTextureWithTexCoords(target, atlas,
+                new Rect(source.x / atlas.width, source.y / atlas.height, source.width / atlas.width, source.height / atlas.height));
         }
 
         private static void Shade() =>

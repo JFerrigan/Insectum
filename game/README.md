@@ -163,6 +163,9 @@ world renders at 480×270 and fills the available 16:9 area with point filtering
 Other aspect ratios use letterboxing. With Pillow
 installed, run the matching `*_pixels.py` script in `ArtSource` to
 regenerate that world's textures in `Assets/Resources/PixelArt`.
+`item_pixels.py` generates the icons used in shops and the pause menu.
+`sprite_style.py` provides shared shading and outlines, and `sprite_preview.py`
+writes a comparison sheet to `Builds/SpritePreviews/`.
 `boss_forest_pixels.py` draws Old Oakhorn's frames, its jaw glow and the
 shared boss effects, and writes a contact sheet to `Builds/BossPreviews/`.
 
