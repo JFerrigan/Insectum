@@ -50,7 +50,7 @@ namespace Insectum.Game
                         continue;
 
                     // Each boss telegraphs independently from its own part of the arena.
-                    content.AddEnemy(enemy.Spec, new Vector2(-5.75f, 1f), 0, true);
+                    content.AddEnemy(enemy.Spec, new Vector2(BossArenaLayout.EchoX, BossArenaLayout.FloorY), 0, true);
                     break;
                 }
                 content.ShowStatus("Double boss. Defeat both.");

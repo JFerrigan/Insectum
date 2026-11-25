@@ -245,11 +245,24 @@ namespace Insectum.Game
 #if DEVELOPMENT_BUILD
             position = terrainProfile?.Focus ?? position;
 #endif
-            Vector2 cameraCenter = PixelViewport.Snap(position);
+            Vector2 cameraCenter = PixelViewport.Snap(Frame(position, session.Layout?.CameraBounds));
             routeCamera.transform.position = new Vector3(cameraCenter.x, cameraCenter.y, -10f);
             float driftX = Mathf.Sin(cameraCenter.x * 0.033f) * 1.65f;
             float driftY = Mathf.Sin(cameraCenter.y * 0.045f) * 0.32f;
             backdrop.transform.position = PixelViewport.Snap(cameraCenter + new Vector2(driftX, driftY));
+        }
+
+        // Keeps the view inside a fixed hall's bounds, and centers it on any axis where the hall is narrower.
+        private static Vector2 Frame(Vector2 focus, Rect? bounds)
+        {
+            if (bounds is not Rect hall)
+                return focus;
+
+            float halfWidth = PixelViewport.WorldHalfWidth;
+            float halfHeight = PixelViewport.WorldHalfHeight;
+            float x = hall.width <= 2f * halfWidth ? hall.center.x : Mathf.Clamp(focus.x, hall.xMin + halfWidth, hall.xMax - halfWidth);
+            float y = hall.height <= 2f * halfHeight ? hall.center.y : Mathf.Clamp(focus.y, hall.yMin + halfHeight, hall.yMax - halfHeight);
+            return new Vector2(x, y);
         }
 
         private void OnGUI()

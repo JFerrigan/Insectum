@@ -75,6 +75,8 @@ namespace Insectum.Game
         private const int EruptionSteps = 14;
         private const int BeamSteps = 45;
         private const float BeamLength = 8.6f;
+        // Bosses keep to the arena's flat floor between its terraces.
+        private const float Lane = BossArenaLayout.LaneHalfWidth;
         private readonly EnemySpec spec;
         private readonly Vector2 anchor;
         private readonly Transform root;
@@ -201,7 +203,7 @@ namespace Insectum.Game
                     {
                         direction = toPlayer.x < 0f ? -1 : 1;
                         if (spec.Style == EnemyStyle.BurrowBoss)
-                            burrowTargetX = Mathf.Clamp(target.Position.x, -9.6f, 9.6f);
+                            burrowTargetX = Mathf.Clamp(target.Position.x, -Lane, Lane);
                         SetPhase(Phase.Warning, spec.Style switch
                         {
                             EnemyStyle.VolleyBoss => 51,
@@ -219,7 +221,7 @@ namespace Insectum.Game
                     break;
                 case Phase.Attacking:
                     if (spec.Style == EnemyStyle.ChargeBoss)
-                        chargeX = Mathf.Clamp(chargeX + direction * 8.1f * PlayerMotor.StepSeconds, -9.6f, 9.6f);
+                        chargeX = Mathf.Clamp(chargeX + direction * 8.1f * PlayerMotor.StepSeconds, -Lane, Lane);
                     if (spec.Style == EnemyStyle.QuakeBoss)
                         StepQuake(target);
                     else if (spec.Style == EnemyStyle.BurrowBoss)
@@ -385,7 +387,7 @@ namespace Insectum.Game
             if (Boss)
             {
                 float depth = Burrowing ? 2.7f : 0f;
-                Position = new Vector2(Mathf.Clamp(chargeX + displacement.x, -9.9f, 9.9f), anchor.y - depth);
+                Position = new Vector2(Mathf.Clamp(chargeX + displacement.x, -Lane - 0.3f, Lane + 0.3f), anchor.y - depth);
                 return;
             }
 

@@ -154,6 +154,8 @@ namespace Insectum.Game
         public Vector2 Spawn { get; }
         public Vector2 Exit { get; }
         public Rect Bounds { get; }
+        // Where the camera's view must stay, for levels that show a fixed hall; null lets it follow freely.
+        public Rect? CameraBounds { get; }
         public float KillHeight => Bounds.yMin - 2f;
         public int RouteDirection { get; }
         public bool UsedFallback { get; }
@@ -162,7 +164,7 @@ namespace Insectum.Game
         internal LevelLayout(int runSeed, int levelNumber, LevelSeeds seeds, Dictionary<Vector2Int, TerrainMaterial> tiles,
             List<MacroChunk> chunks, List<RouteCheckpoint> checkpoints, List<LevelMarker> markers,
             Vector2 spawn, Vector2 exit, Rect bounds, int routeDirection, bool usedFallback, WorldId world = WorldId.Forest,
-            ForestTunnelSpace tunnel = null)
+            ForestTunnelSpace tunnel = null, Rect? cameraBounds = null)
         {
             RunSeed = runSeed;
             LevelNumber = levelNumber;
@@ -176,6 +178,7 @@ namespace Insectum.Game
             Spawn = spawn;
             Exit = exit;
             Bounds = bounds;
+            CameraBounds = cameraBounds;
             RouteDirection = routeDirection;
             UsedFallback = usedFallback;
             Tunnel = tunnel;
