@@ -130,7 +130,7 @@ namespace Insectum.Game
         private static void DrawSelection(int selected, string seed, bool editingSeed, bool bossRush)
         {
             Shade();
-            Button(RosterBackButton, "ESC BACK");
+            Button(RosterBackButton, "BACK");
             Center("INSECTUM", 160, 18, Ink, 3);
             Center("INSECTUM", 160, 16, Light, 3);
             Fill(new Rect(48, 47, 224, 1), Edge);
@@ -157,7 +157,7 @@ namespace Insectum.Game
             Frame(SeedField, editingSeed ? Gold : Edge, Panel);
             Write("SEED", 29, 147, Gold);
             Write(string.IsNullOrEmpty(seed) ? "RANDOM" : seed, 58, 147, editingSeed ? Light : Muted);
-            Button(StartButton, bossRush ? "ENTER BOSS RUSH" : "ENTER START");
+            Button(StartButton, "START");
             Checkbox(BossRushCheckbox, "BOSS RUSH", bossRush);
             Checkbox(DevCheckbox, "DEV MODE", DevMode.Enabled);
         }
