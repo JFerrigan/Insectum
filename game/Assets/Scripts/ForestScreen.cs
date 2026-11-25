@@ -24,6 +24,8 @@ namespace Insectum.Game
         internal static Rect SeedField => new(23, 141, 124, 18);
         internal static Rect StartButton => new(168, 141, 129, 18);
         internal static Rect DevCheckbox => new(250, 163, 62, 10);
+        internal static Rect BossRushCheckbox => new(176, 163, 68, 10);
+        internal static Rect RosterBackButton => new(8, 8, 56, 19);
         internal static Rect RetryButton => new(57, 132, 97, 19);
         internal static Rect RosterButton => new(166, 132, 97, 19);
         internal static Rect ResumeButton => new(38, 159, 118, 17);
@@ -39,7 +41,7 @@ namespace Insectum.Game
             ? new Rect(132, 59, 56, 49) : new Rect(23 + index * 56, 59, 50, 49);
 
         internal static void Draw(RenderTexture world, Camera camera, GameSession session, MenuPage menu, int selected, string seed,
-            bool editingSeed, bool paused)
+            bool editingSeed, bool paused, bool bossRush)
         {
             if (Event.current.type != EventType.Repaint)
                 return;
@@ -84,7 +86,7 @@ namespace Insectum.Game
             else if (session.Phase == RunPhase.Selection && menu == MenuPage.Settings)
                 DrawSettings();
             else if (session.Phase == RunPhase.Selection)
-                DrawSelection(selected, seed, editingSeed);
+                DrawSelection(selected, seed, editingSeed, bossRush);
             else
                 DrawResults(session);
 
@@ -125,14 +127,13 @@ namespace Insectum.Game
             Right(level.ToString(), 144, (int)down.y + 4, Light);
         }
 
-        private static void DrawSelection(int selected, string seed, bool editingSeed)
+        private static void DrawSelection(int selected, string seed, bool editingSeed, bool bossRush)
         {
             Shade();
+            Button(RosterBackButton, "ESC BACK");
             Center("INSECTUM", 160, 18, Ink, 3);
             Center("INSECTUM", 160, 16, Light, 3);
-            Fill(new Rect(48, 47, 69, 1), Edge);
-            Fill(new Rect(203, 47, 69, 1), Edge);
-            Center("FOREST", 160, 43, Gold);
+            Fill(new Rect(48, 47, 224, 1), Edge);
 
             for (int index = 0; index < ShortNames.Length; index++)
             {
@@ -156,20 +157,25 @@ namespace Insectum.Game
             Frame(SeedField, editingSeed ? Gold : Edge, Panel);
             Write("SEED", 29, 147, Gold);
             Write(string.IsNullOrEmpty(seed) ? "RANDOM" : seed, 58, 147, editingSeed ? Light : Muted);
-            Button(StartButton, "ENTER FOREST");
-            Rect dev = DevCheckbox;
-            Frame(new Rect(dev.x, dev.y, 10, 10), DevMode.Enabled ? Gold : Edge, Panel);
-            if (DevMode.Enabled)
-                Fill(new Rect(dev.x + 3, dev.y + 3, 4, 4), Gold);
-            Write("DEV MODE", (int)dev.x + 14, (int)dev.y + 2, DevMode.Enabled ? Gold : Muted);
+            Button(StartButton, bossRush ? "ENTER BOSS RUSH" : "ENTER START");
+            Checkbox(BossRushCheckbox, "BOSS RUSH", bossRush);
+            Checkbox(DevCheckbox, "DEV MODE", DevMode.Enabled);
+        }
+
+        private static void Checkbox(Rect rect, string label, bool on)
+        {
+            Frame(new Rect(rect.x, rect.y, 10, 10), on ? Gold : Edge, Panel);
+            if (on)
+                Fill(new Rect(rect.x + 3, rect.y + 3, 4, 4), Gold);
+            Write(label, (int)rect.x + 14, (int)rect.y + 2, on ? Gold : Muted);
         }
 
         private static void DrawResults(GameSession session)
         {
             bool cleared = session.Phase == RunPhase.Cleared;
             Shade();
-            string heading = !cleared ? "RUN ENDED" : session.Run.LevelNumber == RunWorlds.LevelCount
-                ? "RUN COMPLETE" : $"{session.Run.World} CLEARED";
+            string heading = !cleared ? "RUN ENDED" : session.BossRush ? "BOSS RUSH COMPLETE"
+                : session.Run.LevelNumber == RunWorlds.LevelCount ? "RUN COMPLETE" : $"{session.Run.World} CLEARED";
             Center(heading, 160, 30, cleared ? Gold : Pink, 2);
             Frame(new Rect(57, 54, 206, 70), Edge, Panel);
             int row = (int)session.Run.Character.Insect;

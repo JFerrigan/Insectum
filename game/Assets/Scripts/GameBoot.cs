@@ -19,6 +19,7 @@ namespace Insectum.Game
         private int selected;
         private string seedText = string.Empty;
         private bool editingSeed;
+        private bool bossRush;
         private bool paused;
         private float timeScaleBeforePause;
         private MenuPage menu = MenuPage.Main;
@@ -154,12 +155,20 @@ namespace Insectum.Game
                 BeginRun();
                 return;
             }
+            if (Click(ForestScreen.RosterBackButton))
+            {
+                editingSeed = false;
+                menu = MenuPage.Main;
+                return;
+            }
 
             if (Input.GetMouseButtonDown(0))
             {
                 editingSeed = ForestScreen.SeedField.Contains(PixelViewport.Pointer);
                 if (ForestScreen.DevCheckbox.Contains(PixelViewport.Pointer))
                     DevMode.Enabled = !DevMode.Enabled;
+                if (ForestScreen.BossRushCheckbox.Contains(PixelViewport.Pointer))
+                    bossRush = !bossRush;
                 for (int i = 0; i < Character.Roster.Length; i++)
                     if (ForestScreen.RosterCard(i).Contains(PixelViewport.Pointer))
                         selected = i;
@@ -281,7 +290,7 @@ namespace Insectum.Game
                 RenderTexture.active = previous;
                 display = nightView;
             }
-            ForestScreen.Draw(display, routeCamera, session, menu, selected, seedText, editingSeed, paused);
+            ForestScreen.Draw(display, routeCamera, session, menu, selected, seedText, editingSeed, paused, bossRush);
         }
 
         private static RenderTexture CreateNativeTarget(string label) =>
@@ -299,7 +308,10 @@ namespace Insectum.Game
             keyboard.Consume();
             editingSeed = false;
             int seed = int.TryParse(seedText, out int requestedSeed) ? requestedSeed : Random.Range(0, int.MaxValue);
-            session.StartTunnelTrial(Character.Roster[selected], seed);
+            if (bossRush)
+                session.StartBossRush(Character.Roster[selected], seed);
+            else
+                session.StartTunnelTrial(Character.Roster[selected], seed);
         }
 
         private void OnDestroy()

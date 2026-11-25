@@ -50,7 +50,10 @@ flight. Edit the hall's hex map in `Assets/Scripts/BossArenaLayout.cs`. Press Es
 current item, and seed. Press Esc again or click Resume to continue. Leave
 the seed field blank for a random layout, or enter a seed to replay it. Click
 the seed field or press Tab to edit it. From the
-results screen, press Enter to restart or Esc to return to the roster.
+results screen, press Enter to restart or Esc to return to the roster. Tick
+Boss rush at character select to play only the five boss arenas, Forest through
+Alien. Health and items carry from one fight to the next. Press Esc or click
+Esc back to return to the main menu.
 
 Press J to strike forward or W + J to strike up. K uses the selected insect's
 ability. As Spider, press K to jump twice as high for 16 energy. Walk into a
