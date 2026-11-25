@@ -21,10 +21,10 @@ namespace Insectum.Game
         private static readonly Color BarBack = new Color32(44, 22, 36, 255);
         private static readonly string[] ShortNames = { "SPIDER", "BEETLE", "DRAGONFLY", "FIRE ANT", "WORM" };
         private static readonly string[] AbilityNames = { "High jump and auto wall climb", "Momentum shell", "Directional flight", "Heavy mandible strike", "Excavate one hex" };
-        private const int EncyclopediaRowsPerPage = 6;
-        private const int EncyclopediaRowHeight = 18;
-        private const int EncyclopediaTextX = 58;
-        private const int EncyclopediaRight = 298;
+        private const int EncyclopediaColumns = 2;
+        private const int EncyclopediaCardsPerPage = EncyclopediaColumns * 2;
+        private const int EncyclopediaCardWidth = 138;
+        private const int EncyclopediaCardHeight = 49;
 
         internal static Rect SeedField => new(23, 141, 124, 18);
         internal static Rect StartButton => new(168, 141, 129, 18);
@@ -40,9 +40,9 @@ namespace Insectum.Game
         internal static Rect EncyclopediaButton => new(110, 120, 100, 19);
         internal static Rect QuitButton => new(110, 143, 100, 19);
         internal static Rect EncyclopediaBackButton => RosterBackButton;
-        internal static Rect EncyclopediaTab(EncyclopediaSection section) => new(106 + (int)section * 56, 30, 52, 15);
-        internal static Rect EncyclopediaPrev => new(114, 160, 20, 17);
-        internal static Rect EncyclopediaNext => new(186, 160, 20, 17);
+        internal static Rect EncyclopediaTab(EncyclopediaSection section) => new(98 + (int)section * 64, 28, 60, 15);
+        internal static Rect EncyclopediaPrev => new(116, 159, 20, 17);
+        internal static Rect EncyclopediaNext => new(184, 159, 20, 17);
         internal static Rect BackButton => new(110, 140, 100, 19);
         internal static Rect LevelDown(int row) => new(150, 72 + row * 26, 15, 15);
         internal static Rect LevelUp(int row) => new(262, 72 + row * 26, 15, 15);
@@ -51,7 +51,7 @@ namespace Insectum.Game
             ? new Rect(132, 59, 56, 49) : new Rect(23 + index * 56, 59, 50, 49);
 
         internal static int EncyclopediaPageCount(EncyclopediaSection section) =>
-            (EncyclopediaEntryCount(section) + EncyclopediaRowsPerPage - 1) / EncyclopediaRowsPerPage;
+            (EncyclopediaEntryCount(section) + EncyclopediaCardsPerPage - 1) / EncyclopediaCardsPerPage;
 
         private static int EncyclopediaEntryCount(EncyclopediaSection section) => section == EncyclopediaSection.Items
             ? (int)ItemId.FluxCore - (int)ItemId.ExcavatorClaw + 1 : EnemySpec.All.Count;
@@ -126,24 +126,24 @@ namespace Insectum.Game
 
         private static void DrawEncyclopedia(EncyclopediaSection section, int page)
         {
-            Shade();
+            Shade(140);
             Button(EncyclopediaBackButton, "BACK");
-            Center("ENCYCLOPEDIA", 160, 12, Light, 2);
+            Center("ENCYCLOPEDIA", 160, 10, Light, 2);
             DrawEncyclopediaTab(EncyclopediaSection.Items, section, "ITEMS");
             DrawEncyclopediaTab(EncyclopediaSection.Enemies, section, "ENEMIES");
-            Frame(new Rect(12, 48, 296, 2 + EncyclopediaRowsPerPage * EncyclopediaRowHeight), Edge, Panel);
 
-            int first = page * EncyclopediaRowsPerPage;
-            int rows = Mathf.Min(EncyclopediaRowsPerPage, EncyclopediaEntryCount(section) - first);
-            for (int row = 0; row < rows; row++)
+            int first = page * EncyclopediaCardsPerPage;
+            int count = Mathf.Min(EncyclopediaCardsPerPage, EncyclopediaEntryCount(section) - first);
+            for (int slot = 0; slot < count; slot++)
             {
-                int y = 49 + row * EncyclopediaRowHeight;
-                if (row > 0)
-                    Fill(new Rect(20, y - 1, 280, 1), Edge);
+                int x = 16 + slot % EncyclopediaColumns * (EncyclopediaCardWidth + 12);
+                int y = 48 + slot / EncyclopediaColumns * (EncyclopediaCardHeight + 6);
+                Frame(new Rect(x, y, EncyclopediaCardWidth, EncyclopediaCardHeight), Edge, Panel);
+
                 if (section == EncyclopediaSection.Items)
-                    DrawEncyclopediaItem(ItemId.ExcavatorClaw + first + row, y);
+                    DrawEncyclopediaItem(ItemId.ExcavatorClaw + first + slot, x, y);
                 else
-                    DrawEncyclopediaEnemy(EnemySpec.All[first + row], y);
+                    DrawEncyclopediaEnemy(EnemySpec.All[first + slot], x, y);
             }
 
             int pages = EncyclopediaPageCount(section);
@@ -160,35 +160,52 @@ namespace Insectum.Game
             Rect rect = EncyclopediaTab(tab);
             bool selected = tab == section;
             bool hover = rect.Contains(PixelViewport.Pointer);
-            Frame(rect, selected ? Light : hover ? Gold : Edge, selected ? new Color32(64, 41, 55, 255) : Panel);
+            Frame(rect, hover ? Light : selected ? Gold : Edge, selected ? new Color32(64, 41, 55, 255) : Panel);
             Center(label, (int)rect.center.x, (int)rect.y + 4, selected || hover ? Light : Muted);
         }
 
-        private static void DrawEncyclopediaItem(ItemId item, int y)
+        private static void DrawEncyclopediaItem(ItemId item, int x, int y)
         {
             bool active = Items.IsActive(item);
-            DrawItemIcon(item, new Rect(28, y + 1, 16, 16));
-            Write(Items.Name(item), EncyclopediaTextX, y + 1, Light);
-            Right(active ? "ACTIVE" : "PASSIVE", EncyclopediaRight, y + 1, active ? Gold : Mint);
-            Write(Items.Description(item), EncyclopediaTextX, y + 9, Muted);
+            DrawItemIcon(item, new Rect(x + 5, y + 2, 27, 27));
+            Write(Items.Name(item), x + 34, y + 8, Light);
+            Write(active ? "ACTIVE" : "PASSIVE", x + 34, y + 19, active ? Gold : Mint);
+
+            const int descriptionPadding = 9;
+            const int charactersPerLine = (EncyclopediaCardWidth - 2 * descriptionPadding + 1) / 6;
+            string description = Items.Description(item);
+            if (description.Length <= charactersPerLine)
+            {
+                Write(description, x + descriptionPadding, y + 33, Muted);
+                return;
+            }
+
+            int split = description.LastIndexOf(' ', charactersPerLine);
+            if (split <= 0)
+                split = charactersPerLine;
+            Write(description[..split], x + descriptionPadding, y + 29, Muted);
+            Write(description[split..].TrimStart(), x + descriptionPadding, y + 38, Muted);
         }
 
-        private static void DrawEncyclopediaEnemy((EnemySpec Spec, WorldId World) entry, int y)
+        private static void DrawEncyclopediaEnemy((EnemySpec Spec, WorldId World) entry, int x, int y)
         {
             var (spec, world) = entry;
             Sprite portrait = EnemySpec.Portrait(spec);
             Rect source = portrait.rect;
-            float scale = Mathf.Min(30f / source.width, 16f / source.height);
+            float scale = Mathf.Min(36f / source.width, 30f / source.height);
             int width = Mathf.RoundToInt(source.width * scale);
             int height = Mathf.RoundToInt(source.height * scale);
-            DrawSprite(portrait, new Rect(36 - width / 2, y + 9 - height / 2, width, height));
-            Write(spec.Name, EncyclopediaTextX, y + 1, Light);
-            Write(world.ToString(), EncyclopediaTextX, y + 9, Muted);
+            DrawSprite(portrait, new Rect(x + 22 - width / 2, y + (EncyclopediaCardHeight - height) / 2, width, height));
+
+            int textX = x + 46;
+            Write(spec.Name, textX, y + 8, Light);
+            string worldName = world.ToString();
+            Write(worldName, textX, y + 19, Muted);
             if (spec.IsBoss)
-                Write("BOSS", 148, y + 1, Gold);
-            Heart(193, y + 6, Pink);
-            Write($"X {spec.Hearts}", 203, y + 5, Light);
-            Right($"{spec.Nektar} NEKTAR", EncyclopediaRight, y + 5, Gold);
+                Write("BOSS", textX + TextWidth(worldName) + 8, y + 19, Gold);
+            Heart(textX, y + 34, Pink);
+            Write(spec.Hearts.ToString(), textX + 10, y + 33, Light);
+            Right($"{spec.Nektar} NEKTAR", x + EncyclopediaCardWidth - 9, y + 33, Gold);
         }
 
         private static void DrawSettings()
@@ -708,8 +725,8 @@ namespace Insectum.Game
                 new Rect(source.x / atlas.width, source.y / atlas.height, source.width / atlas.width, source.height / atlas.height));
         }
 
-        private static void Shade() =>
-            Fill(new Rect(0, 0, PixelViewport.Width, PixelViewport.Height), new Color32(15, 9, 27, 83));
+        private static void Shade(byte opacity = 83) =>
+            Fill(new Rect(0, 0, PixelViewport.Width, PixelViewport.Height), new Color32(15, 9, 27, opacity));
 
         private static void Button(Rect rect, string text, bool enabled = true)
         {
