@@ -245,7 +245,7 @@ namespace Insectum.Game
 #if DEVELOPMENT_BUILD
             position = terrainProfile?.Focus ?? position;
 #endif
-            Vector2 cameraCenter = PixelViewport.Snap(Frame(position, session.Layout?.CameraBounds));
+            Vector2 cameraCenter = PixelViewport.Snap(Frame(position, session.Layout?.CameraBounds) + session.ShakeOffset);
             routeCamera.transform.position = new Vector3(cameraCenter.x, cameraCenter.y, -10f);
             float driftX = Mathf.Sin(cameraCenter.x * 0.033f) * 1.65f;
             float driftY = Mathf.Sin(cameraCenter.y * 0.045f) * 0.32f;

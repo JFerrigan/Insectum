@@ -20,7 +20,9 @@ namespace Insectum.Game
         BurrowBoss,
         LatticeTick,
         ArcMote,
-        BeamBoss
+        BeamBoss,
+        // A reworked boss: its BossKind picks the logic and view that run it.
+        ArenaBoss
     }
 
     internal sealed class EnemySpec
@@ -31,8 +33,14 @@ namespace Insectum.Game
         public readonly int Nektar;
         public readonly float Radius;
         public readonly Color32 Tint;
+        internal readonly BossKind Kind;
 
         public EnemySpec(string name, EnemyStyle style, int hearts, int nektar, float radius, Color32 tint)
+            : this(name, style, hearts, nektar, radius, tint, BossKind.None)
+        {
+        }
+
+        internal EnemySpec(string name, EnemyStyle style, int hearts, int nektar, float radius, Color32 tint, BossKind kind)
         {
             Name = name;
             Style = style;
@@ -40,6 +48,7 @@ namespace Insectum.Game
             Nektar = nektar;
             Radius = radius;
             Tint = tint;
+            Kind = kind;
         }
 
         // Every world's regular enemies, which rooms may place by name.
@@ -89,6 +98,10 @@ namespace Insectum.Game
         private readonly Action<Vector2, Vector2> fire;
         private readonly int patrolOffset;
         private readonly bool echo;
+        // A reworked boss's own logic and art, or null for every other enemy.
+        private readonly Boss brain;
+        private readonly StagBeetleView view;
+        private Vector2 position;
         private int tick;
         private int remaining;
         private int direction = 1;
@@ -104,24 +117,41 @@ namespace Insectum.Game
         public DamageReceiver Damage { get; }
         public string Name => spec.Name;
         public int Nektar => spec.Nektar;
-        public bool Boss => spec.Style is EnemyStyle.ChargeBoss or EnemyStyle.VolleyBoss or EnemyStyle.QuakeBoss or EnemyStyle.BurrowBoss
-            or EnemyStyle.BeamBoss;
+        public bool Boss => brain != null || spec.Style is EnemyStyle.ChargeBoss or EnemyStyle.VolleyBoss or EnemyStyle.QuakeBoss
+            or EnemyStyle.BurrowBoss or EnemyStyle.BeamBoss;
+        internal Boss Brain => brain;
+        // True once a defeated enemy has finished falling: at once for most, after the death animation for a boss.
+        internal bool DeathFinished => brain?.DeathFinished ?? !Damage.Health.Alive;
         internal EnemyStyle Style => spec.Style;
         internal EnemySpec Spec => spec;
         private bool Flies => spec.Style is EnemyStyle.Flyer or EnemyStyle.Skimmer or EnemyStyle.GlowFly or EnemyStyle.SandWasp or EnemyStyle.ArcMote;
         private bool Shielded => spec.Style == EnemyStyle.BeamBoss && AttackPhase != Phase.Recovery;
         private bool Burrowing => spec.Style == EnemyStyle.BurrowBoss && AttackPhase == Phase.Attacking
             && remaining > EruptionSteps;
-        public Vector2 Position { get; private set; }
+        public Vector2 Position
+        {
+            get => brain?.Position ?? position;
+            private set => position = value;
+        }
         public Phase AttackPhase { get; private set; }
 
         internal LevelEnemy(Transform parent, Sprite pixel, EnemySpec spec, Vector2 landing, int patrolOffset,
-            Action<Vector2, Vector2> fire, bool echo = false)
+            Action<Vector2, Vector2> fire, bool echo = false, uint seed = 0)
         {
             this.spec = spec;
             this.patrolOffset = patrolOffset;
             this.echo = echo;
             this.fire = fire;
+            if (spec.Kind != BossKind.None)
+            {
+                var beetle = new StagBeetle(BossArena.Hall, landing, seed);
+                brain = beetle;
+                Damage = brain.Damage;
+                if (pixel != null)
+                    view = new StagBeetleView(parent, pixel, beetle);
+                return;
+            }
+
             anchor = landing + Vector2.up * (Flies ? 1.65f : spec.Radius);
             chargeX = anchor.x;
             Position = anchor;
@@ -176,6 +206,17 @@ namespace Insectum.Game
 
         internal void Step(DamageReceiver target)
         {
+            if (brain != null)
+            {
+                TickBurn();
+                brain.Step(target);
+                if (view != null)
+                    view.Update();
+                else
+                    brain.ClearCues();
+                return;
+            }
+
             if (!Damage.Health.Alive)
             {
                 HideDefeated();

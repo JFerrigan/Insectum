@@ -280,16 +280,20 @@ internal static class BossCheck
                     move = distance < 4.2f ? -toward : 0;
                     break;
                 case StagBeetle.Act.HoverTrack:
+                    break;
                 case StagBeetle.Act.DiveLock:
                 case StagBeetle.Act.DiveDrop:
-                    move = distance < 4.5f ? (position.x > 0f ? -1 : 1) * (Mathf.Abs(position.x) > 12f ? -1 : 1) : 0;
+                    // Run out from under the locked dive, toward the middle when right below it.
+                    int away = Mathf.Abs(dx) > 0.3f ? -toward : position.x > 0f ? -1 : 1;
+                    move = distance < 4.6f ? away : 0;
                     break;
                 case StagBeetle.Act.GoreDash:
                     float ahead = (position.x - boss.x) * beetle.Facing;
                     jump = ahead > 0f && ahead < 4.8f && Mathf.Abs(beetle.Position.y + 1f - position.y) < 1.6f;
                     break;
                 default:
-                    bool open = beetle.Opening;
+                    // Close in during an opening, and step back before it ends.
+                    bool open = beetle.Opening && beetle.ActProgress < 0.75f;
                     float keep = open ? 2.2f : 4.5f;
                     move = distance > keep + 0.3f ? toward : distance < keep - 0.3f && !open ? -toward : 0;
                     break;
@@ -306,8 +310,10 @@ internal static class BossCheck
             foreach (StagBeetle.Shockwave wave in beetle.Shockwaves)
             {
                 float ahead = (position.x - wave.X) * wave.Direction;
-                if (ahead > 0f && ahead < 1.6f)
+                if (ahead > 0f && ahead < 2.8f)
                     jump = true;
+                if (ahead > 0f && move == wave.Direction * -1)
+                    move = 0;
             }
 
             if (move != 0)

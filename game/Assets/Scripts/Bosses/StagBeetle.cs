@@ -65,7 +65,7 @@ namespace Insectum.Game
             }
         }
 
-        internal const int Hearts = 36;
+        internal const int Hearts = 30;
         private const float Radius = 1.4f;
         private const float WalkSpeed = 2.5f;
         private const float ChargeSpeed = 11f;

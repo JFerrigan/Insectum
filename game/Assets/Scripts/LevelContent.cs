@@ -118,9 +118,21 @@ namespace Insectum.Game
             session.Terrain.Edited += OnTerrainEdited;
         }
 
-        internal void AddEnemy(EnemySpec spec, Vector2 landing, int patrolOffset, bool echo = false)
+        // The first boss in the level, for the health bar.
+        internal LevelEnemy MainBoss
         {
-            var enemy = new LevelEnemy(parent, pixel, spec, landing, patrolOffset, FireDart, echo);
+            get
+            {
+                foreach (LevelEnemy enemy in enemies)
+                    if (enemy.Boss)
+                        return enemy;
+                return null;
+            }
+        }
+
+        internal void AddEnemy(EnemySpec spec, Vector2 landing, int patrolOffset, bool echo = false, uint seed = 0)
+        {
+            var enemy = new LevelEnemy(parent, pixel, spec, landing, patrolOffset, FireDart, echo, seed);
             enemies.Add(enemy);
             session.Combat.AddTarget(enemy.Damage);
             enemy.Damage.Resolved += (hit, outcome) =>
@@ -170,8 +182,22 @@ namespace Insectum.Game
             if (command.ItemPressed)
                 UseActive(command);
             foreach (LevelEnemy enemy in enemies)
-                if (Run.Alive)
-                    enemy.Step(session.PlayerDamage);
+            {
+                if (!Run.Alive)
+                    continue;
+                enemy.Step(session.PlayerDamage);
+                if (enemy.Brain is not Boss brain)
+                    continue;
+                if (brain.ShakeSteps > 0)
+                    session.Shake(brain.ShakeAmount, brain.ShakeSteps);
+                // A reworked boss drops its Nektar and reward once its death animation has played out.
+                if (brain.DeathFinished && !rewardPlaced && BossesRemaining == 0)
+                {
+                    if (enemy.Nektar > 0)
+                        AddFeature(LevelFeatureKind.Nektar, enemy.Position + Vector2.up * 0.6f, enemy.Nektar);
+                    PlaceBossReward();
+                }
+            }
             foreach (LevelTrap trap in traps)
                 if (Run.Alive)
                     trap.Step(tick, session.PlayerDamage);
@@ -356,19 +382,25 @@ namespace Insectum.Game
         private void EnemyDefeated(LevelEnemy enemy)
         {
             Run.RestoreEnergy(Run.Inventory.Count(ItemId.FluxCore) * 6f);
-            if (enemy.Nektar > 0)
-                AddFeature(LevelFeatureKind.Nektar, enemy.Position, enemy.Nektar);
-            if (enemy.Boss && !rewardPlaced && BossesRemaining == 0)
+            if (enemy.Brain == null)
             {
-                rewardPlaced = true;
-                AddFeature(LevelFeatureKind.BossReward, BossRewardPosition, item: BossPrize);
-                ShowStatus(session.Variant == LevelVariant.DoubleBoss ? "Both bosses defeated. Claim the reward."
-                    : $"{BossName} defeated. Claim the reward.");
+                if (enemy.Nektar > 0)
+                    AddFeature(LevelFeatureKind.Nektar, enemy.Position, enemy.Nektar);
+                if (enemy.Boss && !rewardPlaced && BossesRemaining == 0)
+                    PlaceBossReward();
             }
 
             int volatility = Run.Inventory.Count(ItemId.VolatileBlood);
             if (volatility > 0)
                 Blast(enemy.Position, 1.65f + Mathf.Min(volatility, 4) * 0.14f, volatility, volatility);
+        }
+
+        private void PlaceBossReward()
+        {
+            rewardPlaced = true;
+            AddFeature(LevelFeatureKind.BossReward, BossRewardPosition, item: BossPrize);
+            ShowStatus(session.Variant == LevelVariant.DoubleBoss ? "Both bosses defeated. Claim the reward."
+                : $"{BossName} defeated. Claim the reward.");
         }
 
         private void Blast(Vector2 position, float radius, int power, int damage)

@@ -234,10 +234,15 @@ namespace Insectum.Game.Editor
 
             Require(session.Content.HasBoss && !session.Content.ExitUnlocked, "Level four did not start with a boss gate.");
             LevelEnemy boss = session.Content.Enemies.Single(enemy => enemy.Boss);
-            BiomeVerification.Walk(fixture, () => session.AtExit, 350);
+            // Stand at the sealed hall's exit during the boss's entrance and try it, then come back to fight.
+            Vector2 start = session.Motor.Body.position;
+            session.Motor.Warp(session.Layout.Exit + Vector2.up * (run.Character.Radius + 0.06f));
+            fixture.Step();
+            Require(session.AtExit, "Could not stand at the boss arena's exit.");
             fixture.Step(new PlayerCommand(interactPressed: true));
             Require(session.Phase == RunPhase.Playing && run.LevelNumber == 4 && boss.Damage.Health.Alive,
                 "The boss exit opened before victory.");
+            session.Motor.Warp(start);
 
             FightBoss(fixture, boss);
             Require(!session.Content.ExitUnlocked, "The exit opened before claiming the reward.");
@@ -259,7 +264,7 @@ namespace Insectum.Game.Editor
                 && run.Inventory.Active == carriedActive && run.Inventory.Count(reward.Item) == before + 1
                 && run.Energy == character.MaxEnergy,
                 "The Forest exit did not carry the existing run into Swamp with refreshed energy.");
-            Debug.Log($"Insectum Forest playthrough: seed {seed}, {character.Name}, all four levels and Barkback cleared, Swamp entered.");
+            Debug.Log($"Insectum Forest playthrough: seed {seed}, {character.Name}, all four levels and Old Oakhorn cleared, Swamp entered.");
         }
 
         // The chest vault that stands on the level's buried plug, or the nearest chest to the player.
@@ -276,32 +281,8 @@ namespace Insectum.Game.Editor
             return landing + Vector2.up * (session.Run.Character.Radius + 0.06f);
         }
 
-        private static void FightBoss(PhysicsFixture fixture, LevelEnemy boss)
-        {
-            GameSession session = fixture.Session;
-            bool warned = boss.AttackPhase == LevelEnemy.Phase.Warning;
-            int jump = 0;
-            for (int tick = 0; tick < 850 && boss.Damage.Health.Alive && session.Phase == RunPhase.Playing; tick++)
-            {
-                float dx = boss.Position.x - session.Motor.Body.position.x;
-                warned |= boss.AttackPhase == LevelEnemy.Phase.Warning;
-                bool dodge = session.Motor.Grounded && jump == 0 && boss.AttackPhase == LevelEnemy.Phase.Attacking
-                    && Mathf.Abs(dx) < 3.4f;
-                if (dodge)
-                    jump = 22;
-                float reach = 1.3f + boss.Damage.Radius;
-                bool hit = Mathf.Abs(dx) < reach && jump == 0
-                    && Mathf.Abs(session.Motor.Body.position.y - boss.Position.y) < 0.38f + boss.Damage.Radius;
-                int move = Mathf.Abs(dx) > reach - 0.12f || (hit && session.Motor.Facing * dx < 0f) ? Math.Sign(dx) : 0;
-                if (jump > 0)
-                    move = 0;
-                bool heavy = hit && session.Run.Character.Insect == Insect.FireAnt;
-                fixture.Step(new PlayerCommand(move, jumpPressed: dodge, jumpHeld: jump > 0, attackPressed: hit, abilityPressed: heavy));
-                jump = Mathf.Max(0, jump - 1);
-            }
-            Require(warned && !boss.Damage.Health.Alive && session.Run.Alive,
-                $"Barkback combat for {session.Run.Character.Name} did not resolve through telegraphed attacks and ordinary commands. Boss health {boss.Damage.Health.Current}, player health {session.Run.Health}, position {session.Motor.Body.position}.");
-        }
+        private static void FightBoss(PhysicsFixture fixture, LevelEnemy boss) =>
+            BossFightBot.FightStagBeetle(fixture, boss, useHeavy: true);
 
         private static void VerifyOtherCharacters(PhysicsFixture fixture)
         {
@@ -331,13 +312,13 @@ namespace Insectum.Game.Editor
                 fixture.Step(new PlayerCommand(interactPressed: true));
                 MoveTo(fixture, session.Layout.Exit.x, () => session.AtExit, 250);
                 fixture.Step(new PlayerCommand(interactPressed: true));
-                Require(session.Phase == RunPhase.Cleared, $"{character.Name} did not finish Forest after defeating Barkback.");
+                Require(session.Phase == RunPhase.Cleared, $"{character.Name} did not finish Forest after defeating Old Oakhorn.");
                 if (replayPath != null)
                 {
                     ForestReplayFile.Write(replayPath, character.Insect, seed, ReplayKind.Forest, fixture.Replay);
                     fixture.Replay = null;
                 }
-                Debug.Log($"Insectum Forest playthrough: seed {seed}, {character.Name}, all four levels and Barkback cleared.");
+                Debug.Log($"Insectum Forest playthrough: seed {seed}, {character.Name}, all four levels and Old Oakhorn cleared.");
             }
         }
 

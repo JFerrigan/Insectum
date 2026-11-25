@@ -26,6 +26,10 @@ namespace Insectum.Game
         private int lastLevel;
         private int nextCheckpoint;
         private Vector2 respawnPosition;
+        private float shakeAmount;
+        private int shakeLength;
+        private int shakeLeft;
+        private int shakeTick;
         internal Vector2 LevelSpawn { get; private set; }
 
         internal int MeleePoseSteps { get; private set; }
@@ -52,6 +56,27 @@ namespace Insectum.Game
         public Rect LevelBounds => Layout?.Bounds ?? ForestRoute.Bounds;
         private Vector2 Exit => Layout?.Exit ?? ForestRoute.Exit;
         public bool AtExit => Motor != null && Vector2.Distance(Motor.Body.position, Exit) < 1.15f;
+
+        // The camera's shake this frame: a small decaying wobble in world units.
+        internal Vector2 ShakeOffset
+        {
+            get
+            {
+                if (shakeLeft <= 0)
+                    return Vector2.zero;
+                float amount = shakeAmount * shakeLeft / shakeLength;
+                return new Vector2(Mathf.Sin(shakeTick * 1.9f), Mathf.Cos(shakeTick * 2.7f) * 0.6f) * amount;
+            }
+        }
+
+        // Starts a camera shake, or strengthens one already running.
+        internal void Shake(float amount, int steps)
+        {
+            if (shakeLeft > 0 && shakeAmount * shakeLeft / shakeLength >= amount)
+                return;
+            shakeAmount = amount;
+            shakeLength = shakeLeft = Mathf.Max(1, steps);
+        }
 
         public GameSession(Transform world, Sprite pixel, PhysicsMaterial2D surface, bool enableAbilities = true,
             bool enableVariants = true)
@@ -167,6 +192,11 @@ namespace Insectum.Game
             if (Phase != RunPhase.Playing)
                 return;
 
+            if (shakeLeft > 0)
+            {
+                shakeLeft--;
+                shakeTick++;
+            }
             if (Run.Alive)
             {
                 Combat.Step();
@@ -257,6 +287,7 @@ namespace Insectum.Game
 
             level = null;
             exitArt = null;
+            shakeLeft = 0;
             Layout = null;
             Variant = LevelVariant.Standard;
             Motor = null;

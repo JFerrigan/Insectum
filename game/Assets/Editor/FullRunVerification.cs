@@ -145,6 +145,11 @@ namespace Insectum.Game.Editor
         private static void Fight(PhysicsFixture fixture, LevelEnemy boss, bool useHeavy)
         {
             GameSession session = fixture.Session;
+            if (boss.Brain is StagBeetle)
+            {
+                BossFightBot.FightStagBeetle(fixture, boss, useHeavy);
+                return;
+            }
             bool warned = false;
             bool attacked = false;
             int jump = 0;
