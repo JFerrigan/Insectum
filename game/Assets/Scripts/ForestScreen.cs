@@ -14,6 +14,10 @@ namespace Insectum.Game
         private static readonly Color Gold = new Color32(253, 180, 96, 255);
         private static readonly Color Mint = new Color32(110, 213, 184, 255);
         private static readonly Color Pink = new Color32(244, 129, 153, 255);
+        private static readonly Color BarRed = new Color32(214, 58, 52, 255);
+        private static readonly Color BarShine = new Color32(255, 128, 100, 255);
+        private static readonly Color BarChip = new Color32(255, 226, 190, 255);
+        private static readonly Color BarBack = new Color32(44, 22, 36, 255);
         private static readonly string[] ShortNames = { "SPIDER", "BEETLE", "DRAGONFLY", "FIRE ANT", "WORM" };
         private static readonly string[] AbilityNames = { "High jump and auto wall climb", "Momentum shell", "Directional flight", "Heavy mandible strike", "Excavate one hex" };
 
@@ -65,6 +69,9 @@ namespace Insectum.Game
                     DrawTutorial(camera, session);
                     DrawPickupName(camera, session);
                     DrawVariantBanner(session);
+                    if (DevMode.Enabled && DevMode.ShowHitboxes)
+                        DrawHitboxes(camera, session.Content?.MainBoss?.Brain);
+                    DrawBossBar(session);
                 }
                 DrawHud(session.Run);
                 if (DevMode.Enabled && !paused)
@@ -314,6 +321,136 @@ namespace Insectum.Game
         private const float BannerSeconds = 2.4f;
 
         // Announces a level modifier: rises from screen center and fades out.
+        // ---------- boss bar ----------
+        private const int BarX = 16, BarY = 166, BarWidth = 288, BarHeight = 6;
+        private static LevelEnemy barBoss;
+        private static int barHealth;
+        private static float barChip;
+        private static float barHitTime = -1f;
+        private static float barChipAfter;
+        private static float barGoneTime = -1f;
+
+        // The full-width bar along the bottom, the boss's name over it, and its name card while it makes its
+        // entrance. Lost health shows pale and drains after a moment; ticks mark the phase changes.
+        private static void DrawBossBar(GameSession session)
+        {
+            LevelEnemy boss = session.Content?.MainBoss;
+            if (boss == null)
+            {
+                barBoss = null;
+                return;
+            }
+
+            HealthPool health = boss.Damage.Health;
+            float now = Time.unscaledTime;
+            if (boss != barBoss)
+            {
+                barBoss = boss;
+                barHealth = health.Current;
+                barChip = 1f;
+                barGoneTime = -1f;
+            }
+            float fill = health.Current / (float)health.Maximum;
+            if (health.Current < barHealth)
+            {
+                barHitTime = now;
+                barChipAfter = now + 0.3f;
+            }
+            barHealth = health.Current;
+            if (now > barChipAfter)
+                barChip = Mathf.MoveTowards(barChip, fill, Time.unscaledDeltaTime * 0.9f);
+            barChip = Mathf.Max(barChip, fill);
+
+            Boss brain = boss.Brain;
+            float intro = brain?.IntroProgress ?? Mathf.Clamp01((Time.time - session.LevelStartTime) / 2f);
+            DrawNameCard(boss, brain, intro);
+            if (boss.DeathFinished && barGoneTime < 0f)
+                barGoneTime = now;
+            float leave = barGoneTime < 0f ? 0f : Mathf.Clamp01((now - barGoneTime - 1f) / 0.4f);
+            if (leave >= 1f)
+                return;
+            float arrive = Mathf.Clamp01(intro * 3f);
+            int y = BarY + Mathf.RoundToInt((1f - arrive + leave) * 18f);
+
+            string name = boss.Name.ToUpperInvariant();
+            Center(name, 161, y - 9, Ink);
+            Center(name, 160, y - 10, Light);
+            Frame(new Rect(BarX - 1, y - 1, BarWidth + 2, BarHeight + 2), Ink, BarBack);
+            Fill(new Rect(BarX, y, Mathf.Round(BarWidth * barChip), BarHeight), BarChip);
+            float width = Mathf.Round(BarWidth * fill);
+            bool flash = now - barHitTime < 0.07f;
+            Fill(new Rect(BarX, y, width, BarHeight), flash ? Color.white : BarRed);
+            if (!flash && width > 0f)
+                Fill(new Rect(BarX, y, width, 1), BarShine);
+            foreach (float mark in PhaseMarks)
+            {
+                int x = BarX + Mathf.RoundToInt(BarWidth * mark);
+                Fill(new Rect(x, y - 2, 1, BarHeight + 4), fill <= mark ? Edge : Light);
+            }
+        }
+
+        private static readonly float[] PhaseMarks = { 2f / 3f, 1f / 3f };
+
+        private static void DrawNameCard(LevelEnemy boss, Boss brain, float intro)
+        {
+            if (intro >= 1f)
+                return;
+            float alpha = intro < 0.2f ? intro / 0.2f : intro < 0.75f ? 1f : 1f - (intro - 0.75f) / 0.25f;
+            string name = boss.Name.ToUpperInvariant();
+            Color ink = Ink;
+            ink.a = alpha;
+            Color color = Light;
+            color.a = alpha;
+            int y = 52 - Mathf.RoundToInt((1f - Mathf.Clamp01(intro * 5f)) * 6f);
+            Center(name, 161, y + 2, ink, 2);
+            Center(name, 160, y, color, 2);
+            string epithet = brain?.Epithet;
+            if (string.IsNullOrEmpty(epithet))
+                return;
+            epithet = epithet.ToUpperInvariant();
+            Color gold = Gold;
+            gold.a = alpha;
+            int lineWidth = TextWidth(name, 2);
+            Fill(new Rect(160 - lineWidth / 2, y + 18, lineWidth, 1), gold);
+            Center(epithet, 161, y + 23, ink);
+            Center(epithet, 160, y + 22, gold);
+        }
+
+        // Dev overlay: hurtboxes green (armor grey, weak points yellow) and live hitboxes red.
+        private static void DrawHitboxes(Camera camera, Boss brain)
+        {
+            if (brain == null)
+                return;
+            Vector2 ToScreen(Vector2 world)
+            {
+                Vector3 view = camera.WorldToViewportPoint(world);
+                return new Vector2(view.x * PixelViewport.Width, (1f - view.y) * PixelViewport.Height);
+            }
+            float pixelsPerUnit = PixelViewport.Width / (2f * PixelViewport.WorldHalfWidth);
+            foreach (Hurtbox part in brain.Parts)
+            {
+                Color color = part.Armored ? Muted : part.Multiplier > 1 ? Gold : Mint;
+                Vector2 center = ToScreen(part.Center);
+                float radius = part.Radius * pixelsPerUnit;
+                for (int i = 0; i < 24; i++)
+                {
+                    float angle = i * Mathf.PI / 12f;
+                    Fill(new Rect(Mathf.Round(center.x + Mathf.Cos(angle) * radius), Mathf.Round(center.y + Mathf.Sin(angle) * radius), 1, 1), color);
+                }
+            }
+            foreach (BossHitbox hitbox in brain.Hitboxes)
+            {
+                Vector2 a = ToScreen(new Vector2(hitbox.Area.xMin, hitbox.Area.yMax));
+                Vector2 b = ToScreen(new Vector2(hitbox.Area.xMax, hitbox.Area.yMin));
+                Fill(new Rect(a.x, a.y, b.x - a.x, 1), Pink);
+                Fill(new Rect(a.x, b.y, b.x - a.x, 1), Pink);
+                Fill(new Rect(a.x, a.y, 1, b.y - a.y), Pink);
+                Fill(new Rect(b.x, a.y, 1, b.y - a.y), Pink);
+            }
+            if (brain.ContactHurts)
+                Write("CONTACT", 4, 4, Pink);
+        }
+
         private static void DrawVariantBanner(GameSession session)
         {
             string banner = session.Variant switch
@@ -354,7 +491,7 @@ namespace Insectum.Game
                 return;
             Rect panel = DevMode.Panel;
             Frame(panel, Mint, new Color32(18, 13, 29, 220));
-            for (int row = 0; row < 3; row++)
+            for (int row = 0; row < DevMode.RowLabels.Length; row++)
             {
                 int y = DevMode.PanelY + row * DevMode.RowHeight;
                 Write(DevMode.RowLabels[row], DevMode.PanelX + 4, y + 2, Mint);

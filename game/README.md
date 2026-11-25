@@ -63,7 +63,28 @@ values in `Assets/Resources/TerrainMaterials.asset`.
 Use S + L to aim the Excavator Claw downward. Aim the Seed Bomb with W or S,
 or face your target for a forward blast.
 
-Defeat Barkback and take its reward to enter the four Swamp levels.
+Forest's boss is Old Oakhorn, a stag beetle (30 health), with a full-width
+health bar along the bottom of the screen. The bar has ticks where its
+second and third phases begin, and its name card shows while it rears up
+at the start. Every attack has a warning first:
+
+- **Charge:** it scrapes a foot, crouches low and its jaws glow amber, with
+  dust marking the line. Jump it, pogo off its back, or get up a terrace.
+  If it reaches the end of the floor, its jaws stick in the terrace for a
+  moment. That's the safe time to hit it, and its head takes double damage.
+- **Snap:** it snaps at anyone close in front.
+- **Rearing snap:** it rears up and snaps overhead at anyone above it, or
+  after two quick pogos.
+- **Flying** (at least 10 s apart): it either hovers over you behind a red
+  target and slams down, sending a jumpable shockwave each way, or makes
+  Air Gore passes. On the platforms it rams across at your height, marked by
+  a dotted line; on the floor it flies high and drops bark with shadows
+  beneath.
+
+Touching it hurts, except while it's stuck or recovering, when it looks
+dull. Its jaws are armored, so hits there clank (a downward strike still
+bounces off them). When it dies it falls to its knees, then onto its belly,
+before the reward appears. Take the reward to enter the four Swamp levels.
 Watch for the green bubbles before a gas vent opens. The mud plug under a Swamp
 chest vault costs Worm five energy. Reed Flask
 adds ten energy per stack to each energy sap pickup. Defeat Mire Bell and
@@ -134,6 +155,19 @@ world renders at 480×270 and fills the available 16:9 area with point filtering
 Other aspect ratios use letterboxing. With Pillow
 installed, run the matching `*_pixels.py` script in `ArtSource` to
 regenerate that world's textures in `Assets/Resources/PixelArt`.
+`boss_forest_pixels.py` draws Old Oakhorn's frames, its jaw glow and the
+shared boss effects, and writes a contact sheet to `Builds/BossPreviews/`.
+
+## Boss check (no Unity needed)
+
+`tools/bosscheck.sh [seeds]` steps the reworked bosses' fight logic
+(`Assets/Scripts/Bosses`) under plain .NET, like the map generator. It
+checks that each attack's warning lasts at least 24 steps with nothing live
+during it, and that openings never hurt on contact. It reports the time
+airborne per phase, checks the boss stays in the hall, and has a scripted
+player win a fight per seed (default 12), reporting fight length and hits
+taken by move. In the game, the dev panel's BOSS row forces any move, jumps
+to a phase, freezes the AI, draws hurtboxes and hitboxes, or kills the boss.
 
 ## Map generator (no Unity needed)
 

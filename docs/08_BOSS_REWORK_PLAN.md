@@ -1,6 +1,21 @@
 # Boss Rework — Implementation Plan
 
-**Status:** Proposed, November 2026. Nothing below is built yet except the sealed arena (commit `a1f6d11`).
+**Status:** Step 0 and the stag beetle (Step 1) are built, November 2026. Swamp, Caves, Desert and Alien
+are not started. What changed from this plan while building:
+
+- **Art:** the beetle is not a runtime rig. `ArtSource/boss_forest_pixels.py` poses a parametric beetle
+  and draws each frame crisply, so nothing is rotated at runtime. Runtime work is frame playback, the
+  jaw-glow layer, a white or amber wash (`Resources/BossFlash.shader`), tints and effects.
+- **Projectiles:** `BossProjectile` waits for the mosquito. The beetle's shockwaves and falling bark are
+  simple hitboxes in its own logic.
+- **Beetle health:** 30, not 36. A careful scripted player took about 140 s at 36.
+- **Air Gore:** if you're on the floor when it aims, it flies a high bombing run and drops bark with
+  shadows under it. Ramming at floor height left about 0.35 s to jump a 5.5-unit body. If you're up on
+  the platforms, it still rams at your height.
+- **Headless check:** `tools/bosscheck.sh` runs boss logic without Unity: warnings, openings, bounds, air
+  time and scripted fights.
+- **Not yet run:** Unity's batch verification, with the new `Editor/BossFightBot.cs`. The editor had the
+  project open.
 **Scope:** Replace all five bosses with new, world-specific fights: a shared boss framework, a full-screen
 health bar, part-based art and animation, telegraphed moves, and death animations. Double boss is switched
 off until it gets its own design.

@@ -14,6 +14,8 @@ namespace Insectum.Game
         internal static int Level = 1;
         internal static int EnemyIndex;
         internal static int ItemIndex;
+        internal static int BossIndex;
+        internal static bool ShowHitboxes;
 
         internal static readonly ItemId[] ItemList = BuildItems();
 
@@ -53,7 +55,7 @@ namespace Insectum.Game
             };
             if (session.Content != null)
                 foreach (LevelEnemy enemy in session.Content.Enemies)
-                    if (!specs.Contains(enemy.Spec))
+                    if (!specs.Contains(enemy.Spec) && enemy.Brain == null)
                         specs.Add(enemy.Spec);
             return specs;
         }
@@ -62,15 +64,57 @@ namespace Insectum.Game
             $"{RunWorlds.AtLevel(level)} {(Math.Max(1, level) - 1) / RunWorlds.LevelsPerWorld + 1}-{RunWorlds.LocalLevel(level)}".ToUpperInvariant();
 
         // ---------- layout (pixel viewport coordinates, 320x180) ----------
-        internal const int PanelX = 2, PanelY = 104, RowHeight = 12;
+        internal const int PanelX = 2, PanelY = 80, RowHeight = 12;
         internal static Rect Toggle => new(PanelX, 168, 26, 10);
-        internal static Rect Panel => new(PanelX, PanelY - 3, 186, RowHeight * 5 + 4);
+        internal static Rect Panel => new(PanelX, PanelY - 3, 186, RowHeight * 6 + 4);
         internal static Rect Prev(int row) => new(PanelX + 36, PanelY + row * RowHeight, 10, 10);
         internal static Rect Next(int row) => new(PanelX + 150, PanelY + row * RowHeight, 10, 10);
         internal static Rect Go(int row) => new(PanelX + 163, PanelY + row * RowHeight, 20, 10);
         // Two rows of three, wide enough for 8-character labels (47px).
-        internal static Rect Action(int index) => new(PanelX + 3 + index % 3 * 61, PanelY + (3 + index / 3) * RowHeight, 58, 10);
-        internal static readonly string[] RowLabels = { "LEVEL", "ENEMY", "ITEM" };
+        internal static Rect Action(int index) => new(PanelX + 3 + index % 3 * 61, PanelY + (4 + index / 3) * RowHeight, 58, 10);
+        internal static readonly string[] RowLabels = { "LEVEL", "ENEMY", "ITEM", "BOSS" };
+
+        // The reworked boss's moves to force, then phase jumps, freeze, the hitbox overlay and a kill.
+        internal static List<string> BossCommands(GameSession session)
+        {
+            var commands = new List<string>();
+            Boss brain = session.Content?.MainBoss?.Brain;
+            if (brain == null)
+                return commands;
+            commands.AddRange(brain.MoveNames);
+            commands.Add("PHASE 2");
+            commands.Add("PHASE 3");
+            commands.Add(brain.Frozen ? "THAW AI" : "FREEZE AI");
+            commands.Add(ShowHitboxes ? "HIDE BOXES" : "SHOW BOXES");
+            commands.Add("KILL");
+            return commands;
+        }
+
+        private static void RunBossCommand(GameSession session, int index)
+        {
+            Boss brain = session.Content?.MainBoss?.Brain;
+            List<string> commands = BossCommands(session);
+            if (brain == null || commands.Count == 0)
+            {
+                session.Content?.ShowStatus("No reworked boss here");
+                return;
+            }
+            index = Wrap(index, commands.Count);
+            int moves = brain.MoveNames.Count;
+            if (index < moves)
+                brain.ForceMove(index);
+            else if (index == moves)
+                brain.DevSetPhase(2);
+            else if (index == moves + 1)
+                brain.DevSetPhase(3);
+            else if (index == moves + 2)
+                brain.Frozen = !brain.Frozen;
+            else if (index == moves + 3)
+                ShowHitboxes = !ShowHitboxes;
+            else if (brain.Health.Alive)
+                brain.Damage.Receive(new DamageHit(DamageSource.Melee, brain.Health.Current));
+            session.Content?.ShowStatus($"Boss: {commands[index]}");
+        }
 
         internal static string[] Actions => new[] { Invincible ? "GOD ON" : "GOD OFF", "HEAL", "+50 NEK", "ALL ITEM", "NEXT LVL", "BOSS LVL" };
 
@@ -78,7 +122,8 @@ namespace Insectum.Game
         {
             0 => LevelName(Level),
             1 => Enemies(session) is { Count: > 0 } list ? list[Wrap(EnemyIndex, list.Count)].Name.ToUpperInvariant() : "NONE",
-            _ => Items.Name(ItemList[Wrap(ItemIndex, ItemList.Length)]).ToUpperInvariant()
+            2 => Items.Name(ItemList[Wrap(ItemIndex, ItemList.Length)]).ToUpperInvariant(),
+            _ => BossCommands(session) is { Count: > 0 } commands ? commands[Wrap(BossIndex, commands.Count)] : "NO BOSS"
         };
 
         private static int Wrap(int value, int count) => (value % count + count) % count;
@@ -94,14 +139,15 @@ namespace Insectum.Game
             if (!PanelOpen || !Panel.Contains(pointer))
                 return false;
 
-            for (int row = 0; row < 3; row++)
+            for (int row = 0; row < RowLabels.Length; row++)
             {
                 int step = Prev(row).Contains(pointer) ? -1 : Next(row).Contains(pointer) ? 1 : 0;
                 if (step != 0)
                 {
                     if (row == 0) Level = Wrap(Level - 1 + step, RunWorlds.LevelCount) + 1;
                     else if (row == 1) EnemyIndex += step;
-                    else ItemIndex += step;
+                    else if (row == 2) ItemIndex += step;
+                    else BossIndex += step;
                     return true;
                 }
                 if (!Go(row).Contains(pointer))
@@ -113,8 +159,10 @@ namespace Insectum.Game
                     List<EnemySpec> list = Enemies(session);
                     session.DevSpawn(list[Wrap(EnemyIndex, list.Count)]);
                 }
-                else
+                else if (row == 2)
                     session.DevGive(ItemList[Wrap(ItemIndex, ItemList.Length)]);
+                else
+                    RunBossCommand(session, BossIndex);
                 return true;
             }
 
