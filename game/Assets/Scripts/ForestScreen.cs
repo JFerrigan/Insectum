@@ -2,7 +2,8 @@ using UnityEngine;
 
 namespace Insectum.Game
 {
-    internal enum MenuPage { Main, Settings, Roster }
+    internal enum MenuPage { Main, Settings, Roster, Encyclopedia }
+    internal enum EncyclopediaSection { Items, Enemies }
 
     internal static class ForestScreen
     {
@@ -20,6 +21,10 @@ namespace Insectum.Game
         private static readonly Color BarBack = new Color32(44, 22, 36, 255);
         private static readonly string[] ShortNames = { "SPIDER", "BEETLE", "DRAGONFLY", "FIRE ANT", "WORM" };
         private static readonly string[] AbilityNames = { "High jump and auto wall climb", "Momentum shell", "Directional flight", "Heavy mandible strike", "Excavate one hex" };
+        private const int EncyclopediaRowsPerPage = 6;
+        private const int EncyclopediaRowHeight = 18;
+        private const int EncyclopediaTextX = 58;
+        private const int EncyclopediaRight = 298;
 
         internal static Rect SeedField => new(23, 141, 124, 18);
         internal static Rect StartButton => new(168, 141, 129, 18);
@@ -30,15 +35,26 @@ namespace Insectum.Game
         internal static Rect RosterButton => new(166, 132, 97, 19);
         internal static Rect ResumeButton => new(38, 159, 118, 17);
         internal static Rect QuitToRosterButton => new(164, 159, 118, 17);
-        internal static Rect PlayButton => new(110, 80, 100, 19);
-        internal static Rect SettingsButton => new(110, 105, 100, 19);
-        internal static Rect QuitButton => new(110, 130, 100, 19);
+        internal static Rect PlayButton => new(110, 74, 100, 19);
+        internal static Rect SettingsButton => new(110, 97, 100, 19);
+        internal static Rect EncyclopediaButton => new(110, 120, 100, 19);
+        internal static Rect QuitButton => new(110, 143, 100, 19);
+        internal static Rect EncyclopediaBackButton => RosterBackButton;
+        internal static Rect EncyclopediaTab(EncyclopediaSection section) => new(106 + (int)section * 56, 30, 52, 15);
+        internal static Rect EncyclopediaPrev => new(114, 160, 20, 17);
+        internal static Rect EncyclopediaNext => new(186, 160, 20, 17);
         internal static Rect BackButton => new(110, 140, 100, 19);
         internal static Rect LevelDown(int row) => new(150, 72 + row * 26, 15, 15);
         internal static Rect LevelUp(int row) => new(262, 72 + row * 26, 15, 15);
 
         internal static Rect RosterCard(int index) => index == (int)Insect.Dragonfly
             ? new Rect(132, 59, 56, 49) : new Rect(23 + index * 56, 59, 50, 49);
+
+        internal static int EncyclopediaPageCount(EncyclopediaSection section) =>
+            (EncyclopediaEntryCount(section) + EncyclopediaRowsPerPage - 1) / EncyclopediaRowsPerPage;
+
+        private static int EncyclopediaEntryCount(EncyclopediaSection section) => section == EncyclopediaSection.Items
+            ? (int)ItemId.FluxCore - (int)ItemId.ExcavatorClaw + 1 : EnemySpec.All.Count;
 
         internal static void Draw(RenderTexture world, Camera camera, GameSession session, MenuPage menu, int selected, string seed,
             bool editingSeed, bool paused, bool bossRush)
@@ -102,7 +118,75 @@ namespace Insectum.Game
             Fill(new Rect(70, 66, 180, 1), Edge);
             Button(PlayButton, "PLAY");
             Button(SettingsButton, "SETTINGS");
+            Button(EncyclopediaButton, "ENCYCLOPEDIA");
             Button(QuitButton, "QUIT");
+        }
+
+        private static void DrawEncyclopedia(EncyclopediaSection section, int page)
+        {
+            Shade();
+            Button(EncyclopediaBackButton, "BACK");
+            Center("ENCYCLOPEDIA", 160, 12, Light, 2);
+            DrawEncyclopediaTab(EncyclopediaSection.Items, section, "ITEMS");
+            DrawEncyclopediaTab(EncyclopediaSection.Enemies, section, "ENEMIES");
+            Frame(new Rect(12, 48, 296, 2 + EncyclopediaRowsPerPage * EncyclopediaRowHeight), Edge, Panel);
+
+            int first = page * EncyclopediaRowsPerPage;
+            int rows = Mathf.Min(EncyclopediaRowsPerPage, EncyclopediaEntryCount(section) - first);
+            for (int row = 0; row < rows; row++)
+            {
+                int y = 49 + row * EncyclopediaRowHeight;
+                if (row > 0)
+                    Fill(new Rect(20, y - 1, 280, 1), Edge);
+                if (section == EncyclopediaSection.Items)
+                    DrawEncyclopediaItem(ItemId.ExcavatorClaw + first + row, y);
+                else
+                    DrawEncyclopediaEnemy(EnemySpec.All[first + row], y);
+            }
+
+            int pages = EncyclopediaPageCount(section);
+            if (pages > 1)
+            {
+                Button(EncyclopediaPrev, "<", page > 0);
+                Button(EncyclopediaNext, ">", page < pages - 1);
+                Center($"{page + 1}/{pages}", 160, 165, Muted);
+            }
+        }
+
+        private static void DrawEncyclopediaTab(EncyclopediaSection tab, EncyclopediaSection section, string label)
+        {
+            Rect rect = EncyclopediaTab(tab);
+            bool selected = tab == section;
+            bool hover = rect.Contains(PixelViewport.Pointer);
+            Frame(rect, selected ? Light : hover ? Gold : Edge, selected ? new Color32(64, 41, 55, 255) : Panel);
+            Center(label, (int)rect.center.x, (int)rect.y + 4, selected || hover ? Light : Muted);
+        }
+
+        private static void DrawEncyclopediaItem(ItemId item, int y)
+        {
+            bool active = Items.IsActive(item);
+            DrawItemIcon(item, new Rect(28, y + 1, 16, 16));
+            Write(Items.Name(item), EncyclopediaTextX, y + 1, Light);
+            Right(active ? "ACTIVE" : "PASSIVE", EncyclopediaRight, y + 1, active ? Gold : Mint);
+            Write(Items.Description(item), EncyclopediaTextX, y + 9, Muted);
+        }
+
+        private static void DrawEncyclopediaEnemy((EnemySpec Spec, WorldId World) entry, int y)
+        {
+            var (spec, world) = entry;
+            Sprite portrait = EnemySpec.Portrait(spec);
+            Rect source = portrait.rect;
+            float scale = Mathf.Min(30f / source.width, 16f / source.height);
+            int width = Mathf.RoundToInt(source.width * scale);
+            int height = Mathf.RoundToInt(source.height * scale);
+            DrawSprite(portrait, new Rect(36 - width / 2, y + 9 - height / 2, width, height));
+            Write(spec.Name, EncyclopediaTextX, y + 1, Light);
+            Write(world.ToString(), EncyclopediaTextX, y + 9, Muted);
+            if (spec.IsBoss)
+                Write("BOSS", 148, y + 1, Gold);
+            Heart(193, y + 6, Pink);
+            Write($"X {spec.Hearts}", 203, y + 5, Light);
+            Right($"{spec.Nektar} NEKTAR", EncyclopediaRight, y + 5, Gold);
         }
 
         private static void DrawSettings()
@@ -611,9 +695,10 @@ namespace Insectum.Game
                 Center("-", passiveX + iconSize / 2, iconY + 8, Muted);
         }
 
-        private static void DrawItemIcon(ItemId id, Rect target)
+        private static void DrawItemIcon(ItemId id, Rect target) => DrawSprite(ForestArt.Item(id), target);
+
+        private static void DrawSprite(Sprite sprite, Rect target)
         {
-            Sprite sprite = ForestArt.Item(id);
             Texture2D atlas = sprite.texture;
             Rect source = sprite.rect;
             GUI.color = Color.white;
@@ -624,8 +709,15 @@ namespace Insectum.Game
         private static void Shade() =>
             Fill(new Rect(0, 0, PixelViewport.Width, PixelViewport.Height), new Color32(15, 9, 27, 83));
 
-        private static void Button(Rect rect, string text)
+        private static void Button(Rect rect, string text, bool enabled = true)
         {
+            if (!enabled)
+            {
+                Frame(rect, Edge, Panel);
+                Center(text, (int)rect.center.x, (int)rect.y + 6, Muted);
+                return;
+            }
+
             bool hover = rect.Contains(PixelViewport.Pointer);
             Frame(rect, hover ? Light : Gold, hover ? new Color32(94, 60, 62, 255) : new Color32(64, 41, 55, 255));
             Center(text, (int)rect.center.x, (int)rect.y + 6, Light);
