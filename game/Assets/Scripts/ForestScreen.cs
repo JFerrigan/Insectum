@@ -80,6 +80,8 @@ namespace Insectum.Game
                     DrawShopOffer(camera, session, shop);
                 else if (session.Content?.ClosestInteractable() is LevelFeature feature)
                     DrawWorldPrompt(camera, feature.Position + Vector2.up * 1.4f, feature.InteractPrompt, Gold);
+                else if (session.InDevRoom && session.AtExit)
+                    DrawWorldPrompt(camera, session.Layout.Exit + Vector2.up * 1.4f, session.InteractionPrompt, Gold);
                 else if (session.Abilities.DigFeedback is string feedback)
                     DrawWorldPrompt(camera, session.Motor.Body.position + Vector2.up * 1.2f, feedback, Gold);
                 if (!paused)
@@ -335,8 +337,9 @@ namespace Insectum.Game
 
         private static void DrawShopOffer(Camera camera, GameSession session, LevelFeature shop)
         {
-            string label = !shop.Available ? "SOLD OUT"
-                : session.Content.ClosestInteractable() == shop ? shop.InteractPrompt : shop.ShopOffer;
+            string label = shop.Available
+                ? session.Content.ClosestInteractable() == shop ? shop.InteractPrompt : shop.ShopOffer
+                : shop.FreeOffer ? "TAKEN" : "SOLD OUT";
             DrawWorldPrompt(camera, shop.Position + Vector2.up * 2.75f, label, shop.Available ? Gold : Muted);
         }
 

@@ -48,9 +48,9 @@ namespace Insectum.Game
         internal LevelContent Content { get; private set; }
         internal LevelHazards Hazards { get; private set; }
         public string Status => Content?.Status;
-        public string InteractionPrompt => Content?.ClosestInteractable()?.InteractPrompt ?? (AtExit
-            ? Content?.ExitUnlocked == false ? Content.BossGatePrompt : $"E  Enter {Run.World} exit"
-            : null);
+        public string InteractionPrompt => Content?.ClosestInteractable()?.InteractPrompt ?? (AtExit ? ExitPrompt : null);
+        private string ExitPrompt => Content?.ExitUnlocked == false ? Content.BossGatePrompt
+            : InDevRoom ? "E  Enter Forest 1-1" : $"E  Enter {Run.World} exit";
         public LevelLayout Layout { get; private set; }
         public LevelVariant Variant { get; private set; }
         internal float LevelStartTime { get; private set; }
@@ -58,6 +58,7 @@ namespace Insectum.Game
         public Rect LevelBounds => Layout?.Bounds ?? ForestRoute.Bounds;
         private Vector2 Exit => Layout?.Exit ?? ForestRoute.Exit;
         public bool AtExit => Motor != null && Vector2.Distance(Motor.Body.position, Exit) < 1.15f;
+        internal bool InDevRoom => Run?.LevelNumber == DevRoom.LevelNumber;
 
         // The camera's shake this frame: a small decaying wobble in world units.
         internal Vector2 ShakeOffset
@@ -117,7 +118,7 @@ namespace Insectum.Game
         {
             BeginRun(character, seed, true, firstLevel);
             this.lastLevel = lastLevel;
-            LoadLevel(RunWorlds.Generate(seed, Run.LevelNumber));
+            LoadLevel(InDevRoom ? DevRoom.Generate(seed) : RunWorlds.Generate(seed, Run.LevelNumber));
         }
 
         public void Start(Character character, int seed) => Start(character, seed, null);
@@ -134,6 +135,8 @@ namespace Insectum.Game
             Run = new RunState(character, seed);
             for (int levelNumber = 0; levelNumber < firstLevel; levelNumber++)
                 Run.EnterNextLevel();
+            if (InDevRoom)
+                Run.RestoreEnergy(character.MaxEnergy);
             fullRun = playFullRun;
         }
 
@@ -183,8 +186,13 @@ namespace Insectum.Game
             if (fullRun)
             {
                 Content = new LevelContent(this, level.transform, pixel);
-                RunWorlds.Populate(Content, layout);
-                RunWorlds.ApplyVariant(Content, layout, Terrain, Variant);
+                if (InDevRoom)
+                    DevRoom.Populate(Content);
+                else
+                {
+                    RunWorlds.Populate(Content, layout);
+                    RunWorlds.ApplyVariant(Content, layout, Terrain, Variant);
+                }
                 if (exitArt != null && !Content.ExitUnlocked)
                     exitArt.sprite = ForestArt.Prop(ForestProp.LockedExit);
             }
@@ -252,7 +260,7 @@ namespace Insectum.Game
                 return;
             }
 
-            int nextLevel = BossRush ? RunWorlds.NextBossLevel(Run.LevelNumber) : Run.LevelNumber + 1;
+            int nextLevel = BossRush && !InDevRoom ? RunWorlds.NextBossLevel(Run.LevelNumber) : Run.LevelNumber + 1;
             if (fullRun && nextLevel <= lastLevel)
             {
                 while (Run.LevelNumber < nextLevel)
@@ -364,7 +372,7 @@ namespace Insectum.Game
             ItemId active = old.Active;
             int nektar = old.Nektar;
             bool bossRush = BossRush;
-            StartGenerated(Run.Character, Run.Seed, Mathf.Clamp(levelNumber, 1, RunWorlds.LevelCount));
+            StartGenerated(Run.Character, Run.Seed, Mathf.Clamp(levelNumber, DevRoom.LevelNumber, RunWorlds.LevelCount));
             BossRush = bossRush;
             foreach (var passive in passives)
                 for (int i = 0; i < passive.Value; i++)

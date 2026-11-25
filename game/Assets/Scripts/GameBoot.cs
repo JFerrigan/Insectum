@@ -374,6 +374,8 @@ namespace Insectum.Game
             int seed = int.TryParse(seedText, out int requestedSeed) ? requestedSeed : Random.Range(0, int.MaxValue);
             if (bossRush)
                 session.StartBossRush(Character.Roster[selected], seed);
+            else if (DevMode.Enabled)
+                session.StartGenerated(Character.Roster[selected], seed, DevRoom.LevelNumber);
             else
                 session.StartTunnelTrial(Character.Roster[selected], seed);
         }

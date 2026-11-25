@@ -23,16 +23,15 @@ namespace Insectum.Game
         internal static int FirstLevel(WorldId world) => Array.IndexOf(Order, world) * LevelsPerWorld + 1;
 
         internal static WorldId AtLevel(int level) => Order[(Math.Max(1, level) - 1) / LevelsPerWorld];
-        internal static int LocalLevel(int level) => (Math.Max(1, level) - 1) % LevelsPerWorld + 1;
+        internal static int LocalLevel(int level) => level == 0 ? 0 : (Math.Max(1, level) - 1) % LevelsPerWorld + 1;
 
         // The first boss level after this one: every world's last level holds its boss.
         internal static int NextBossLevel(int level) => (Math.Max(0, level) / LevelsPerWorld + 1) * LevelsPerWorld;
 
         internal static LevelVariant ChooseVariant(LevelSeeds seeds, int worldLevel)
         {
-            // Boss arenas are always standard. Double boss is off until it has a design for the new bosses
-            // (docs/08_BOSS_REWORK_PLAN.md).
-            if (worldLevel == LevelsPerWorld)
+            // The dev room and boss arenas have no variants.
+            if (worldLevel == 0 || worldLevel == LevelsPerWorld)
                 return LevelVariant.Standard;
             var random = new SeededRandom(seeds.Variants);
             return random.Next(8) switch

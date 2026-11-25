@@ -11,7 +11,7 @@ namespace Insectum.Game
         internal static bool Enabled;
         internal static bool Invincible;
         internal static bool PanelOpen = true;
-        internal static int Level = 1;
+        internal static int Level = DevRoom.LevelNumber;
         internal static int EnemyIndex;
         internal static int ItemIndex;
         internal static int BossIndex;
@@ -60,8 +60,8 @@ namespace Insectum.Game
             return specs;
         }
 
-        internal static string LevelName(int level) =>
-            $"{RunWorlds.AtLevel(level)} {(Math.Max(1, level) - 1) / RunWorlds.LevelsPerWorld + 1}-{RunWorlds.LocalLevel(level)}".ToUpperInvariant();
+        internal static string LevelName(int level) => level == DevRoom.LevelNumber ? "DEV ROOM 0-0" :
+            $"{RunWorlds.AtLevel(level)} {(level - 1) / RunWorlds.LevelsPerWorld + 1}-{RunWorlds.LocalLevel(level)}".ToUpperInvariant();
 
         // ---------- layout (pixel viewport coordinates, 320x180) ----------
         internal const int PanelX = 2, PanelY = 80, RowHeight = 12;
@@ -144,7 +144,7 @@ namespace Insectum.Game
                 int step = Prev(row).Contains(pointer) ? -1 : Next(row).Contains(pointer) ? 1 : 0;
                 if (step != 0)
                 {
-                    if (row == 0) Level = Wrap(Level - 1 + step, RunWorlds.LevelCount) + 1;
+                    if (row == 0) Level = Wrap(Level + step, RunWorlds.LevelCount + 1);
                     else if (row == 1) EnemyIndex += step;
                     else if (row == 2) ItemIndex += step;
                     else BossIndex += step;

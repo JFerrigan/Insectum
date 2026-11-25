@@ -25,11 +25,12 @@ namespace Insectum.Game
         private readonly SpriteRenderer art;
         private readonly SpriteRenderer offer;
 
-        internal string ShopOffer => $"{Items.Name(Item)}  ({Amount} Nektar)";
+        internal bool FreeOffer => Kind == LevelFeatureKind.Shop && Amount == 0;
+        internal string ShopOffer => $"{Items.Name(Item)}  ({(FreeOffer ? "FREE" : $"{Amount} Nektar")})";
 
         internal string InteractPrompt => Kind switch
         {
-            LevelFeatureKind.Shop => $"E  Buy {ShopOffer}",
+            LevelFeatureKind.Shop => $"E  {(FreeOffer ? "Take" : "Buy")} {ShopOffer}",
             LevelFeatureKind.Chest => "E  Open chest",
             LevelFeatureKind.BossReward => $"E  Claim {Items.Name(Item)}",
             _ => null
