@@ -65,28 +65,92 @@ namespace Insectum.Game
         Applied
     }
 
+    // One part of a body that strikes and blasts can land on. A boss is several of these: an armored part
+    // turns hits aside, and a weak point multiplies their damage.
+    public readonly struct Hurtbox
+    {
+        public Vector2 Center { get; }
+        public float Radius { get; }
+        public int Multiplier { get; }
+        public bool Armored { get; }
+
+        public Hurtbox(Vector2 center, float radius, int multiplier = 1, bool armored = false)
+        {
+            Center = center;
+            Radius = radius;
+            Multiplier = Mathf.Max(1, multiplier);
+            Armored = armored;
+        }
+
+        // An unarmored part beats an armored one, and a bigger multiplier beats a smaller one.
+        internal bool Outranks(Hurtbox other) =>
+            Armored != other.Armored ? !Armored : Multiplier > other.Multiplier;
+    }
+
     public sealed class DamageReceiver
     {
         private readonly Func<Vector2> position;
         private readonly Action<Vector2> applyImpulse;
         private readonly Func<DamageHit, bool> absorb;
+        private readonly Func<IReadOnlyList<Hurtbox>> parts;
         private readonly int invulnerabilityDuration;
 
         public HealthPool Health { get; }
         public float Radius { get; }
         public Vector2 Position => position();
         public int InvulnerabilitySteps { get; private set; }
+        // True when the body is made of parts rather than one circle at Position.
+        public bool HasParts => parts != null;
+        // The part the latest strike or blast landed on, for sparks and flashes.
+        public Hurtbox LastPart { get; private set; }
         public event Action<DamageHit, DamageOutcome> Resolved;
 
         public DamageReceiver(HealthPool health, float radius, Func<Vector2> position, int invulnerabilitySteps,
-            Action<Vector2> applyImpulse = null, Func<DamageHit, bool> absorb = null)
+            Action<Vector2> applyImpulse = null, Func<DamageHit, bool> absorb = null,
+            Func<IReadOnlyList<Hurtbox>> parts = null)
         {
             Health = health;
             Radius = radius;
             this.position = position;
             this.applyImpulse = applyImpulse;
             this.absorb = absorb;
+            this.parts = parts;
             invulnerabilityDuration = Mathf.Max(0, invulnerabilitySteps);
+        }
+
+        // The best part the test overlaps. A body without parts is one plain circle at Position.
+        public bool TryFindPart(Func<Vector2, float, bool> overlaps, out Hurtbox part)
+        {
+            part = default;
+            if (parts == null)
+            {
+                part = new Hurtbox(Position, Radius);
+                return overlaps(Position, Radius);
+            }
+
+            bool found = false;
+            foreach (Hurtbox candidate in parts())
+            {
+                if (!overlaps(candidate.Center, candidate.Radius) || found && !candidate.Outranks(part))
+                    continue;
+                part = candidate;
+                found = true;
+            }
+            return found;
+        }
+
+        // Lands a hit on one part: armor absorbs it, and a weak point multiplies its damage.
+        public DamageOutcome Receive(DamageHit hit, Hurtbox part)
+        {
+            LastPart = part;
+            if (!part.Armored)
+                return Receive(part.Multiplier == 1 ? hit : new DamageHit(hit.Source, hit.Hearts * part.Multiplier, hit.Knockback));
+            if (!Health.Alive || hit.Hearts <= 0 || InvulnerabilitySteps > 0)
+                return DamageOutcome.Ignored;
+
+            InvulnerabilitySteps = invulnerabilityDuration;
+            Resolved?.Invoke(hit, DamageOutcome.Absorbed);
+            return DamageOutcome.Absorbed;
         }
 
         public void ProtectFor(int steps) => InvulnerabilitySteps = Mathf.Max(InvulnerabilitySteps, steps);
@@ -153,25 +217,29 @@ namespace Insectum.Game
                 target.Step();
         }
 
+        // Lands the strike on everything in reach, once per body. A hit on armor still counts, so a downward
+        // strike bounces off it.
         public bool Melee(MeleeStrike strike)
         {
             bool hit = false;
             int count = targets.Count;
             var across = new Vector2(-strike.Direction.y, strike.Direction.x);
+            bool InReach(Vector2 center, float radius)
+            {
+                Vector2 offset = center - strike.Origin;
+                float forward = Vector2.Dot(strike.Direction, offset);
+                float lateral = Mathf.Abs(Vector2.Dot(across, offset));
+                return forward >= 0f && forward - radius <= strike.Reach && lateral <= strike.HalfWidth + radius;
+            }
+
             for (int i = 0; i < count; i++)
             {
                 DamageReceiver target = targets[i];
-                if (!target.Health.Alive)
+                if (!target.Health.Alive || !target.TryFindPart(InReach, out Hurtbox part))
                     continue;
 
-                Vector2 offset = target.Position - strike.Origin;
-                float forward = Vector2.Dot(strike.Direction, offset);
-                float lateral = Mathf.Abs(Vector2.Dot(across, offset));
-                if (forward >= 0f && forward - target.Radius <= strike.Reach && lateral <= strike.HalfWidth + target.Radius)
-                {
-                    target.Receive(strike.Hit);
-                    hit = true;
-                }
+                target.Receive(strike.Hit, part);
+                hit = true;
             }
 
             MeleePerformed?.Invoke(strike);
@@ -185,22 +253,23 @@ namespace Insectum.Game
 
             float previousFoot = previous.y - attackerRadius;
             float currentFoot = current.y - attackerRadius;
+            bool Crossed(Vector2 center, float radius)
+            {
+                float top = center.y + radius;
+                if (previousFoot < top || currentFoot > top)
+                    return false;
+
+                float t = (previousFoot - top) / (previousFoot - currentFoot);
+                float crossing = Mathf.Lerp(previous.x, current.x, t);
+                return Mathf.Abs(crossing - center.x) <= attackerRadius + radius;
+            }
+
             int count = targets.Count;
             for (int i = 0; i < count; i++)
             {
                 DamageReceiver target = targets[i];
-                if (!target.Health.Alive)
-                    continue;
-
-                Vector2 center = target.Position;
-                float top = center.y + target.Radius;
-                if (previousFoot < top || currentFoot > top)
-                    continue;
-
-                float t = (previousFoot - top) / (previousFoot - currentFoot);
-                float crossing = Mathf.Lerp(previous.x, current.x, t);
-                if (Mathf.Abs(crossing - center.x) <= attackerRadius + target.Radius)
-                    target.Receive(new DamageHit(DamageSource.Crush, damage, Vector2.down * 3f));
+                if (target.Health.Alive && target.TryFindPart(Crossed, out Hurtbox part))
+                    target.Receive(new DamageHit(DamageSource.Crush, damage, Vector2.down * 3f), part);
             }
         }
     }

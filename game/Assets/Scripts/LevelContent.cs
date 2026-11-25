@@ -374,12 +374,20 @@ namespace Insectum.Game
         private void Blast(Vector2 position, float radius, int power, int damage)
         {
             session.Terrain.Explode(position, radius, power);
-            float radiusSquared = radius * radius;
             foreach (LevelEnemy enemy in enemies)
             {
-                Vector2 offset = enemy.Position - position;
-                if (offset.sqrMagnitude <= radiusSquared)
-                    enemy.Damage.Receive(new DamageHit(DamageSource.Explosion, damage, offset.normalized * 4f));
+                // A plain enemy is caught when its center is inside the blast, a boss when any part touches it.
+                bool hasParts = enemy.Damage.HasParts;
+                bool Inside(Vector2 center, float partRadius)
+                {
+                    float reach = radius + (hasParts ? partRadius : 0f);
+                    return (center - position).sqrMagnitude <= reach * reach;
+                }
+
+                if (!enemy.Damage.TryFindPart(Inside, out Hurtbox part))
+                    continue;
+                Vector2 offset = part.Center - position;
+                enemy.Damage.Receive(new DamageHit(DamageSource.Explosion, damage, offset.normalized * 4f), part);
             }
             if (blastArt != null)
             {

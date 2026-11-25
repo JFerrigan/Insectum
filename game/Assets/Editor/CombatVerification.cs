@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using static Insectum.Game.Editor.ProductionVerification;
 
@@ -10,6 +11,7 @@ namespace Insectum.Game.Editor
 
         internal static void Verify()
         {
+            VerifyHurtboxes();
             using var fixture = new PhysicsFixture("Combat verification");
             VerifyCommonMelee(fixture);
             VerifySharedDamage(fixture);
@@ -21,7 +23,34 @@ namespace Insectum.Game.Editor
             VerifyDragonfly(fixture);
             VerifyFireAnt(fixture);
             VerifyDisabledAbilities();
-            Debug.Log("Insectum combat verified: melee, enemy contact and shared damage, Spider high jump and automatic wall climb, Beetle momentum/absorption/crush, Dragonfly flight, Fire Ant heavy strike, and ability-disabled simulation.");
+            Debug.Log("Insectum combat verified: boss hurtboxes, melee, enemy contact and shared damage, Spider high jump and automatic wall climb, Beetle momentum/absorption/crush, Dragonfly flight, Fire Ant heavy strike, and ability-disabled simulation.");
+        }
+
+        // A boss made of parts takes one hit per swing, on its most damaging part in reach. Armor absorbs a
+        // hit but still counts as one, so a downward strike bounces off it, and a weak point doubles damage.
+        private static void VerifyHurtboxes()
+        {
+            var armor = new Hurtbox(new Vector2(1f, 0f), 0.5f, armored: true);
+            var plain = new Hurtbox(new Vector2(1.4f, 0f), 0.5f);
+            var weak = new Hurtbox(new Vector2(3f, 0f), 0.5f, 2);
+            IReadOnlyList<Hurtbox> parts = new[] { armor, plain, weak };
+            var arena = new CombatArena();
+            var boss = new DamageReceiver(new HealthPool(10), 1f, () => new Vector2(2f, 0f), 0, parts: () => parts);
+            arena.AddTarget(boss);
+            DamageOutcome outcome = DamageOutcome.Ignored;
+            boss.Resolved += (_, result) => outcome = result;
+
+            Require(arena.Melee(new MeleeStrike(Vector2.zero, Vector2.right, 1.3f, 0.38f, 1, 4f)) && boss.Health.Current == 9
+                && outcome == DamageOutcome.Applied, "A swing over armor and a plain part did not land once on the plain part.");
+            parts = new[] { armor };
+            Require(arena.Melee(new MeleeStrike(Vector2.zero, Vector2.right, 1.3f, 0.38f, 1, 4f)) && boss.Health.Current == 9
+                && outcome == DamageOutcome.Absorbed && boss.LastPart.Armored, "Armor did not absorb a hit that still counts.");
+            parts = new[] { weak };
+            Require(arena.Melee(new MeleeStrike(new Vector2(2f, 0f), Vector2.right, 1.3f, 0.38f, 1, 4f))
+                && boss.Health.Current == 7, "A weak point did not double the damage.");
+            parts = new[] { plain };
+            Require(!arena.Melee(new MeleeStrike(new Vector2(5f, 0f), Vector2.right, 1.3f, 0.38f, 1, 4f))
+                && boss.Health.Current == 7, "A swing hit a part behind it.");
         }
 
         private static void VerifyCommonMelee(PhysicsFixture fixture)
