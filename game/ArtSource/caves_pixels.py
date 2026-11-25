@@ -3,6 +3,7 @@
 import random
 
 from forest_pixels import Cel, OUT
+from sprite_style import Pic, limb
 
 INK = "#14142b"
 ICE = "#8fdbe4"
@@ -79,38 +80,46 @@ def terrain():
     atlas.image.save(OUT / "CavesTerrain.png")
 
 
-def actor(kind, frame):
-    cel = Cel(32, 24)
+def styled_actor(kind, frame):
+    """Cave Hopper and Glow Fly in the shared style, animated like the originals."""
+    pic = Pic(32, 24, INK)
     alert = frame in (4, 5)
     if kind == 0:
         for x, shift in [(8, -1), (14, 1), (20, -1)]:
             toe = x + shift * (frame % 3)
-            cel.line([(x, 13), (toe - 2, 17), (toe + 4, 19)], "#54628e", 3)
-            cel.line([(x, 13), (toe - 2, 17), (toe + 4, 19)], "#a8a0d5")
-        cel.shape([(4, 15), (6, 10), (12, 6), (19, 7), (20, 15), (15, 17), (8, 17)], "#6576aa", INK)
-        cel.line([(7, 12), (12, 8), (17, 9)], ICE)
-        cel.oval((17, 9, 26, 16), "#746caa", INK)
-        cel.dot((23, 11), WHITE)
+            limb(pic, [(x, 13), (toe - 2, 17), (toe + 4, 19)], "#a8a0d5")
+        pic.poly([(4, 15), (6, 10), (12, 6), (19, 7), (20, 15), (15, 17), (8, 17)], "#6576aa")
+        pic.line([(7, 12), (12, 8), (16, 8)], ICE)
+        pic.oval((17, 9, 26, 16), "#746caa")
+        pic.eye(22, 11, WHITE)
         if alert:
-            cel.line([(24, 14), (29, 15), (30, 12)], ICE, 2)
-    elif kind == 1:
-        top, bottom = ((2, 18) if frame % 2 else (6, 15))
-        cel.shape([(18, 12), (12, top), (6, top + 1), (8, top + 6), (15, 12)], "#7d83c7", INK)
-        cel.shape([(17, 12), (8, bottom), (4, bottom + 2), (11, bottom + 3), (18, 14)], "#77669e", INK)
-        cel.oval((10, 9, 25, 16), "#7255aa", INK)
-        cel.oval((19, 10, 26, 15), VIOLET, INK)
-        cel.dot((23, 11), WHITE)
-        cel.line([(10, 15), (5, 17)], ICE if alert else "#6caaae")
+            pic.stroke([(24, 14), (29, 15), (30, 12)], ICE)
     else:
-        cel.shape([(1, 18), (4, 12), (8, 9), (20, 8), (24, 10), (30, 13), (31, 19), (21, 20),
-                   (6, 20)], "#514f82", INK)
-        for x, y in [(8, 8), (15, 2), (21, 5)]:
-            cel.shape([(x - 3, 13), (x - 3, y + 3), (x, y), (x + 4, y + 4), (x + 3, 13)],
-                      "#7968ad", INK)
-            cel.line([(x, y + 1), (x - 1, y + 4), (x, 11)], VIOLET if alert else "#afa3e2")
-        cel.line([(4, 17), (9, 15), (15, 17), (20, 14)], "#8a8ab9", 2)
-        cel.oval((23, 12, 30, 18), "#3e466e", INK)
-        cel.dot((27, 13), ICE)
+        top, bottom = (2, 18) if frame % 2 else (6, 15)
+        pic.poly([(18, 12), (12, top), (6, top + 1), (8, top + 6), (15, 12)], "#7d83c7")
+        pic.oval((9, 9, 25, 16), "#7255aa")
+        pic.poly([(17, 12), (8, bottom), (4, bottom + 2), (11, bottom + 3), (18, 14)], "#77669e")
+        pic.oval((19, 9, 27, 16), VIOLET)
+        pic.eye(23, 11, WHITE)
+        pic.line([(9, 15), (5, 17)], ICE if alert else "#6caaae")
+    return pic.image
+
+
+def actor(kind, frame):
+    if kind < 2:
+        return styled_actor(kind, frame)
+    # The boss keeps its original drawing until the boss overhaul.
+    cel = Cel(32, 24)
+    alert = frame in (4, 5)
+    cel.shape([(1, 18), (4, 12), (8, 9), (20, 8), (24, 10), (30, 13), (31, 19), (21, 20),
+               (6, 20)], "#514f82", INK)
+    for x, y in [(8, 8), (15, 2), (21, 5)]:
+        cel.shape([(x - 3, 13), (x - 3, y + 3), (x, y), (x + 4, y + 4), (x + 3, 13)],
+                  "#7968ad", INK)
+        cel.line([(x, y + 1), (x - 1, y + 4), (x, 11)], VIOLET if alert else "#afa3e2")
+    cel.line([(4, 17), (9, 15), (15, 17), (20, 14)], "#8a8ab9", 2)
+    cel.oval((23, 12, 30, 18), "#3e466e", INK)
+    cel.dot((27, 13), ICE)
     return cel.image
 
 

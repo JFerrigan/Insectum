@@ -5,7 +5,9 @@ import random
 
 from PIL import Image, ImageDraw
 
-OUT = Path(__file__).resolve().parent.parent / "Assets/Resources/PixelArt"
+from sprite_style import Pic, limb, ramp
+
+OUT =Path(__file__).resolve().parent.parent / "Assets/Resources/PixelArt"
 OUT.mkdir(exist_ok=True)
 INK = "#1b1029"
 CREAM = "#ffe8bb"
@@ -47,6 +49,10 @@ def legs(cel, positions, color, phase):
 
 
 def insect(row, pose):
+    if row == 2:
+        return dragonfly(pose)
+    if row == 4:
+        return worm(pose)
     cel = Cel(32, 24)
     swing = (0, 1, 0, -1, 0, 1)[pose]
     flash = pose == 5
@@ -79,32 +85,10 @@ def insect(row, pose):
             cel.oval((18, 10, 27, 17), "#455468", INK)
             cel.line([(24, 11), (27, 8), (27, 5), (25, 3)], CREAM, 2)
             cel.line([(20, 10), (21, 6), (20, 4)], "#c89971")
-            cel.dot((24, 12), GOLD)
+            cel.box((25, 14, 26, 15), INK)
+            cel.dot((25, 14), CREAM)
             if pose == 4:
                 cel.line([(26, 14), (29, 12), (30, 9)], CREAM)
-    elif row == 2:  # Dragonfly
-        up = pose in (0, 2, 3)
-        if up:
-            cel.shape([(16, 11), (8, 7), (3, 2), (6, 2), (14, 4), (19, 10)], "#9e92c4", INK)
-            cel.line([(7, 4), (14, 6), (17, 9)], "#d6bdd9")
-            cel.shape([(16, 12), (4, 12), (2, 9), (10, 9), (18, 11)], "#6581b5", INK)
-        else:
-            cel.shape([(18, 10), (12, 9), (9, 2), (12, 2), (18, 6)], "#a2c6d7", INK)
-            cel.shape([(17, 11), (9, 17), (4, 17), (7, 14), (15, 10)], "#9b83bc", INK)
-            cel.line([(7, 16), (13, 14), (16, 12)], "#ceabd0")
-        cel.shape([(18, 13), (10, 16), (5, 17), (4, 16), (11, 13), (17, 11)], "#428d96", INK)
-        cel.line([(7, 16), (13, 14), (18, 13)], "#84c9b4")
-        cel.line([(18, 14), (20, 17), (22, 19)], "#e6a278")
-        cel.line([(22, 14), (23, 17), (26, 18)], "#e6a278")
-        cel.oval((17, 7, 26, 15), "#62bdc4", INK)
-        cel.oval((21, 8, 25, 12), "#314563", INK)
-        cel.dot((23, 9), CREAM)
-        cel.line([(23, 7), (25, 4), (27, 3)], GOLD)
-        if flash:
-            cel.line([(3, 13), (0, 13)], CYAN)
-            cel.line([(6, 19), (2, 19)], "#4fbcae")
-        if pose == 4:
-            cel.line([(25, 13), (29, 12), (30, 10)], GOLD)
     elif row == 3:  # Fire ant
         legs(cel, [(8, 13), (13, 14), (18, 14), (23, 12)], "#e6755d", pose)
         cel.oval((3, 8 + swing, 13, 16), "#9f4057", INK)
@@ -121,41 +105,15 @@ def insect(row, pose):
         if flash:
             cel.line([(4, 8), (7, 5), (11, 7)], "#f7bd6a")
             cel.dot((12, 5), "#fff0a9")
-    else:  # Worm
-        lift = 3 if pose in (3, 5) else 0
-        drag = swing + (2 if flash else 0)
-        segments = [(5, 15, 11, 19), (8, 13 - swing, 15, 19), (12, 10 + swing, 20, 18),
-                    (16, 8 - lift, 24, 17), (20 + drag, 8 - lift, 29 + drag, 17 - lift)]
-        for index, rect in enumerate(segments):
-            cel.oval(rect, ["#a14f84", "#c56991", "#dd80a0", "#eb91a7", "#efa9ad"][index], INK)
-            x, y, right, _ = rect
-            cel.line([(x + 2, y + 2), (right - 2, y + 1)], "#ffb9ad")
-        cel.oval((25 + drag, 11 - lift, 27 + drag, 13 - lift), INK)
-        cel.dot((26 + drag, 11 - lift), CREAM)
-        cel.line([(26 + drag, 15 - lift), (28 + drag, 14 - lift)], "#a45179")
-        if flash:
-            cel.dot((29, 18), GOLD)
-            cel.dot((27, 20), "#b58667")
-            cel.dot((31, 16), "#eaa368")
     return cel.image
 
 
 def enemy(row, frame):
-    if row == 1:  # Spore moth, with lavender wings and red mask
-        cel = Cel(32, 24)
-        for side in (-1, 1):
-            x = 16 + 13 * side
-            height = (3, 8, 13, 6, 8, 4)[frame]
-            cel.shape([(16, 13), (16 + 6 * side, height), (x, height), (x + side * 2, height + 5),
-                       (16 + 7 * side, 15)], "#a688bb", INK)
-            cel.line([(16 + 9 * side, height + 2), (16 + 6 * side, height + 4), (16 + 3 * side, 12)], "#dfafd1")
-            cel.dot((16 + 7 * side, height + 5), "#583d7b")
-        cel.oval((12, 8, 20, 19), "#734c85", INK)
-        cel.oval((11, 10, 21, 16), "#c45b78", INK)
-        cel.dot((14, 12), GOLD)
-        cel.dot((18, 12), GOLD)
-        return cel.image
-
+    if row == 0:
+        return crawler(frame)
+    if row == 1:
+        return spore_moth(frame)
+    # The charge boss keeps its original drawing until the boss overhaul.
     cel = Cel(32, 24)
     big = row == 2
     span = (1, 29) if big else (5, 25)
@@ -172,6 +130,97 @@ def enemy(row, frame):
     cel.line([(23, 11), (26, 11)], GOLD if frame != 4 else CREAM)
     cel.line([(27, 14), (30, 13), (29, 16)], "#e2a56f")
     return cel.image
+
+
+# Newer actors in the shared style (sprite_style.py). Each follows its original's animation: frame 0 idle,
+# 1 and 2 moving, 3 airborne, 4 attack, 5 heavy, ability or (for enemies) the attack warning.
+
+def styled_legs(pic, positions, color, phase):
+    """The walk cycle from legs(), drawn in the shared style."""
+    steps = (0, 2, -2, -1, 1, 0)
+    for index, (x, y) in enumerate(positions):
+        step = steps[phase] * (-1 if index % 2 else 1)
+        foot = (x + step + (index - 1), 19 - (phase == 3) * 2)
+        limb(pic, [(x, y), (x + step, y + 3), foot, (foot[0] + 1, foot[1])], color)
+
+
+def dragonfly(frame):
+    pic = Pic(32, 24)
+    up = frame in (0, 2, 3)
+    if up:
+        wing = pic.poly([(17, 10), (10, 5), (3, 1), (7, 0), (15, 3), (20, 9)], "#9e92c4")
+        pic.line([(7, 2), (13, 5), (16, 8)], wing["light"])
+    else:
+        pic.poly([(18, 10), (13, 8), (10, 2), (13, 1), (19, 7)], "#a2c6d7")
+    pic.stroke([(16, 13), (9, 15), (2, 17)], "#428d96", width=2)
+    for x in (5, 8, 11):
+        pic.dot((x, 16 - (x - 2) // 4), ramp("#428d96")["deep"])
+    if up:
+        pic.poly([(17, 11), (6, 11), (2, 8), (9, 7), (19, 9)], "#6581b5")
+    else:
+        wing = pic.poly([(17, 11), (9, 17), (3, 18), (6, 14), (15, 10)], "#9b83bc")
+        pic.line([(7, 16), (12, 14), (15, 12)], wing["light"])
+    pic.stroke([(17, 14), (18, 17), (20, 19)], "#e6a278")
+    pic.stroke([(20, 14), (22, 17), (24, 18)], "#e6a278")
+    pic.oval((14, 8, 22, 15), "#428d96", glint=False)
+    pic.oval((19, 6, 28, 15), "#62bdc4")
+    pic.eye(23, 8, big=True)
+    pic.line([(22, 6), (24, 3), (26, 2)], GOLD)
+    if frame == 4:
+        pic.line([(28, 14), (30, 12), (31, 9)], GOLD)
+    if frame == 5:
+        pic.line([(3, 12), (0, 12)], CYAN)
+        pic.line([(6, 20), (2, 20)], "#4fbcae")
+    return pic.image
+
+
+def worm(frame):
+    pic = Pic(32, 24)
+    swing = (0, 1, 0, -1, 0, 1)[frame]
+    lift = 3 if frame in (3, 5) else 0
+    drag = swing + (1 if frame == 5 else 0)
+    segments = [(4, 14, 11, 19), (7, 12 - swing, 15, 19), (11, 9 + swing, 20, 18),
+                (15, 7 - lift, 24, 17), (19 + drag, 6 - lift, 29 + drag, 17 - lift)]
+    for bounds, color in zip(segments, ("#a14f84", "#c56991", "#dd80a0", "#eb91a7", "#efa9ad")):
+        pic.oval(bounds, color)
+    pic.eye(25 + drag, 10 - lift)
+    pic.line([(26 + drag, 14 - lift), (28 + drag, 13 - lift)], "#a45179")
+    if frame == 5:
+        pic.dot((29, 18), GOLD)
+        pic.dot((27, 20), "#b58667")
+        pic.dot((31, 16), "#eaa368")
+    return pic.image
+
+
+def crawler(frame):
+    pic = Pic(32, 24)
+    styled_legs(pic, [(8, 14), (12, 14), (19, 13), (23, 13)], "#bb6b72", frame)
+    pic.oval((5, 7, 25, 17), "#744659")
+    for x in (8, 13, 18):
+        pic.poly([(x - 2, 10), (x, 5), (x + 4, 4), (x + 5, 11), (x + 2, 14)], "#ae695f", glint=False)
+    pic.oval((20, 9, 29, 17), "#3b2949")
+    glow = CREAM if frame == 4 else GOLD
+    pic.eye(23, 11, glow)
+    pic.eye(26, 11, glow)
+    pic.stroke([(27, 15), (30, 14)], "#e2a56f")
+    return pic.image
+
+
+def spore_moth(frame):  # front-facing, lavender wings and a red mask
+    pic = Pic(32, 24)
+    height = (3, 8, 13, 6, 8, 4)[frame]
+    for side in (-1, 1):
+        x = 16 + 13 * side
+        wing = pic.poly([(16, 13), (16 + 6 * side, height), (x, height), (x + side * 2, height + 5),
+                         (16 + 7 * side, 15)], "#a688bb")
+        pic.line([(16 + 9 * side, height + 2), (16 + 6 * side, height + 4), (16 + 3 * side, 12)], wing["light"])
+        pic.dot((16 + 10 * side, height + 4), "#583d7b")
+        pic.dot((16 + 11 * side, height + 4), "#583d7b")
+    pic.oval((12, 8, 20, 20), "#734c85")
+    pic.oval((11, 10, 21, 16), "#c45b78", glint=False)
+    pic.eye(13, 12, GOLD)
+    pic.eye(17, 12, GOLD)
+    return pic.image
 
 
 def actors():
@@ -230,35 +279,90 @@ def rock_tiles():
     atlas.save(OUT / "Terrain.png")
 
 
+# Pickups, chests and the shop pedestal in the shared style. Props cells 0-5 follow LevelFeatureKind; cells 16
+# and 17 are the opened chests.
+
+def crystal(pic, color, w):
+    """The original pickup gem outline, shaded, with a facet down its middle. The HUD crops x 12-20, y 9-24."""
+    tones = pic.poly([(16, 9), (16 + w, 15), (17 + w, 19), (16, 24), (15 - w, 19), (16 - w, 15)], color)
+    pic.line([(16, 11), (16, 22)], tones["shade"])
+
+
+def chest_body(pic, color, lock):
+    tones = pic.rect((4, 14, 27, 22), color, glint=False)
+    pic.line([(6, 20), (25, 20)], tones["shade"])
+    pic.rect((3, 13, 28, 15), "#d69669", glint=False)
+    pic.rect((13, 12, 18, 18), "#c58965", glint=False)
+    pic.rect((14, 13, 17, 16), lock, outline=False, glint=False)
+
+
+def open_lid(pic, color, glow):
+    tones = pic.rect((4, 2, 27, 9), color, glint=False)
+    pic.line([(6, 4), (25, 4)], tones["light"])
+    pic.rect((4, 8, 27, 13), "#2b1d38", light=False, glint=False)
+    pic.poly([(6, 13), (9, 9), (22, 9), (25, 13)], glow)
+
+
+def reward_horns(pic):
+    for side in (-1, 1):
+        pic.poly([(16 + side * 9, 10), (16 + side * 14, 3), (16 + side * 13, 10)], "#9fe0c8", glint=False)
+
+
+def pedestal(pic):
+    """A carved stone plinth for a shop item to hover over. Its foot sits on row 25, where the stall stood."""
+    pic.poly([(6, 25), (8, 21), (23, 21), (25, 25)], "#574663", glint=False)
+    tones = pic.rect((11, 13, 20, 22), "#6a587a", glint=False)
+    for x in (12, 19):
+        pic.line([(x, 15), (x, 20)], tones["shade"])
+    pic.poly([(15, 14), (17, 16), (17, 18), (15, 20), (14, 18), (14, 16)], GOLD, glint=False)
+    pic.dot((15, 15), CREAM)
+    tones = pic.poly([(5, 13), (6, 10), (25, 10), (26, 13)], "#84709a", glint=False)
+    pic.line([(7, 10), (23, 10)], tones["glint"])
+    for x, y in ((7, 21), (8, 20), (22, 21), (23, 22)):
+        pic.dot((x, y), "#82b58a")
+
+
+def styled_prop(index):
+    pic = Pic(32, 32)
+    if index == 0:  # Nektar
+        crystal(pic, GOLD, 3)
+    elif index == 1:  # Heart sap
+        crystal(pic, PINK, 4)
+        pic.line([(14, 17), (18, 17)], CREAM)
+        pic.line([(16, 15), (16, 19)], CREAM)
+    elif index == 2:  # Energy sap
+        crystal(pic, CYAN, 4)
+        pic.line([(17, 13), (15, 17), (18, 17), (16, 21)], CREAM)
+    elif index == 3:  # Shop pedestal
+        pedestal(pic)
+    elif index == 4:  # Chest
+        pic.poly([(4, 13), (7, 8), (24, 8), (27, 13)], "#703e5a")
+        chest_body(pic, "#703e5a", CYAN)
+    elif index == 5:  # Boss reward
+        reward_horns(pic)
+        pic.poly([(4, 13), (7, 8), (24, 8), (27, 13)], GOLD)
+        chest_body(pic, "#c58a3f", PINK)
+    elif index == 16:  # Chest, opened
+        open_lid(pic, "#5a3448", GOLD)
+        chest_body(pic, "#703e5a", CREAM)
+        pic.spark(2, 6, CREAM)
+        pic.spark(29, 4, CREAM)
+    else:  # Boss reward, opened
+        reward_horns(pic)
+        open_lid(pic, "#a8702f", "#ffe08a")
+        chest_body(pic, "#c58a3f", CREAM)
+        pic.spark(2, 12, CREAM)
+        pic.spark(29, 12, CREAM)
+    return pic.image
+
+
 def props():
-    atlas = Image.new("RGBA", (8 * 32, 2 * 32))
-    colors = (GOLD, PINK, CYAN, "#a183d2")
-    for index in range(16):
+    atlas = Image.new("RGBA", (8 * 32, 3 * 32))
+    for index in (0, 1, 2, 3, 4, 5, 16, 17):
+        atlas.paste(styled_prop(index), ((index % 8) * 32, (index // 8) * 32))
+    for index in range(6, 16):
         cel = Cel(32, 32)
-        if index < 3 or index == 5:
-            color = colors[index if index < 3 else 3]
-            w = 4 if index else 3
-            cel.shape([(16, 9), (16 + w, 15), (17 + w, 19), (16, 24), (15 - w, 19), (16 - w, 15)], color, INK)
-            cel.line([(16, 12), (14, 16), (14, 18)], CREAM)
-            cel.dot((17, 21), "#a95e72")
-            if index == 1:
-                cel.line([(14, 17), (18, 17)], CREAM)
-                cel.line([(16, 15), (16, 19)], CREAM)
-        elif index == 3:  # Shop
-            cel.shape([(5, 9), (26, 9), (30, 16), (27, 18), (27, 25), (6, 25), (6, 18), (2, 17)], "#41334f", INK)
-            cel.shape([(6, 9), (25, 9), (29, 15), (3, 15)], "#3b7d80", INK)
-            for x in (8, 14, 20):
-                cel.shape([(x, 10), (x + 2, 10), (x + 4, 16), (x, 16)], "#77bdab")
-            cel.box((7, 20, 25, 23), "#745454")
-            cel.box((12, 17, 18, 20), GOLD)
-            cel.dot((16, 17), CREAM)
-        elif index == 4:  # Chest
-            cel.shape([(4, 14), (8, 10), (23, 10), (27, 14), (27, 22), (4, 22)], "#703e5a", INK)
-            cel.line([(7, 14), (24, 14)], "#d69669", 2)
-            cel.line([(6, 21), (25, 21)], "#a9605a")
-            cel.box((13, 14, 18, 19), "#c58965")
-            cel.box((14, 14, 17, 17), CYAN)
-        elif index in (6, 7):  # Portal, lit or locked
+        if index in (6, 7):  # Portal, lit or locked
             tint = GOLD if index == 6 else "#a46b80"
             cel.shape([(6, 28), (6, 12), (9, 5), (15, 2), (21, 4), (25, 9), (25, 28)], "#563a53", INK)
             cel.line([(8, 26), (8, 12), (11, 6), (15, 4), (20, 6), (23, 12), (23, 26)], tint, 2)

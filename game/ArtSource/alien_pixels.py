@@ -3,6 +3,7 @@
 import random
 
 from forest_pixels import Cel, OUT
+from sprite_style import Pic, limb
 
 INK = "#191633"
 CYAN = "#86f5e2"
@@ -84,39 +85,47 @@ def terrain():
     atlas.image.save(OUT / "AlienTerrain.png")
 
 
-def actor(kind, frame):
-    cel = Cel(32, 24)
+def styled_actor(kind, frame):
+    """Lattice Tick and Arc Mote in the shared style, animated like the originals."""
+    pic = Pic(32, 24, INK)
     charged = frame in (4, 5)
     if kind == 0:
         for x, direction in [(6, -1), (10, 1), (17, -1), (23, 1)]:
             toe = x + (frame % 3) * direction
-            cel.line([(x, 12), (x+direction, 16), (toe-1, 19), (toe+2, 19)], INK, 3)
-            cel.line([(x, 12), (x+direction, 16), (toe-1, 19), (toe+2, 19)], "#8371b3")
-        cel.shape([(3, 12), (5, 7), (12, 5), (19, 8), (21, 14), (16, 17), (7, 16)], "#8d508e", INK)
-        cel.line([(5, 11), (9, 8), (15, 8), (19, 11)], PINK)
-        for x in (7, 12, 15):
-            cel.dot((x, 12), CYAN)
-        cel.oval((18, 8, 27, 16), "#64578f", INK)
-        cel.dot((23, 10), LIME)
-        cel.line([(25, 12), (29, 10 if charged else 13), (30, 14)], PINK, 2)
-    elif kind == 1:
-        shift = frame % 2 * 3
-        cel.shape([(15, 10), (8, 3+shift), (2, 5+shift), (6, 12), (14, 14)], "#6c83ae", INK)
-        cel.shape([(15, 12), (10, 14), (4, 20-shift), (12, 18-shift), (17, 15)], "#725ba4", INK)
-        cel.shape([(11, 13), (15, 7), (22, 6), (27, 12), (23, 17), (15, 16)], "#478c9b", INK)
-        cel.line([(14, 13), (19, 8), (24, 10)], CYAN, 2)
-        cel.oval((18, 10, 24, 14), "#9fcdb1")
-        cel.dot((21, 11), LIME)
-        cel.dot((29, 12), CYAN if charged else "#7775aa")
+            limb(pic, [(x, 12), (x + direction, 16), (toe - 1, 19), (toe + 2, 19)], "#8371b3")
+        pic.poly([(3, 12), (5, 7), (12, 5), (19, 8), (21, 14), (16, 17), (7, 16)], "#8d508e")
+        for x in (8, 12, 16):
+            pic.dot((x, 12), CYAN)
+        pic.stroke([(25, 12), (29, 10 if charged else 13), (30, 14)], PINK)
+        pic.oval((18, 8, 27, 16), "#64578f")
+        pic.eye(22, 10, LIME)
     else:
-        cel.shape([(1, 19), (3, 11), (7, 8), (7, 3), (11, 1), (13, 6), (18, 6), (20, 1),
-                   (24, 3), (24, 8), (30, 12), (31, 19), (24, 21), (7, 21)], "#454575", INK)
-        cel.shape([(8, 10), (11, 8), (21, 8), (25, 13), (21, 17), (11, 17), (6, 14)], "#7871ac", INK)
-        cel.line([(8, 10), (11, 8), (21, 8), (24, 12)], PINK, 2)
-        cel.oval((12, 10, 21, 15), "#367985", INK)
-        cel.box((15, 11, 19, 14), CYAN if charged else LIME)
-        cel.line([(3, 16), (6, 19), (10, 19)], "#61909d")
-        cel.line([(24, 18), (28, 17), (30, 15)], "#61909d")
+        shift = frame % 2 * 3
+        pic.poly([(15, 10), (8, 3 + shift), (2, 5 + shift), (6, 12), (14, 14)], "#6c83ae")
+        pic.poly([(15, 12), (10, 14), (4, 20 - shift), (12, 18 - shift), (17, 15)], "#725ba4")
+        pic.poly([(11, 13), (15, 7), (22, 6), (27, 12), (23, 17), (15, 16)], "#478c9b")
+        pic.oval((18, 9, 25, 14), "#9fcdb1", glint=False)
+        pic.eye(21, 10, LIME)
+        pic.dot((29, 12), CYAN if charged else "#7775aa")
+        if charged:
+            pic.dot((30, 9), CYAN)
+    return pic.image
+
+
+def actor(kind, frame):
+    if kind < 2:
+        return styled_actor(kind, frame)
+    # The boss keeps its original drawing until the boss overhaul.
+    cel = Cel(32, 24)
+    charged = frame in (4, 5)
+    cel.shape([(1, 19), (3, 11), (7, 8), (7, 3), (11, 1), (13, 6), (18, 6), (20, 1),
+               (24, 3), (24, 8), (30, 12), (31, 19), (24, 21), (7, 21)], "#454575", INK)
+    cel.shape([(8, 10), (11, 8), (21, 8), (25, 13), (21, 17), (11, 17), (6, 14)], "#7871ac", INK)
+    cel.line([(8, 10), (11, 8), (21, 8), (24, 12)], PINK, 2)
+    cel.oval((12, 10, 21, 15), "#367985", INK)
+    cel.box((15, 11, 19, 14), CYAN if charged else LIME)
+    cel.line([(3, 16), (6, 19), (10, 19)], "#61909d")
+    cel.line([(24, 18), (28, 17), (30, 15)], "#61909d")
     return cel.image
 
 

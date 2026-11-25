@@ -3,6 +3,7 @@
 import random
 
 from forest_pixels import Cel, OUT
+from sprite_style import Pic, limb
 
 INK = "#352035"
 GOLD = "#ffd17b"
@@ -79,40 +80,47 @@ def terrain():
     atlas.image.save(OUT / "DesertTerrain.png")
 
 
-def actor(kind, frame):
-    cel = Cel(32, 24)
+def styled_actor(kind, frame):
+    """Dune Beetle and Sand Wasp in the shared style, animated like the originals."""
+    pic = Pic(32, 24, INK)
     strike = frame in (4, 5)
     if kind == 0:
         for x in (8, 13, 19, 23):
-            toe = x + (frame % 3) - 1
-            cel.line([(x, 13), (toe - 2, 17), (toe + 2, 19)], INK, 3)
-            cel.line([(x, 13), (toe - 2, 17), (toe + 2, 19)], "#be8256")
-        cel.oval((3, 6, 23, 17), "#ad603f", INK)
-        cel.shape([(5, 11), (9, 8), (16, 7), (20, 9), (18, 12), (11, 14)], "#d18f54", INK)
-        cel.line([(8, 11), (14, 8), (18, 9)], GOLD)
-        cel.oval((20, 9, 28, 17), "#68413f", INK)
-        cel.dot((25, 11), CYAN)
-        cel.line([(27, 14), (30, 11 if strike else 13)], CORAL, 2)
-    elif kind == 1:
-        y = 2 + frame % 2 * 5
-        cel.shape([(17, 12), (10, y), (3, y+1), (7, y+5), (17, 14)], "#9cbcb2", INK)
-        cel.shape([(17, 13), (7, 15), (3, 19), (10, 20), (19, 15)], "#6b999b", INK)
-        cel.oval((8, 9, 24, 16), "#bf783f", INK)
-        cel.line([(12, 10), (13, 14), (14, 15)], "#663b43", 2)
-        cel.line([(17, 10), (18, 14)], "#583742", 2)
-        cel.oval((19, 8, 27, 15), "#d3924b", INK)
-        cel.dot((24, 11), CYAN)
-        cel.line([(7, 12), (4, 12), (1, 14)], CORAL if strike else "#b48e5c")
+            toe = x + frame % 3 - 1
+            limb(pic, [(x, 13), (toe - 2, 17), (toe + 2, 19)], "#be8256")
+        pic.oval((3, 6, 23, 17), "#ad603f")
+        pic.poly([(5, 11), (9, 8), (16, 7), (20, 9), (18, 12), (11, 14)], "#d18f54")
+        pic.oval((20, 9, 28, 17), "#68413f")
+        pic.eye(24, 11, CYAN)
+        pic.stroke([(27, 15), (30, 11 if strike else 13)], CORAL)
     else:
-        cel.shape([(0, 17), (4, 11), (10, 6), (16, 4), (23, 6), (29, 12), (31, 19),
-                   (23, 20), (9, 20)], "#895044", INK)
-        cel.shape([(3, 13), (8, 9), (15, 6), (22, 8), (22, 12), (13, 16), (7, 16)], "#c48352", INK)
-        cel.line([(7, 11), (12, 8), (17, 8), (21, 10)], GOLD, 2)
-        cel.line([(5, 16), (11, 17), (18, 14)], "#b36346", 2)
-        cel.oval((21, 11, 29, 17), "#5c3b45", INK)
-        cel.dot((25, 12), CYAN)
-        cel.line([(28, 14), (31, 11 if strike else 13)], GOLD, 2)
-        cel.line([(28, 16), (31, 19 if strike else 17)], CORAL, 2)
+        y = 2 + frame % 2 * 5
+        pic.poly([(17, 12), (10, y), (3, y + 1), (7, y + 5), (17, 14)], "#9cbcb2")
+        pic.line([(1, 14), (4, 12), (8, 12)], CORAL if strike else "#b48e5c")
+        pic.oval((7, 9, 24, 17), "#bf783f")
+        for x in (12, 16):
+            pic.line([(x, 10), (x + 1, 16)], "#663b43", 2)
+        pic.poly([(17, 13), (7, 15), (3, 19), (10, 20), (19, 15)], "#6b999b")
+        pic.oval((19, 8, 27, 16), "#d3924b")
+        pic.eye(23, 10, CYAN)
+    return pic.image
+
+
+def actor(kind, frame):
+    if kind < 2:
+        return styled_actor(kind, frame)
+    # The boss keeps its original drawing until the boss overhaul.
+    cel = Cel(32, 24)
+    strike = frame in (4, 5)
+    cel.shape([(0, 17), (4, 11), (10, 6), (16, 4), (23, 6), (29, 12), (31, 19),
+               (23, 20), (9, 20)], "#895044", INK)
+    cel.shape([(3, 13), (8, 9), (15, 6), (22, 8), (22, 12), (13, 16), (7, 16)], "#c48352", INK)
+    cel.line([(7, 11), (12, 8), (17, 8), (21, 10)], GOLD, 2)
+    cel.line([(5, 16), (11, 17), (18, 14)], "#b36346", 2)
+    cel.oval((21, 11, 29, 17), "#5c3b45", INK)
+    cel.dot((25, 12), CYAN)
+    cel.line([(28, 14), (31, 11 if strike else 13)], GOLD, 2)
+    cel.line([(28, 16), (31, 19 if strike else 17)], CORAL, 2)
     return cel.image
 
 

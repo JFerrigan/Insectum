@@ -3,6 +3,7 @@
 import random
 
 from forest_pixels import Cel, OUT
+from sprite_style import Pic, limb
 
 INK = "#14202c"
 TEAL = "#54b4a4"
@@ -78,45 +79,54 @@ def terrain():
     atlas.image.save(OUT / "SwampTerrain.png")
 
 
-def actor(kind, phase):
-    cel = Cel(32, 24)
+def styled_actor(kind, phase):
+    """Reed Runner and Marsh Skimmer in the shared style, animated like the originals."""
+    pic = Pic(32, 24, INK)
     pulse = phase in (4, 5)
     if kind == 0:
         for index, x in enumerate((10, 14, 20, 23)):
             toe = x + (-1 if index % 2 else 1) * (phase % 3)
-            cel.line([(x, 14), (toe, 18), (toe + 3, 19)], INK, 3)
-            cel.line([(x, 14), (toe, 18), (toe + 3, 19)], "#a27756")
-        cel.oval((4, 8, 21, 17), "#3a806e", INK)
-        cel.line([(7, 13), (11, 10), (17, 10), (19, 12)], LIME)
-        cel.oval((17, 9, 27, 17), "#558d69", INK)
-        cel.line([(22, 10), (26, 5), (29, 4)], "#bbad78", 1)
-        cel.dot((24, 12), GOLD)
+            limb(pic, [(x, 14), (toe, 18), (toe + 3, 19)], "#a27756")
+        pic.oval((4, 8, 21, 17), "#3a806e")
+        pic.line([(7, 12), (11, 10), (17, 10)], LIME)
+        pic.line([(22, 10), (26, 5), (29, 4)], "#bbad78")
+        pic.oval((17, 9, 27, 17), "#558d69")
+        pic.eye(23, 11, GOLD)
         if pulse:
-            cel.line([(24, 16), (30, 14), (28, 12)], LIME, 2)
-    elif kind == 1:
-        if phase % 2:
-            cel.shape([(14, 11), (3, 4), (5, 2), (13, 5), (20, 11)], "#6d9d97", INK)
-            cel.shape([(14, 11), (6, 17), (8, 19), (17, 16), (20, 12)], "#63858d", INK)
-        else:
-            cel.shape([(14, 11), (7, 1), (12, 2), (20, 12)], "#91bdb1", INK)
-            cel.shape([(14, 11), (2, 13), (4, 16), (16, 15), (20, 12)], "#5f9d98", INK)
-        cel.line([(8, 16), (12, 14), (18, 13)], "#3d786e", 3)
-        cel.oval((17, 8, 27, 15), "#3b9b8c", INK)
-        cel.oval((21, 9, 25, 13), "#adcd8d")
-        cel.dot((24, 10), "#f3e1a8")
-        cel.line([(24, 13), (29, 15)], LIME if pulse else "#8aa577")
+            pic.stroke([(24, 16), (30, 14), (28, 12)], LIME)
     else:
-        cel.shape([(3, 19), (3, 14), (7, 8), (13, 4), (23, 4), (29, 10), (31, 18), (27, 20), (7, 20)],
-                  "#37675f", INK)
-        cel.shape([(5, 14), (10, 7), (15, 5), (23, 6), (27, 11), (24, 15), (14, 17)], "#60926f", INK)
-        cel.line([(7, 11), (12, 8), (18, 7), (22, 8)], "#a0bf76", 2)
-        cel.line([(9, 17), (14, 14), (16, 10)], "#294758", 2)
-        for x in (8, 13, 18):
-            cel.box((x, 11, x + 2, 12), LIME if pulse else TEAL)
-        cel.oval((22, 12, 30, 17), "#30545b", INK)
-        cel.dot((27, 13), GOLD)
-        if pulse:
-            cel.line([(29, 14), (31, 13)], LIME, 2)
+        if phase % 2:
+            pic.poly([(14, 11), (3, 4), (5, 2), (13, 5), (20, 11)], "#6d9d97")
+        else:
+            pic.poly([(14, 11), (7, 1), (12, 1), (20, 11)], "#91bdb1")
+        pic.stroke([(8, 16), (12, 14), (18, 13)], "#3d786e", width=2)
+        if phase % 2:
+            pic.poly([(14, 11), (6, 17), (8, 19), (17, 16), (20, 12)], "#63858d")
+        else:
+            pic.poly([(14, 11), (2, 13), (4, 16), (16, 15), (20, 12)], "#5f9d98")
+        pic.oval((17, 7, 27, 15), "#3b9b8c")
+        pic.eye(22, 10, "#f3e1a8")
+        pic.line([(25, 13), (29, 15)], LIME if pulse else "#8aa577")
+    return pic.image
+
+
+def actor(kind, phase):
+    if kind < 2:
+        return styled_actor(kind, phase)
+    # The boss keeps its original drawing until the boss overhaul.
+    cel = Cel(32, 24)
+    pulse = phase in (4, 5)
+    cel.shape([(3, 19), (3, 14), (7, 8), (13, 4), (23, 4), (29, 10), (31, 18), (27, 20), (7, 20)],
+              "#37675f", INK)
+    cel.shape([(5, 14), (10, 7), (15, 5), (23, 6), (27, 11), (24, 15), (14, 17)], "#60926f", INK)
+    cel.line([(7, 11), (12, 8), (18, 7), (22, 8)], "#a0bf76", 2)
+    cel.line([(9, 17), (14, 14), (16, 10)], "#294758", 2)
+    for x in (8, 13, 18):
+        cel.box((x, 11, x + 2, 12), LIME if pulse else TEAL)
+    cel.oval((22, 12, 30, 17), "#30545b", INK)
+    cel.dot((27, 13), GOLD)
+    if pulse:
+        cel.line([(29, 14), (31, 13)], LIME, 2)
     return cel.image
 
 
