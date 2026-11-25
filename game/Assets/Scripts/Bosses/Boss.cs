@@ -7,7 +7,8 @@ namespace Insectum.Game
     internal enum BossKind
     {
         None,
-        StagBeetle
+        StagBeetle,
+        MireLich
     }
 
     // The sealed hall every boss fights in, in world units.

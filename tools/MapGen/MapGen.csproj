@@ -11,6 +11,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="*.cs" />
+    <Compile Include="../../game/Assets/Editor/MireLichDriver.cs" Link="Game/Editor/MireLichDriver.cs" />
     <Compile Include="../../game/Assets/Scripts/ForestGenerator.cs" Link="Game/ForestGenerator.cs" />
     <Compile Include="../../game/Assets/Scripts/ForestTunnelLayout.cs" Link="Game/ForestTunnelLayout.cs" />
     <Compile Include="../../game/Assets/Scripts/ForestTunnelSpace.cs" Link="Game/ForestTunnelSpace.cs" />
@@ -24,6 +25,9 @@
     <Compile Include="../../game/Assets/Scripts/BossArenaLayout.cs" Link="Game/BossArenaLayout.cs" />
     <Compile Include="../../game/Assets/Scripts/Combat.cs" Link="Game/Combat.cs" />
     <Compile Include="../../game/Assets/Scripts/Bosses/Boss.cs" Link="Game/Bosses/Boss.cs" />
+    <Compile Include="../../game/Assets/Scripts/Bosses/MireLich.cs" Link="Game/Bosses/MireLich.cs" />
+    <Compile Include="../../game/Assets/Scripts/Bosses/MireLichArt.cs" Link="Game/Bosses/MireLichArt.cs" />
+    <Compile Include="../../game/Assets/Scripts/Bosses/MireLichHazards.cs" Link="Game/Bosses/MireLichHazards.cs" />
     <Compile Include="../../game/Assets/Scripts/Bosses/BossProjectile.cs" Link="Game/Bosses/BossProjectile.cs" />
     <Compile Include="../../game/Assets/Scripts/Bosses/StagBeetle.cs" Link="Game/Bosses/StagBeetle.cs" />
     <Compile Include="../../game/Assets/Scripts/LevelLayout.cs" Link="Game/LevelLayout.cs" />

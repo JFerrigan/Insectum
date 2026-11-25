@@ -18,13 +18,17 @@ internal static class BossCheck
     internal static int Run(string[] args)
     {
 
-        int seeds = args.Length > 1 && int.TryParse(args[1], out int parsed) ? parsed : 12;
-        CheckHurtboxes();
-        for (uint seed = 1; seed <= seeds; seed++)
-            CheckWarnings(seed);
-        CheckSlam();
-        CheckAirTime(seeds);
-        CheckFights(seeds);
+        int seeds = args.Length > 1 && int.TryParse(args[1], out int parsed) ? Math.Max(1, parsed) : 12;
+        if (args.Length < 3 || args[2] != "mire")
+        {
+            CheckHurtboxes();
+            for (uint seed = 1; seed <= seeds; seed++)
+                CheckWarnings(seed);
+            CheckSlam();
+            CheckAirTime(seeds);
+            CheckFights(seeds);
+        }
+        MireLichCheck.Run(seeds, Require);
         Console.WriteLine(failures == 0 ? "Boss check passed." : $"Boss check FAILED: {failures} problem(s).");
         return failures == 0 ? 0 : 1;
     }

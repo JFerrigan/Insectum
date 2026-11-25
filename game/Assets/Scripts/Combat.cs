@@ -211,6 +211,8 @@ namespace Insectum.Game
 
         public void AddTarget(DamageReceiver target) => targets.Add(target);
 
+        internal void RemoveTarget(DamageReceiver target) => targets.Remove(target);
+
         public void Step()
         {
             foreach (DamageReceiver target in targets)
