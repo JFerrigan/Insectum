@@ -42,6 +42,23 @@ namespace Insectum.Game
 
         public static bool IsActive(ItemId item) => item is ItemId.ExcavatorClaw or ItemId.SeedBomb;
         internal static bool IsKnown(ItemId item) => item >= ItemId.ExcavatorClaw && item <= ItemId.FluxCore;
+
+        public static string Description(ItemId item) => item switch
+        {
+            ItemId.ExcavatorClaw => "Dig through terrain",
+            ItemId.SeedBomb => "Blast nearby enemies and terrain",
+            ItemId.MothEyes => "Wider night vision",
+            ItemId.BurrowSense => "Reveal nearby buried Nektar",
+            ItemId.Heartwood => "+1 max heart",
+            ItemId.FlameGlands => "Melee hits set enemies on fire",
+            ItemId.VolatileBlood => "Defeated enemies explode",
+            ItemId.EmergencyReboot => "Revive once at half health",
+            ItemId.ReedFlask => "Energy sap restores more energy",
+            ItemId.PrismFang => "Longer melee reach",
+            ItemId.DuneMantle => "Block one trap hit per level",
+            ItemId.FluxCore => "Defeating enemies restores energy",
+            _ => string.Empty
+        };
     }
 
     public sealed class RunInventory

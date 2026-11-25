@@ -8,7 +8,7 @@ namespace Insectum.Game
             new Color32(201, 102, 182, 255));
         internal static readonly EnemySpec ArcMote = new("Arc mote", EnemyStyle.ArcMote, 2, 2, 0.36f,
             new Color32(102, 226, 183, 255));
-        private static readonly EnemySpec CrownRelay = new("Crown Relay", EnemyStyle.BeamBoss, 10, 6, 0.86f,
+        internal static readonly EnemySpec CrownRelay = new("Crown Relay", EnemyStyle.BeamBoss, 10, 6, 0.86f,
             new Color32(146, 223, 236, 255));
 
         internal static void Populate(LevelContent content, LevelLayout layout)

@@ -8,7 +8,7 @@ namespace Insectum.Game
             new Color32(111, 182, 142, 255));
         internal static readonly EnemySpec MarshSkimmer = new("Marsh skimmer", EnemyStyle.Skimmer, 2, 1, 0.35f,
             new Color32(101, 190, 193, 255));
-        private static readonly EnemySpec MireBell = new("Mire Bell", EnemyStyle.VolleyBoss, 8, 4, 0.78f,
+        internal static readonly EnemySpec MireBell = new("Mire Bell", EnemyStyle.VolleyBoss, 8, 4, 0.78f,
             new Color32(123, 188, 136, 255));
 
         internal static void Populate(LevelContent content, LevelLayout layout)

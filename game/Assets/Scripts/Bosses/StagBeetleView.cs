@@ -74,6 +74,8 @@ namespace Insectum.Game
             Update();
         }
 
+        internal static Sprite IdleFrame => Frame(Anims.Idle);
+
         private static Sprite Frame(int index) =>
             frames[index] ??= ForestArt.Frame(bodyAtlas ??= ForestArt.Load("ForestBoss"), index % Columns, index / Columns,
                 CellWidth, CellHeight, new Vector2(0.5f, GroundPixels / CellHeight));

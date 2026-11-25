@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Insectum.Game
@@ -34,6 +35,8 @@ namespace Insectum.Game
         public readonly float Radius;
         public readonly Color32 Tint;
         internal readonly BossKind Kind;
+        internal bool IsBoss => Kind != BossKind.None || Style is EnemyStyle.ChargeBoss or EnemyStyle.VolleyBoss
+            or EnemyStyle.QuakeBoss or EnemyStyle.BurrowBoss or EnemyStyle.BeamBoss;
 
         public EnemySpec(string name, EnemyStyle style, int hearts, int nektar, float radius, Color32 tint)
             : this(name, style, hearts, nektar, radius, tint, BossKind.None)
@@ -51,13 +54,33 @@ namespace Insectum.Game
             Kind = kind;
         }
 
-        // Every world's regular enemies, which rooms may place by name.
-        internal static IReadOnlyList<EnemySpec> Regulars => new[]
+        internal static IReadOnlyList<(EnemySpec Spec, WorldId World)> All => Catalog.Entries;
+        internal static IReadOnlyList<EnemySpec> Regulars => Catalog.Regulars;
+
+        private static class Catalog
         {
-            ForestContent.BarkMite, ForestContent.SporeMoth, SwampContent.ReedRunner, SwampContent.MarshSkimmer,
-            CavesContent.Hopper, CavesContent.GlowFly, DesertContent.DuneBeetle, DesertContent.SandWasp,
-            AlienContent.LatticeTick, AlienContent.ArcMote
-        };
+            internal static readonly IReadOnlyList<(EnemySpec Spec, WorldId World)> Entries = new (EnemySpec, WorldId)[]
+            {
+                (ForestContent.BarkMite, WorldId.Forest),
+                (ForestContent.SporeMoth, WorldId.Forest),
+                (ForestContent.OldOakhorn, WorldId.Forest),
+                (SwampContent.ReedRunner, WorldId.Swamp),
+                (SwampContent.MarshSkimmer, WorldId.Swamp),
+                (SwampContent.MireBell, WorldId.Swamp),
+                (CavesContent.Hopper, WorldId.Caves),
+                (CavesContent.GlowFly, WorldId.Caves),
+                (CavesContent.Faultback, WorldId.Caves),
+                (DesertContent.DuneBeetle, WorldId.Desert),
+                (DesertContent.SandWasp, WorldId.Desert),
+                (DesertContent.DuneMaw, WorldId.Desert),
+                (AlienContent.LatticeTick, WorldId.Alien),
+                (AlienContent.ArcMote, WorldId.Alien),
+                (AlienContent.CrownRelay, WorldId.Alien)
+            };
+
+            internal static readonly IReadOnlyList<EnemySpec> Regulars = Entries
+                .Where(entry => !entry.Spec.IsBoss).Select(entry => entry.Spec).ToArray();
+        }
 
         // The regular enemy with this name, or null when the name is empty or unknown.
         internal static EnemySpec Find(string name)
@@ -69,6 +92,26 @@ namespace Insectum.Game
                     return spec;
             return null;
         }
+
+        internal static Sprite Portrait(EnemySpec spec) => spec.Kind == BossKind.StagBeetle
+            ? StagBeetleView.IdleFrame : spec.ActorArt(0);
+
+        internal Sprite ActorArt(int frame) => Style switch
+        {
+            EnemyStyle.ReedRunner => SwampArt.Actor(0, frame),
+            EnemyStyle.Skimmer => SwampArt.Actor(1, frame),
+            EnemyStyle.VolleyBoss => SwampArt.Actor(2, frame),
+            EnemyStyle.CaveHopper => CavesArt.Actor(0, frame),
+            EnemyStyle.GlowFly => CavesArt.Actor(1, frame),
+            EnemyStyle.QuakeBoss => CavesArt.Actor(2, frame),
+            EnemyStyle.DuneBeetle => DesertArt.Actor(0, frame),
+            EnemyStyle.SandWasp => DesertArt.Actor(1, frame),
+            EnemyStyle.BurrowBoss => DesertArt.Actor(2, frame),
+            EnemyStyle.LatticeTick => AlienArt.Actor(0, frame),
+            EnemyStyle.ArcMote => AlienArt.Actor(1, frame),
+            EnemyStyle.BeamBoss => AlienArt.Actor(2, frame),
+            _ => ForestArt.Actor(5 + (int)Style, frame)
+        };
     }
 
     internal sealed class LevelEnemy
@@ -117,8 +160,7 @@ namespace Insectum.Game
         public DamageReceiver Damage { get; }
         public string Name => spec.Name;
         public int Nektar => spec.Nektar;
-        public bool Boss => brain != null || spec.Style is EnemyStyle.ChargeBoss or EnemyStyle.VolleyBoss or EnemyStyle.QuakeBoss
-            or EnemyStyle.BurrowBoss or EnemyStyle.BeamBoss;
+        public bool Boss => spec.IsBoss;
         internal Boss Brain => brain;
         // True once a defeated enemy has finished falling: at once for most, after the death animation for a boss.
         internal bool DeathFinished => brain?.DeathFinished ?? !Damage.Health.Alive;
@@ -165,7 +207,7 @@ namespace Insectum.Game
             root.SetParent(parent, false);
             root.position = Position;
             Vector2 basePosition = Vector2.down * (Flies ? 0.44f : spec.Radius);
-            body = ForestArt.Place(root, "Carapace", basePosition, ActorArt(0), 4);
+            body = ForestArt.Place(root, "Carapace", basePosition, spec.ActorArt(0), 4);
             if (Boss)
                 body.transform.localScale = Vector3.one * 1.25f;
             warning = ForestArt.Place(root, "Attack warning", Vector2.up * (spec.Radius + 0.55f),
@@ -438,23 +480,6 @@ namespace Insectum.Game
             Position = anchor + displacement + new Vector2(sway * 0.56f, height);
         }
 
-        private Sprite ActorArt(int frame) => spec.Style switch
-        {
-            EnemyStyle.ReedRunner => SwampArt.Actor(0, frame),
-            EnemyStyle.Skimmer => SwampArt.Actor(1, frame),
-            EnemyStyle.VolleyBoss => SwampArt.Actor(2, frame),
-            EnemyStyle.CaveHopper => CavesArt.Actor(0, frame),
-            EnemyStyle.GlowFly => CavesArt.Actor(1, frame),
-            EnemyStyle.QuakeBoss => CavesArt.Actor(2, frame),
-            EnemyStyle.DuneBeetle => DesertArt.Actor(0, frame),
-            EnemyStyle.SandWasp => DesertArt.Actor(1, frame),
-            EnemyStyle.BurrowBoss => DesertArt.Actor(2, frame),
-            EnemyStyle.LatticeTick => AlienArt.Actor(0, frame),
-            EnemyStyle.ArcMote => AlienArt.Actor(1, frame),
-            EnemyStyle.BeamBoss => AlienArt.Actor(2, frame),
-            _ => ForestArt.Actor(5 + (int)spec.Style, frame)
-        };
-
         private void UpdateArt()
         {
             if (root == null)
@@ -464,7 +489,7 @@ namespace Insectum.Game
             body.flipX = direction < 0;
             int frame = AttackPhase == Phase.Warning ? 5 : AttackPhase == Phase.Attacking ? 4
                 : 1 + ((tick + patrolOffset) / 8) % 2;
-            body.sprite = ActorArt(frame);
+            body.sprite = spec.ActorArt(frame);
             body.enabled = !Burrowing;
             warning.enabled = AttackPhase == Phase.Warning || Burrowing;
             if (spec.Style == EnemyStyle.BurrowBoss)

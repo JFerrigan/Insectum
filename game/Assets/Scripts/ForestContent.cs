@@ -9,7 +9,7 @@ namespace Insectum.Game
             new Color32(198, 121, 78, 255));
         internal static readonly EnemySpec SporeMoth = new("Spore moth", EnemyStyle.Flyer, 2, 1, 0.37f,
             new Color32(188, 158, 227, 255));
-        private static readonly EnemySpec OldOakhorn = new("Old Oakhorn", EnemyStyle.ArenaBoss, StagBeetle.Hearts, 6, 1.4f,
+        internal static readonly EnemySpec OldOakhorn = new("Old Oakhorn", EnemyStyle.ArenaBoss, StagBeetle.Hearts, 6, 1.4f,
             new Color32(174, 99, 60, 255), BossKind.StagBeetle);
 
         private static readonly ItemId[] Passives =

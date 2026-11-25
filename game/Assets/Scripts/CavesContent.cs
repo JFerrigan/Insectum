@@ -8,7 +8,7 @@ namespace Insectum.Game
             new Color32(143, 166, 219, 255));
         internal static readonly EnemySpec GlowFly = new("Geode gnat", EnemyStyle.GlowFly, 2, 2, 0.34f,
             new Color32(169, 114, 243, 255));
-        private static readonly EnemySpec Faultback = new("Faultback", EnemyStyle.QuakeBoss, 9, 5, 0.83f,
+        internal static readonly EnemySpec Faultback = new("Faultback", EnemyStyle.QuakeBoss, 9, 5, 0.83f,
             new Color32(173, 138, 236, 255));
 
         internal static void Populate(LevelContent content, LevelLayout layout)

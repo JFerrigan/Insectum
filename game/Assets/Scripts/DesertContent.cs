@@ -8,7 +8,7 @@ namespace Insectum.Game
             new Color32(219, 157, 93, 255));
         internal static readonly EnemySpec SandWasp = new("Sand wasp", EnemyStyle.SandWasp, 2, 1, 0.36f,
             new Color32(218, 152, 93, 255));
-        private static readonly EnemySpec DuneMaw = new("Dune Maw", EnemyStyle.BurrowBoss, 9, 5, 0.84f,
+        internal static readonly EnemySpec DuneMaw = new("Dune Maw", EnemyStyle.BurrowBoss, 9, 5, 0.84f,
             new Color32(218, 125, 83, 255));
 
         internal static void Populate(LevelContent content, LevelLayout layout)
