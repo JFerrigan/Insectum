@@ -12,8 +12,9 @@ namespace Insectum.Game
         private static class Anims
         {
             internal const int Idle = 0, Walk = 4, Turn = 10, ChargeWindup = 12, ChargeRun = 18, Stuck = 22, Wrench = 26,
-                Snap = 29, Rear = 33, WingOpen = 39, Hover = 43, Dive = 47, Land = 49, Dash = 52, Roar = 54, Death = 58;
-            internal const int Count = 68;
+                Snap = 29, Rear = 33, WingOpen = 39, Hover = 43, Dive = 47, Land = 49, Dash = 52, Roar = 54, Death = 58,
+                Slam = 68;
+            internal const int Count = 73;
         }
 
         private const int Columns = 16;
@@ -86,7 +87,9 @@ namespace Insectum.Game
             tick++;
             if (hitFlash > 0)
                 hitFlash--;
-            root.position = PixelViewport.Snap(beetle.Position);
+            // Quiver a pixel side to side once it has risen for a body slam.
+            bool quiver = beetle.CurrentAct == StagBeetle.Act.SlamWindup && beetle.ActProgress >= 0.4f;
+            root.position = PixelViewport.Snap(beetle.Position + Vector2.right * (quiver ? (tick % 4 < 2 ? 1f : -1f) / 16f : 0f));
             int index = FrameIndex();
             body.sprite = Frame(index);
             body.flipX = beetle.Facing < 0;
@@ -158,6 +161,12 @@ namespace Insectum.Game
                     return Anims.Rear + (p < 0.4f ? 2 : 3);
                 case StagBeetle.Act.RearRecover:
                     return Anims.Rear + (p < 0.5f ? 4 : 5);
+                case StagBeetle.Act.SlamWindup:
+                    return Anims.Slam + (p < 0.4f ? 0 : 1);
+                case StagBeetle.Act.Slam:
+                    return Anims.Slam + 2;
+                case StagBeetle.Act.SlamRecover:
+                    return Anims.Slam + (p < 0.4f ? 2 : p < 0.7f ? 3 : 4);
                 case StagBeetle.Act.WingOpen:
                     return Span(Anims.WingOpen, 4);
                 case StagBeetle.Act.LiftOff:

@@ -81,6 +81,7 @@ class Pose:
         self.antenna = 0          # antenna twitch
         self.splay = 0.0          # death: legs spread flat
         self.shake = 0
+        self.glow_body = False    # the glow mask covers the whole body, not just the jaws
         self.__dict__.update(values)
 
 
@@ -117,6 +118,8 @@ class Beetle:
 
     def poly(self, points, fill, outline=INK):
         if self.mask:
+            if self.p.glow_body:
+                self.draw.polygon([(round(x), round(y)) for x, y in points], WHITE, WHITE)
             return
         self.draw.polygon([(round(x), round(y)) for x, y in points], fill, outline)
 
@@ -339,6 +342,15 @@ def anims():
     flat = Pose(height=5, pitch=-4, head=-12, jaw=0.35, splay=1.0,
                 feet=[(30, 0), (4, 0), (-40, 0), (34, 0), (10, 0), (-35, 0)])
     out.append(("death", kneel + drop + [flat]))
+    # Added after death so earlier frame numbers stay put: rise high and quiver, belly-flop, push back up.
+    tall = spread(STAND_FEET, 0.8)
+    out.append(("slam", [
+        Pose(height=25, head=4, jaw=0.2, feet=spread(STAND_FEET, 0.88), glow_body=True),
+        Pose(height=28, head=6, jaw=0.3, feet=tall, shake=1, glow_body=True),
+        Pose(height=4, head=-6, jaw=0.2, splay=0.6, squash=0.92,
+             feet=[(32, 0), (6, 0), (-40, 0), (36, 0), (10, 0), (-35, 0)]),
+        Pose(height=10, head=-2, feet=spread(STAND_FEET, 1.2)),
+        Pose(height=16, feet=spread(STAND_FEET, 1.05))]))
     return out
 
 
@@ -445,7 +457,8 @@ def contact_sheet(table, atlas):
 
 # ---------- hurtboxes ----------
 # StagBeetle's four body poses, each fitted to one representative frame.
-HURT_POSES = (("Stand", 0), ("Crouch", 18), ("Rear", 36), ("Air", 43), ("Dive", 47), ("Dash", 52))
+HURT_POSES = (("Stand", 0), ("Crouch", 18), ("Rear", 36), ("Air", 43), ("Dive", 47), ("Dash", 52), ("Raised", 69),
+              ("Flat", 70))
 # Circles along the body in each part's own frame: (part, point, radius in pixels, armored).
 PARTS = (
     ("body", (-31, 4), 11.5, False),
@@ -487,7 +500,8 @@ def hurtbox_sheet(table, atlas):
     body the padded hurtboxes cover (it should be all of it)."""
     poses = [pose for _, group in table for pose in group]
     scale = 4
-    sheet = Image.new("RGBA", (CELL_W * scale * 2, CELL_H * scale * 3 + 20), (28, 22, 40, 255))
+    rows = (len(HURT_POSES) + 1) // 2
+    sheet = Image.new("RGBA", (CELL_W * scale * 2, CELL_H * scale * rows + 20), (28, 22, 40, 255))
     draw = ImageDraw.Draw(sheet)
     draw.text((6, 4), "Hurtboxes: green padded (hits land), grey armored jaws, red contact (touching hurts)",
               fill=(255, 232, 187, 255))

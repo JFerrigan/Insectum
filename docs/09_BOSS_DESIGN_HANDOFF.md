@@ -32,6 +32,10 @@ These came from the designer while building the beetle. Treat them as rules.
   shows some (the mosquito's dotted dive line, the Throne's aim lines), so confirm those first.
 - **The designer specifies death animations.** Ask if the plan doesn't say. The beetle drops to its
   knees, pauses, then falls flat onto its belly. The mosquito's blood-filled abdomen must burst.
+- **Every boss needs an answer to a player underneath it.** Worm digs through any floor, bedrock
+  included, and anyone can strike upward. The beetle's answer is the body slam: it reacts to a player
+  dug in below it or striking it from beneath (`Boss.StruckFromBelow`), with a hitbox reaching 3.4
+  units into the floor. The designer asked for this after the first playtest.
 - **Double boss is off** until it has its own design.
 
 ## 2. The workflow that worked
@@ -329,6 +333,7 @@ tools/map.sh 1234 4 10
       is written down.
 - [ ] Openings exist after big moves, with contact off and the dull tint.
 - [ ] Each of the five insects has a way through every move.
+- [ ] It answers a player dug in beneath it or striking up from below, and the headless check proves it.
 - [ ] `tools/bosscheck.sh` passes: 12/12 scripted wins, sensible fight length and hits by move, and air
       time on budget.
 - [ ] `tools/compilecheck.sh` passes, and so does Unity's batch verification when the editor is free.

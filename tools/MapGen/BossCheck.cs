@@ -22,6 +22,7 @@ internal static class BossCheck
         CheckHurtboxes();
         for (uint seed = 1; seed <= seeds; seed++)
             CheckWarnings(seed);
+        CheckSlam();
         CheckAirTime(seeds);
         CheckFights(seeds);
         Console.WriteLine(failures == 0 ? "Boss check passed." : $"Boss check FAILED: {failures} problem(s).");
@@ -59,13 +60,14 @@ internal static class BossCheck
     // ---------- warnings, openings, bounds ----------
     private static readonly HashSet<StagBeetle.Act> Attacks = new()
     {
-        StagBeetle.Act.ChargeRun, StagBeetle.Act.Snap, StagBeetle.Act.RearSnap, StagBeetle.Act.DiveDrop, StagBeetle.Act.GoreDash
+        StagBeetle.Act.ChargeRun, StagBeetle.Act.Snap, StagBeetle.Act.RearSnap, StagBeetle.Act.DiveDrop, StagBeetle.Act.GoreDash,
+        StagBeetle.Act.Slam
     };
 
     private static readonly HashSet<StagBeetle.Act> Warnings = new()
     {
         StagBeetle.Act.ChargeWindup, StagBeetle.Act.SnapWindup, StagBeetle.Act.RearWindup, StagBeetle.Act.DiveLock,
-        StagBeetle.Act.GoreAim
+        StagBeetle.Act.GoreAim, StagBeetle.Act.SlamWindup
     };
 
     private static void CheckWarnings(uint seed)
@@ -87,6 +89,8 @@ internal static class BossCheck
             StagBeetle.Act act = beetle.CurrentAct;
             if (act != previous)
             {
+                // The wanderer never digs in or strikes upward, so it never earns a body slam.
+                Require(act != StagBeetle.Act.SlamWindup, $"seed {seed}: a body slam began with nobody beneath");
                 if (Attacks.Contains(act))
                 {
                     attacks++;
@@ -119,6 +123,46 @@ internal static class BossCheck
                 return;
         }
         Require(attacks > 40, $"seed {seed}: only {attacks} attacks in six minutes");
+    }
+
+    // A player dug into the floor under the beetle gets body-slammed, and so does one who strikes up at it
+    // from under its jaws.
+    private static void CheckSlam()
+    {
+        foreach (bool dug in new[] { true, false })
+        {
+            var beetle = new StagBeetle(Arena, new Vector2(0f, Arena.FloorY), 3);
+            // It faces left, so x < 0 is in front: under its thorax when dug in, under its jaws when standing.
+            Vector2 position = dug ? new Vector2(-0.8f, 0.2f) : new Vector2(-2.6f, Arena.FloorY + 0.43f);
+            var body = new DamageReceiver(new HealthPool(99), 0.34f, () => position, 36);
+            var combat = new CombatArena();
+            combat.AddTarget(beetle.Damage);
+            int hits = 0;
+            body.Resolved += (_, outcome) =>
+            {
+                if (outcome == DamageOutcome.Applied && beetle.CurrentAct == StagBeetle.Act.Slam)
+                    hits++;
+            };
+            bool slammed = false, struck = false;
+            for (int step = 0; step < 60 * 6 && !slammed; step++)
+            {
+                body.Step();
+                beetle.Damage.Step();
+                if (!dug && !struck && beetle.State == Boss.Mode.Fighting && beetle.CurrentAct == StagBeetle.Act.Idle)
+                    struck = combat.Melee(new MeleeStrike(position, Vector2.up, 1.3f, 0.38f, 1, 4f));
+                beetle.Step(body);
+                beetle.ClearCues();
+                slammed |= beetle.CurrentAct == StagBeetle.Act.Slam && hits > 0;
+            }
+            for (int step = 0; step < 12; step++)
+            {
+                beetle.Step(body);
+                beetle.ClearCues();
+            }
+            string who = dug ? "a player dug in under it" : "a player striking up from under its jaws";
+            Require((dug || struck) && hits > 0, $"slam: {who} was not body-slammed");
+        }
+        Console.WriteLine("Body slam checked.");
     }
 
     private static void CheckAirTime(int seeds)

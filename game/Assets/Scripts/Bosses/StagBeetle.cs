@@ -15,6 +15,7 @@ namespace Insectum.Game
             ChargeWindup, ChargeRun, ChargeSkid, Stuck, Wrench, ChargeRecover,
             SnapWindup, Snap, SnapRecover,
             RearWindup, RearSnap, RearRecover,
+            SlamWindup, Slam, SlamRecover,
             WingOpen, LiftOff, HoverTrack, DiveLock, DiveDrop, Land,
             GoreRise, GoreAim, GoreDash, SoftDrop, SoftLand,
             DeathFall, DeathKneel, DeathPause, DeathDrop, DeathFade
@@ -32,6 +33,8 @@ namespace Insectum.Game
             Stand,
             Crouch,
             Rear,
+            Raised,
+            Flat,
             Air,
             Dive,
             Dash,
@@ -88,7 +91,7 @@ namespace Insectum.Game
         private const float ShardGravity = 30f;
         private const float ShardHalfSize = 0.25f;
 
-        private static readonly string[] Moves = { "CHARGE", "SNAP", "REAR SNAP", "DIVE SLAM", "AIR GORE" };
+        private static readonly string[] Moves = { "CHARGE", "SNAP", "REAR SNAP", "DIVE SLAM", "AIR GORE", "BODY SLAM" };
 
         private readonly List<Shockwave> shockwaves = new();
         private readonly List<Shard> shards = new();
@@ -96,6 +99,7 @@ namespace Insectum.Game
         private int actLength;
         private int chargeCooldown;
         private int rearCooldown;
+        private int slamCooldown;
         private int stepsSinceAir = 240;
         private int forcedMove = -1;
         private bool chained;
@@ -141,20 +145,23 @@ namespace Insectum.Game
         internal Glow CurrentGlow => CurrentAct switch
         {
             Act.DiveLock => Glow.Flash,
-            Act.ChargeWindup or Act.SnapWindup or Act.RearWindup or Act.GoreAim =>
+            Act.ChargeWindup or Act.SnapWindup or Act.RearWindup or Act.GoreAim or Act.SlamWindup =>
                 actLength - ActSteps <= 3 ? Glow.Flash : Glow.Amber,
             _ => Glow.None
         };
 
         // An opening: touching the body is safe, and it's slow to act.
         internal bool Opening => CurrentAct is Act.Stuck or Act.Wrench or Act.ChargeRecover or Act.SnapRecover
-            or Act.RearRecover or Act.Land or Act.SoftLand;
+            or Act.RearRecover or Act.Land or Act.SoftLand or Act.SlamRecover;
 
         internal Pose CurrentPose => CurrentAct switch
         {
             Act.ChargeRun or Act.ChargeSkid or Act.Stuck or Act.Wrench => Pose.Crouch,
             Act.ChargeWindup => ActProgress > 0.66f ? Pose.Crouch : Pose.Stand,
             Act.RearSnap or Act.Roar => Pose.Rear,
+            Act.SlamWindup => Pose.Raised,
+            Act.Slam => Pose.Flat,
+            Act.SlamRecover => ActProgress < 0.4f ? Pose.Flat : Pose.Stand,
             Act.IntroRoar => ActProgress is > 0.2f and < 0.8f ? Pose.Rear : Pose.Stand,
             Act.RearRecover => ActProgress < 0.5f ? Pose.Rear : Pose.Stand,
             Act.WingOpen => ActProgress >= 0.5f ? Pose.Air : Pose.Stand,
@@ -214,6 +221,7 @@ namespace Insectum.Game
             ActSteps++;
             chargeCooldown--;
             rearCooldown--;
+            slamCooldown--;
             if (Position.y <= Floor + 0.05f)
                 stepsSinceAir++;
             if (PogoSpam)
@@ -336,6 +344,30 @@ namespace Insectum.Game
                     }
                     break;
 
+                case Act.SlamWindup:
+                    // Dust shakes loose from under it while it rises and quivers.
+                    if (ActSteps % 8 == 4)
+                        Cue(BossCueKind.Dust, Position + new Vector2((ActSteps * 37 % 56 / 10f - 2.8f) * Facing, 0f),
+                            ActSteps % 16 < 8 ? -1 : 1);
+                    if (Done)
+                    {
+                        Enter(Act.Slam, 8);
+                        Cue(BossCueKind.Thud, Position, 0);
+                        Shake(0.38f, 16);
+                    }
+                    break;
+                case Act.Slam:
+                    if (Done)
+                        Enter(Act.SlamRecover, 36);
+                    break;
+                case Act.SlamRecover:
+                    if (Done)
+                    {
+                        slamCooldown = 60;
+                        Think(target);
+                    }
+                    break;
+
                 case Act.WingOpen:
                     if (ActSteps % 9 == 0)
                         Cue(BossCueKind.WingBeat, Position, Facing);
@@ -436,14 +468,29 @@ namespace Insectum.Game
 
         private float ClampLane(float x) => Mathf.Clamp(x, -maxX, maxX);
 
-        // Jumps the queue when the player is above it, or has pogoed off it twice in quick succession.
+        // Jumps the queue when the player is under it (slam), above it, or has pogoed off it twice in quick
+        // succession (rearing snap).
         private bool React(Vector2 target)
         {
+            if (slamCooldown <= 0 && Beneath(target))
+            {
+                Enter(Act.SlamWindup, Phase switch { 3 => MinimumWarningSteps, 2 => 27, _ => 30 });
+                return true;
+            }
             if (!pogoPunish && (rearCooldown > 0 || !Above(target)))
                 return false;
             Enter(Act.RearWindup, pogoPunish ? MinimumWarningSteps : 30);
             pogoPunish = false;
             return true;
+        }
+
+        // Under its body: dug into the floor beneath it, or striking it from below.
+        private bool Beneath(Vector2 target)
+        {
+            float forward = (target.x - Position.x) * Facing;
+            if (forward < -3f || forward > 3.2f)
+                return false;
+            return target.y < Floor - 0.05f || StruckFromBelow && target.y < Position.y + 1.2f;
         }
 
         private bool Above(Vector2 target)
@@ -520,6 +567,9 @@ namespace Insectum.Game
                     break;
                 case 2:
                     Enter(Act.RearWindup, 30);
+                    break;
+                case 5:
+                    Enter(Act.SlamWindup, 30);
                     break;
                 case 3:
                 case 4:
@@ -653,6 +703,22 @@ namespace Insectum.Game
                     AddPart(0.73f, 4.22f, 0.38f, armored: true);
                     AddPart(1.08f, 5.17f, 0.44f, armored: true);
                     break;
+                case Pose.Raised:
+                    AddPart(-1.88f, 2f, 0.72f);
+                    AddPart(-0.69f, 2.06f, 0.78f);
+                    AddPart(0.5f, 2.12f, 0.69f);
+                    AddPart(1.44f, 2.23f, 0.62f, head);
+                    AddPart(2.29f, 2.39f, 0.38f, armored: true);
+                    AddPart(3.12f, 2.97f, 0.44f, armored: true);
+                    break;
+                case Pose.Flat:
+                    AddPart(-1.94f, 0.46f, 0.72f);
+                    AddPart(-0.75f, 0.52f, 0.78f);
+                    AddPart(0.44f, 0.58f, 0.69f);
+                    AddPart(1.37f, 0.6f, 0.62f, head);
+                    AddPart(2.23f, 0.56f, 0.38f, armored: true);
+                    AddPart(3.18f, 0.88f, 0.44f, armored: true);
+                    break;
                 case Pose.Air:
                     AddPart(-1.94f, 1.5f, 0.72f);
                     AddPart(-0.75f, 1.56f, 0.78f);
@@ -703,6 +769,11 @@ namespace Insectum.Game
                 case Act.RearSnap:
                     AddHitbox(-1f, 2.6f, 1.7f, 5.6f, new Vector2(Facing * 2f, 8f));
                     SetContact(true);
+                    break;
+                case Act.Slam:
+                    // The whole span under its body, reaching 3.4 units down into the floor, so a tunnel dug
+                    // beneath it is no refuge.
+                    AddHitbox(-3f, 3.2f, -3.4f, 0.9f, new Vector2(away * 4f, 7f));
                     break;
                 case Act.DiveDrop:
                     PartsHurt(new Vector2(away * 6f, 5f));

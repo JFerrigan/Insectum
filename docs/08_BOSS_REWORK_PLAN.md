@@ -252,6 +252,15 @@ worn-wood grain. Six legs with knobby joints.
 6. **Walk:** between moves it walks toward the player at 2.5 units/s with a tripod gait. It turns with a short
    body pivot rather than flipping instantly.
 
+7. **Body Slam** *(reactive, all phases; added after the first playtest)*
+   - *When:* the player is dug into the floor under its body, or has struck up at it from beneath (an
+     upward strike within the last 0.75 s, from under its body).
+   - *Telegraph (0.5 s P1, 0.45 s P2, 0.4 s P3):* rises high on straight legs, the whole body glows amber
+     and quivers, and dust shakes loose underneath.
+   - *Attack:* belly-flops flat (8 steps). The hitbox spans the whole body and reaches 3.4 units down into
+     the floor, so a tunnel under it is no refuge. A big shake.
+   - *Recovery (0.6 s):* pushes back up. An opening. At least 1 s before it can slam again.
+
 Air moves have their own cooldown (at least 10 s apart), so it stays mostly grounded.
 
 ### Phases

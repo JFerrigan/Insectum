@@ -76,6 +76,10 @@ at the start. Every attack has a warning first:
 - **Snap:** it snaps at anyone close in front.
 - **Rearing snap:** it rears up and snaps overhead at anyone above it, or
   after two quick pogos.
+- **Body slam:** if you dig into the floor under it, or strike up at it from
+  beneath, it rises high on straight legs, quivers and glows amber all over,
+  then belly-flops. The slam reaches 3.4 units down into the floor under its
+  whole body, so digging under it is no hiding place.
 - **Flying** (at least 10 s apart): it either hovers over you behind a red
   target and slams down, sending a jumpable shockwave each way, or makes
   Air Gore passes. On the platforms it settles to your height, its jaws

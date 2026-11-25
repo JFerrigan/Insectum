@@ -98,6 +98,7 @@ namespace Insectum.Game
         private readonly List<BossCue> cues = new();
         private SeededRandom random;
         private int lastPogoStep = -PogoWindowSteps;
+        private int lastUpwardStep = -PogoWindowSteps;
         private int steps;
 
         protected readonly BossArena Arena;
@@ -130,6 +131,8 @@ namespace Insectum.Game
         internal int ShakeSteps { get; private set; }
         // True once when two downward strikes land within 1.5 s of each other.
         private protected bool PogoSpam { get; set; }
+        // True for 0.75 s after an upward strike lands: someone below is hitting it.
+        private protected bool StruckFromBelow => steps - lastUpwardStep <= 45;
 
         protected Boss(BossArena arena, Vector2 home, int hearts, float radius, uint seed)
         {
@@ -312,6 +315,9 @@ namespace Insectum.Game
         {
             if (outcome == DamageOutcome.Absorbed && Damage.LastPart.Armored)
                 Cue(BossCueKind.Clank, Damage.LastPart.Center);
+            // An upward strike pushes its target up.
+            if (hit.Source == DamageSource.Melee && hit.Knockback.y > 3f && outcome != DamageOutcome.Ignored)
+                lastUpwardStep = steps;
             // A downward strike pushes its target down.
             if (hit.Source != DamageSource.Melee || hit.Knockback.y > -1f || outcome == DamageOutcome.Ignored)
                 return;
