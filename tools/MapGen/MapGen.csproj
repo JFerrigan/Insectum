@@ -22,6 +22,9 @@
     <Compile Include="../../game/Assets/Scripts/ForestTemplates.cs" Link="Game/ForestTemplates.cs" />
     <Compile Include="../../game/Assets/Scripts/ForestRunLayout.cs" Link="Game/ForestRunLayout.cs" />
     <Compile Include="../../game/Assets/Scripts/BossArenaLayout.cs" Link="Game/BossArenaLayout.cs" />
+    <Compile Include="../../game/Assets/Scripts/Combat.cs" Link="Game/Combat.cs" />
+    <Compile Include="../../game/Assets/Scripts/Bosses/Boss.cs" Link="Game/Bosses/Boss.cs" />
+    <Compile Include="../../game/Assets/Scripts/Bosses/StagBeetle.cs" Link="Game/Bosses/StagBeetle.cs" />
     <Compile Include="../../game/Assets/Scripts/LevelLayout.cs" Link="Game/LevelLayout.cs" />
     <Compile Include="../../game/Assets/Scripts/HexGrid.cs" Link="Game/HexGrid.cs" />
     <Compile Include="../../game/Assets/Scripts/RunWorlds.cs" Link="Game/RunWorlds.cs" />

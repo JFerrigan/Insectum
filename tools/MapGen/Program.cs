@@ -19,6 +19,8 @@ internal static class Program
             Console.WriteLine(Usage);
             return args.Length == 0 ? 1 : 0;
         }
+        if (args[0] == "bosscheck")
+            return BossCheck.Run(args);
         if (args[0] == "export" && args.Length > 2)
         {
             if (!Enum.TryParse(args[1], true, out WorldId world))

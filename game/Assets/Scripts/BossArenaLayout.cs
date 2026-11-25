@@ -12,6 +12,9 @@ namespace Insectum.Game
         // The flat floor between the terraces, where ground bosses walk and charge.
         internal const float LaneHalfWidth = 16.2f;
         internal const float FloorY = 1f;
+        // Where the lowest terrace step meets the floor on each side, and the ceiling's underside.
+        internal const float TerraceFace = 17.32f;
+        internal const float CeilingY = 18.5f;
         internal const float BossX = 8f;
         internal const float EchoX = -6f;
         private const float SpawnX = -15.5f;
