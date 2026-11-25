@@ -183,22 +183,32 @@ namespace Insectum.Game
                 editingSeed = false;
             }
 
+            // Typing a digit selects the seed field, so it needs no click first.
+            if (TypeSeed())
+                editingSeed = true;
             if (editingSeed)
-            {
-                foreach (char key in Input.inputString)
-                {
-                    if (key == '\b' && seedText.Length > 0)
-                        seedText = seedText[..^1];
-                    else if (seedText.Length < 11 && (key is >= '0' and <= '9' || key == '-' && seedText.Length == 0))
-                        seedText += key;
-                }
                 return;
-            }
 
             int change = (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow) ? 1 : 0)
                 - (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow) ? 1 : 0);
             int count = Character.Roster.Length;
             selected = (selected + change + count) % count;
+        }
+
+        // Reads seed keys the same way as every other key (GetKeyDown) rather than through Input.inputString.
+        // Returns true when this frame's presses changed the seed.
+        private bool TypeSeed()
+        {
+            int length = seedText.Length;
+            for (int digit = 0; digit <= 9; digit++)
+                if ((Input.GetKeyDown(KeyCode.Alpha0 + digit) || Input.GetKeyDown(KeyCode.Keypad0 + digit)) && seedText.Length < 11)
+                    seedText += (char)('0' + digit);
+            if ((Input.GetKeyDown(KeyCode.Minus) || Input.GetKeyDown(KeyCode.KeypadMinus)) && seedText.Length == 0)
+                seedText = "-";
+            bool erased = (Input.GetKeyDown(KeyCode.Backspace) || Input.GetKeyDown(KeyCode.Delete)) && seedText.Length > 0;
+            if (erased)
+                seedText = seedText[..^1];
+            return erased || seedText.Length != length;
         }
 
         private static bool Click(Rect region) => Input.GetMouseButtonDown(0) && region.Contains(PixelViewport.Pointer);

@@ -48,8 +48,9 @@ terraces, and platforms of the world's diggable materials climb one hex row at a
 the middle, so an ordinary jump reaches every tier. Two higher islands need Spider's leap or Dragonfly's
 flight. Edit the hall's hex map in `Assets/Scripts/BossArenaLayout.cs`. Press Esc during a run to pause and see the controls,
 current item, and seed. Press Esc again or click Resume to continue. Leave
-the seed field blank for a random layout, or enter a seed to replay it. Click
-the seed field or press Tab to edit it. From the
+the seed field blank for a random layout, or enter a seed to replay it. Type
+digits at character select to enter one, and Backspace to erase. Click the seed
+field or press Tab to select it. From the
 results screen, press Enter to restart or Esc to return to the roster. Tick
 Boss rush at character select to play only the five boss arenas, Forest through
 Alien. Health and items carry from one fight to the next. Press Esc or click
