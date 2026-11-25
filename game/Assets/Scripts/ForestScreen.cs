@@ -234,7 +234,7 @@ namespace Insectum.Game
         {
             string label = !shop.Available ? "SOLD OUT"
                 : session.Content.ClosestInteractable() == shop ? shop.InteractPrompt : shop.ShopOffer;
-            DrawWorldPrompt(camera, shop.Position + Vector2.up * 2.6f, label, shop.Available ? Gold : Muted);
+            DrawWorldPrompt(camera, shop.Position + Vector2.up * 2.75f, label, shop.Available ? Gold : Muted);
         }
 
         // Faint control hints painted into the opening room of the first level. They are placed
@@ -533,14 +533,14 @@ namespace Insectum.Game
         private static void DrawPause(GameSession session)
         {
             RunState run = session.Run;
-            Frame(new Rect(14, 20, 292, 159), Edge, Panel);
-            Center("PAUSED", 160, 25, Light, 2);
+            Frame(new Rect(14, 31, 292, 148), Edge, Panel);
+            Center("PAUSED", 160, 34, Light, 2);
 
-            Write("CONTROLS", 24, 44, Gold);
-            Write("A/D  MOVE", 24, 53, Light);
-            Write("SPACE  JUMP (HOLD HIGHER)", 24, 62, Light);
-            Write("J HIT / W+J UP / AIR S+J DOWN", 24, 71, Light);
-            Write("E  INTERACT  /  L  ITEM", 24, 80, Light);
+            Write("CONTROLS", 24, 50, Gold);
+            Write("A/D  MOVE", 24, 58, Light);
+            Write("SPACE  JUMP (HOLD HIGHER)", 24, 66, Light);
+            Write("J HIT / W+J UP / AIR S+J DOWN", 24, 74, Light);
+            Write("E  INTERACT  /  L  ITEM", 24, 82, Light);
             Write(run.Character.Insect switch
             {
                 Insect.Spider => "K  HIGH JUMP",
@@ -548,7 +548,7 @@ namespace Insectum.Game
                 Insect.Dragonfly => "K  FLY  /  WASD  STEER",
                 Insect.FireAnt => "K  HEAVY HIT",
                 _ => "K  DIG AHEAD  /  S+K  DIG DOWN"
-            }, 24, 89, Mint);
+            }, 24, 90, Mint);
 
             if (run.Character.Insect == Insect.Spider)
             {
@@ -556,8 +556,8 @@ namespace Insectum.Game
                 Write("RELEASE MOVE TO DROP", 176, 98, Muted);
             }
 
-            Write(run.Character.Name, 198, 44, Gold);
-            Write($"SEED {run.Seed}", 198, 53, Light);
+            Write(run.Character.Name, 198, 50, Gold);
+            Write($"SEED {run.Seed}", 198, 58, Light);
             string variant = session.Variant switch
             {
                 LevelVariant.Night => "NIGHT",
@@ -566,7 +566,7 @@ namespace Insectum.Game
                 _ => null
             };
             if (variant != null)
-                Write(variant, 198, 62, Mint);
+                Write(variant, 198, 66, Mint);
             DrawPauseInventory(run.Inventory);
 
             if (session.InteractionPrompt is string prompt)
@@ -583,7 +583,7 @@ namespace Insectum.Game
             const int iconY = 115;
             const int passiveX = 76;
             Write("ACTIVE", 24, 106, Gold);
-            Write("PASSIVE", passiveX, 106, Gold);
+            Write("PASSIVES", passiveX, 106, Gold);
             var activeSlot = new Rect(24, iconY, iconSize, iconSize);
             Frame(activeSlot, Edge, Ink);
             if (Items.IsActive(inventory.Active))

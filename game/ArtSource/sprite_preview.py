@@ -63,7 +63,7 @@ def main():
     big = ImageFont.truetype("/System/Library/Fonts/Menlo.ttc", 22)
     zoom, cw = 3, 32 * 4 + 40
     strip = 6 * 32 * zoom + 5 * 4
-    height = 130 + len(ACTORS) * (24 * zoom + 14) + 2 * (32 * 4 + 26) + (32 * 4 + 26) + 56 * 4 + 120
+    height = 130 + len(ACTORS) * (24 * zoom + 14) + 2 * (32 * 4 + 26) + (32 * 4 + 26) + 58 * 4 + 120
     sheet = Image.new("RGBA", (20 + 150 + strip * 2 + 40, height), (30, 22, 42, 255))
     d = ImageDraw.Draw(sheet)
     d.text((12, 12), "Insectum sprite refresh - all 6 frames", fill=CREAM, font=big)
@@ -104,15 +104,15 @@ def main():
         tile(12 + i * cw, y, forest_pixels.styled_prop(index), name)
     y += 32 * 4 + 40
 
-    d.text((12, y), "Shop pedestal: the item floats 20px above it and bobs 0-3px (first four: each bob height)",
+    d.text((12, y), "Shop pedestal: the item floats 22px above it and bobs 0-3px (first four: each bob height)",
            fill="#a8a0c0", font=font)
     y += 26
     pedestal = forest_pixels.styled_prop(3)
-    for i, (item, bob) in enumerate(((4, 0), (4, 1), (4, 2), (4, 3), (2, 1), (7, 1))):
-        cell = Image.new("RGBA", (32, 56), BG)
-        cell.alpha_composite(pedestal, (0, 24))
+    for i, (item, bob) in enumerate(((4, 0), (4, 1), (4, 2), (4, 3), (2, 1), (7, 0))):
+        cell = Image.new("RGBA", (32, 58), BG)
+        cell.alpha_composite(pedestal, (0, 26))
         cell.alpha_composite(item_pixels.icon(item), (0, 4 - bob))
-        sheet.alpha_composite(cell.resize((32 * 4, 56 * 4), Image.NEAREST), (12 + i * cw + (cw - 8 - 128) // 2, y))
+        sheet.alpha_composite(cell.resize((32 * 4, 58 * 4), Image.NEAREST), (12 + i * cw + (cw - 8 - 128) // 2, y))
 
     OUT.mkdir(parents=True, exist_ok=True)
     sheet.save(OUT / "sprites_preview.png")

@@ -182,7 +182,8 @@ namespace Insectum.Game
                 art.transform.localScale = Vector3.one * (kind == LevelFeatureKind.Nektar ? 0.52f : 0.75f);
             else if (art != null && kind == LevelFeatureKind.Shop && Items.IsKnown(item))
             {
-                offer = ForestArt.Place(art.transform, "Offer", Vector2.up * (20f / PixelViewport.PixelsPerUnit),
+                // Leave a gap above the cap even for the tallest icon at the bottom of its bob.
+                offer = ForestArt.Place(art.transform, "Offer", Vector2.up * (22f / PixelViewport.PixelsPerUnit),
                     ForestArt.Item(item), 4);
                 offer.gameObject.AddComponent<HoverBob>();
             }
