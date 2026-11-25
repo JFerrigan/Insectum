@@ -208,7 +208,7 @@ worn-wood grain. Six legs with knobby joints.
 ### Moves
 1. **Horn Charge** *(signature, all phases)*
    - *Telegraph (0.75 s):* rears back, scrapes a front foot twice (dust puffs), drops into the crouch,
-     mandibles glow amber. A dust streak marks the charge line along the floor.
+     mandibles glow amber. No line is drawn along the floor.
    - *Attack:* runs along the floor toward the side the player was on, at 11 units/s, until it reaches the
      lane end (x = ±16.2, the face of the terraces). The mandibles and front of the head deal damage
      (1 heart, strong knockback); the back and rear don't.

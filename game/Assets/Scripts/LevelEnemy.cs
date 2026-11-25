@@ -148,7 +148,7 @@ namespace Insectum.Game
                 brain = beetle;
                 Damage = brain.Damage;
                 if (pixel != null)
-                    view = new StagBeetleView(parent, pixel, beetle);
+                    view = new StagBeetleView(parent, beetle);
                 return;
             }
 

@@ -27,8 +27,8 @@ These came from the designer while building the beetle. Treat them as rules.
   *past* it. Contact damage sits a little *inside* it. The designer prefers erring generous to the
   player.
 - **Telegraphs should come from the boss itself:** its pose, its glowing attacking part, the white
-  flash. Ground shadows and targets are fine. The dotted line for the beetle's Air Gore was removed at
-  the designer's request. **Ask before adding any abstract line or UI-style marker.** The plan still
+  flash. Ground shadows and targets are fine. Both of the beetle's dotted lines (Air Gore's flight height
+  and the charge's floor scuffs) were removed at the designer's request. **Ask before adding any abstract line or UI-style marker.** The plan still
   shows some (the mosquito's dotted dive line, the Throne's aim lines), so confirm those first.
 - **The designer specifies death animations.** Ask if the plan doesn't say. The beetle drops to its
   knees, pauses, then falls flat onto its belly. The mosquito's blood-filled abdomen must burst.
@@ -85,7 +85,7 @@ view reads the logic each fixed step and draws it.
 **The boss view (`StagBeetleView.cs`)** handles:
 - frame playback for each act
 - the jaw glow, the white or amber wash, and the opening and death tints
-- the shadow, the dive target and the charge scuffs
+- the shadow and the dive target
 - the shockwaves and falling bark
 - turning cues into effects
 

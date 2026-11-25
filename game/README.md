@@ -68,8 +68,8 @@ health bar along the bottom of the screen. The bar has ticks where its
 second and third phases begin, and its name card shows while it rears up
 at the start. Every attack has a warning first:
 
-- **Charge:** it scrapes a foot, crouches low and its jaws glow amber, with
-  dust marking the line. Only its head and jaws hurt while it charges, so
+- **Charge:** it scrapes a foot, crouches low, its jaws glow amber, and it
+  flashes white just before it runs. Only its head and jaws hurt while it charges, so
   back off and jump over them, pogo off its back, or get up a terrace.
   If it reaches the end of the floor, its jaws stick in the terrace for a
   moment. That's the safe time to hit it, and its head takes double damage.

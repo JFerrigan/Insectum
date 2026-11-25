@@ -21,7 +21,6 @@ namespace Insectum.Game
         private const float GroundPixels = 12f;
         private static readonly Color Amber = new Color32(255, 170, 64, 255);
         private static readonly Color MarkerRed = new Color32(240, 72, 56, 255);
-        private static readonly Color DustColor = new Color32(214, 196, 160, 255);
         private static readonly Sprite[] frames = new Sprite[Anims.Count];
         private static readonly Sprite[] glows = new Sprite[Anims.Count];
         private static Texture2D bodyAtlas;
@@ -35,20 +34,17 @@ namespace Insectum.Game
         private readonly SpriteRenderer shadow;
         private readonly SpriteRenderer target;
         private readonly SpriteRenderer[] waves = new SpriteRenderer[2];
-        private readonly List<SpriteRenderer> dots = new();
         private readonly List<SpriteRenderer> shards = new();
         private readonly List<SpriteRenderer> shardShadows = new();
         private readonly Transform parent;
-        private readonly Sprite pixel;
         private readonly BossFx fx;
         private int tick;
         private int hitFlash;
 
-        internal StagBeetleView(Transform parent, Sprite pixel, StagBeetle beetle)
+        internal StagBeetleView(Transform parent, StagBeetle beetle)
         {
             this.beetle = beetle;
             this.parent = parent;
-            this.pixel = pixel;
             root = new GameObject(beetle.Name).transform;
             root.SetParent(parent, false);
             var flash = Resources.Load<Shader>("BossFlash");
@@ -215,33 +211,6 @@ namespace Insectum.Game
                 bool blink = strength >= 1f && tick / 3 % 2 == 0;
                 target.color = blink ? Color.white : new Color(MarkerRed.r, MarkerRed.g, MarkerRed.b, 0.35f + strength * 0.65f);
             }
-
-            int used = 0;
-            if (beetle.ChargeLine is float drawn)
-            {
-                // Dust scuffs along the floor showing where the charge will run.
-                float start = beetle.Position.x + beetle.Facing * 3f;
-                float end = beetle.Facing * (BossArenaLayout.TerraceFace - 0.2f);
-                float length = Mathf.Abs(end - start) * Mathf.Clamp01(drawn * 1.6f);
-                for (float d = 0f; d <= length; d += 0.9f)
-                    PlaceDot(used++, new Vector2(start + beetle.Facing * d, Floor + 0.07f), new Vector2(0.5f, 0.125f),
-                        new Color(DustColor.r, DustColor.g, DustColor.b, 0.55f));
-            }
-            for (int i = used; i < dots.Count; i++)
-                dots[i].enabled = false;
-        }
-
-        private void PlaceDot(int index, Vector2 position, Vector2 size, Color color)
-        {
-            if (pixel == null)
-                return;
-            while (dots.Count <= index)
-                dots.Add(ForestRoute.CreateMarker(parent, "Boss marker", Vector2.zero, Vector2.one, pixel, Color.white, 4));
-            SpriteRenderer dot = dots[index];
-            dot.enabled = true;
-            dot.transform.position = PixelViewport.Snap(position);
-            dot.transform.localScale = new Vector3(size.x, size.y, 1f);
-            dot.color = color;
         }
 
         private void DrawHazards()

@@ -137,9 +137,6 @@ namespace Insectum.Game
             Act.DiveLock => 1f,
             _ => null
         };
-        // How far the charge streak has drawn along the floor during the wind-up.
-        internal float? ChargeLine => CurrentAct == Act.ChargeWindup ? ActProgress : null;
-        internal float ChargeTarget => chargeLimit;
 
         internal Glow CurrentGlow => CurrentAct switch
         {
