@@ -14,6 +14,7 @@ namespace Insectum.Game
         internal const int Columns = 8, Width = 160, Height = 104, GroundPixels = 32;
         internal static readonly Part[][] Parts = new Part[FramesPerStage * 3][];
         internal static readonly Vector2[] DiveTips = { new(3.1875f, -0.3125f), new(2.5f, -1.25f), new(1.4375f, -1.75f) };
+        internal static readonly Vector2[] DiveBases = { new(1.6748f, 0.7987f), new(1.4582f, 0.4913f), new(1.1688f, 0.2720f) };
 
         internal readonly struct Part
         {
