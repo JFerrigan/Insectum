@@ -24,6 +24,7 @@
     <Compile Include="../../game/Assets/Scripts/BossArenaLayout.cs" Link="Game/BossArenaLayout.cs" />
     <Compile Include="../../game/Assets/Scripts/Combat.cs" Link="Game/Combat.cs" />
     <Compile Include="../../game/Assets/Scripts/Bosses/Boss.cs" Link="Game/Bosses/Boss.cs" />
+    <Compile Include="../../game/Assets/Scripts/Bosses/BossProjectile.cs" Link="Game/Bosses/BossProjectile.cs" />
     <Compile Include="../../game/Assets/Scripts/Bosses/StagBeetle.cs" Link="Game/Bosses/StagBeetle.cs" />
     <Compile Include="../../game/Assets/Scripts/LevelLayout.cs" Link="Game/LevelLayout.cs" />
     <Compile Include="../../game/Assets/Scripts/HexGrid.cs" Link="Game/HexGrid.cs" />

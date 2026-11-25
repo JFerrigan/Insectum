@@ -14,17 +14,17 @@ The frame order here must match StagBeetleView.Anims in Assets/Scripts/Bosses/St
 """
 
 import math
-from pathlib import Path
 
 from PIL import Image, ImageDraw
 
 from forest_pixels import OUT
+from boss_pixels import (BossPose, PREVIEWS, contact_sheet, draw_hurtboxes, effects, ellipse,
+                         hurtbox_coverage, rotate)
 
 CELL_W, CELL_H = 128, 112
 GROUND = 100          # the cell row the feet stand on; the sprite pivot
 CENTER = 64           # the cell column under the body's center (the boss's Position)
 COLUMNS = 16
-PREVIEWS = Path(__file__).resolve().parent.parent / "Builds/BossPreviews"
 
 INK = (27, 16, 41, 255)
 BARK_DARK = (62, 38, 24, 255)
@@ -54,18 +54,7 @@ WHITE = (255, 255, 255, 255)
 
 
 # ---------- geometry ----------
-def rotate(point, pivot, degrees):
-    a = math.radians(degrees)
-    x, y = point[0] - pivot[0], point[1] - pivot[1]
-    return (pivot[0] + x * math.cos(a) - y * math.sin(a), pivot[1] + x * math.sin(a) + y * math.cos(a))
-
-
-def ellipse(cx, cy, rx, ry, start=0, end=360, steps=28):
-    return [(cx + rx * math.cos(math.radians(start + (end - start) * i / steps)),
-             cy + ry * math.sin(math.radians(start + (end - start) * i / steps))) for i in range(steps + 1)]
-
-
-class Pose:
+class Pose(BossPose):
     """One frame's pose. Lengths are pixels, angles degrees, y up from the ground."""
 
     def __init__(self, **values):
@@ -82,7 +71,7 @@ class Pose:
         self.splay = 0.0          # death: legs spread flat
         self.shake = 0
         self.glow_body = False    # the glow mask covers the whole body, not just the jaws
-        self.__dict__.update(values)
+        super().__init__(**values)
 
 
 STAND_FEET = [(24, 0), (3, 0), (-29, 0), (28, 0), (8, 0), (-24, 0)]
@@ -354,46 +343,6 @@ def anims():
     return out
 
 
-# ---------- shared effects ----------
-def effects():
-    sheet = Image.new("RGBA", (256, 64), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(sheet)
-    dust = (214, 196, 160, 255)
-    dust_dark = (150, 128, 100, 255)
-    # Row 0, 32 x 32 cells: dust puffs 0-3, clank sparks 4-6, bark shards 7.
-    for f in range(4):
-        ox, r = f * 32, 4 + f * 3
-        draw.ellipse((ox + 16 - r, 24 - r, ox + 16 + r, 24 + r * 0.6), dust_dark if f == 3 else dust)
-        if f < 3:
-            draw.ellipse((ox + 12 - r // 2, 22 - r, ox + 12 + r // 2, 22), dust)
-        if f >= 2:
-            draw.ellipse((ox + 16 - r + 3, 24 - r + 3, ox + 16 + r - 3, 24 + r * 0.6 - 3), (0, 0, 0, 0))
-    for f in range(3):
-        ox = (4 + f) * 32
-        reach = 5 + f * 4
-        for angle in range(0, 360, 45):
-            a = math.radians(angle + f * 20)
-            inner = 2 + f * 3
-            draw.line((ox + 16 + inner * math.cos(a), 16 + inner * math.sin(a),
-                       ox + 16 + reach * math.cos(a), 16 + reach * math.sin(a)), (255, 244, 200, 255) if f < 2 else (255, 189, 103, 255))
-        if f == 0:
-            draw.rectangle((ox + 15, 15, ox + 17, 17), (255, 255, 255, 255))
-    ox = 7 * 32
-    draw.polygon([(ox + 10, 11), (ox + 20, 9), (ox + 23, 15), (ox + 17, 22), (ox + 9, 19)], BARK, INK)
-    draw.line((ox + 12, 13, ox + 19, 12), BARK_LIGHT)
-    draw.point((ox + 14, 17), MOSS)
-    # Row 1 (y 32), 64 x 16 cells: ground shadow 0, dive target 1, shockwave 2-3.
-    draw.ellipse((4, 38, 60, 46), (255, 255, 255, 255))
-    draw.ellipse((68, 36, 124, 46), (255, 255, 255, 255))
-    draw.ellipse((72, 38, 120, 44), (0, 0, 0, 0))
-    for f in range(2):
-        ox = (2 + f) * 64
-        for i, h in enumerate((4, 8, 11, 9, 6, 3) if f == 0 else (3, 7, 12, 10, 7, 4)):
-            draw.rectangle((ox + 20 + i * 4, 47 - h, ox + 23 + i * 4, 47), dust if i % 2 else dust_dark)
-        draw.line((ox + 18, 47, ox + 46, 47), dust_dark)
-    sheet.save(OUT / "BossFx.png")
-
-
 # ---------- sheets ----------
 def build():
     table = anims()
@@ -417,44 +366,6 @@ def build():
     return table, atlas
 
 
-def contact_sheet(table, atlas):
-    PREVIEWS.mkdir(parents=True, exist_ok=True)
-    actors = Image.open(OUT / "Actors.png").convert("RGBA")
-    player = actors.crop((0, 0, 32, 24))
-    scale = 2
-    label_h = 12
-    total = sum(len(poses) for _, poses in table)
-    cols = 8
-    rows = math.ceil(total / cols)
-    key = [0, 22, 27, 36, 41, 47, 50, 57]
-    top_h = CELL_H * 3 + 24
-    sheet = Image.new("RGBA", (cols * CELL_W * scale, top_h + rows * (CELL_H * scale + label_h)), (28, 22, 40, 255))
-    draw = ImageDraw.Draw(sheet)
-    draw.text((8, 4), "Old Oakhorn - key poses at 3x, the player (Jumping Spider) beside each for scale", fill=(255, 232, 187, 255))
-    for i, index in enumerate(key):
-        frame = atlas.crop((index % COLUMNS * CELL_W, index // COLUMNS * CELL_H,
-                            index % COLUMNS * CELL_W + CELL_W, index // COLUMNS * CELL_H + CELL_H))
-        x = 8 + i * (CELL_W + 10) * 3 // 2
-        big = Image.new("RGBA", (CELL_W, CELL_H), (0, 0, 0, 0))
-        big.alpha_composite(frame)
-        big.alpha_composite(player, (4, GROUND - 22))
-        big = big.resize((CELL_W * 3 // 2, CELL_H * 3 // 2), Image.NEAREST)
-        sheet.alpha_composite(big, (x, 20))
-    draw.line((0, top_h - 4, sheet.width, top_h - 4), (90, 70, 110, 255))
-    index = 0
-    for name, poses in table:
-        for f in range(len(poses)):
-            cx, cy = index % cols, index // cols
-            frame = atlas.crop((index % COLUMNS * CELL_W, index // COLUMNS * CELL_H,
-                                index % COLUMNS * CELL_W + CELL_W, index // COLUMNS * CELL_H + CELL_H))
-            x, y = cx * CELL_W * scale, top_h + cy * (CELL_H * scale + label_h)
-            draw.rectangle((x, y + label_h + (GROUND * scale), x + CELL_W * scale - 1, y + label_h + GROUND * scale), (90, 70, 110, 255))
-            sheet.alpha_composite(frame.resize((CELL_W * scale, CELL_H * scale), Image.NEAREST), (x, y + label_h))
-            draw.text((x + 4, y), f"{name} {f}", fill=(255, 232, 187, 255))
-            index += 1
-    sheet.save(PREVIEWS / "forest.png")
-
-
 # ---------- hurtboxes ----------
 # StagBeetle's four body poses, each fitted to one representative frame.
 HURT_POSES = (("Stand", 0), ("Crouch", 18), ("Rear", 36), ("Air", 43), ("Dive", 47), ("Dash", 52), ("Raised", 69),
@@ -471,11 +382,6 @@ PARTS = (
     ("case", (-20, 7), 10, False),
     ("case", (-36, 5), 7, False),
 )
-# StagBeetle pads each hurtbox this far past the art, and keeps contact this much inside it.
-PADDING = 3
-CONTACT = 0.85
-
-
 def fitted_parts(pose):
     """The body circles for a pose, in world units from the boss's Position: (x, y, radius, armored)."""
     beetle = Beetle(pose)
@@ -515,28 +421,17 @@ def hurtbox_sheet(table, atlas):
         ox, oy = slot % 2 * CELL_W * scale, 20 + slot // 2 * CELL_H * scale
         sheet.alpha_composite(frame.resize((CELL_W * scale, CELL_H * scale), Image.NEAREST), (ox, oy))
         shell = Beetle(poses[index], shell_only=True).render()
-        solid = covered = 0
-        for py in range(CELL_H):
-            for px in range(CELL_W):
-                if shell.getpixel((px, py))[3] < 128:
-                    continue
-                solid += 1
-                wx, wy = (px + 0.5 - CENTER) / 16, (GROUND - py - 0.5) / 16
-                if any((wx - x) ** 2 + (wy - y) ** 2 <= (r + PADDING / 16) ** 2 for x, y, r, _ in parts):
-                    covered += 1
-        print(f"    // padded hurtboxes cover {covered / solid:.0%} of the solid body")
-        for x, y, r, armored in parts:
-            cx, cy = ox + (CENTER + x * 16) * scale, oy + (GROUND - y * 16) * scale
-            hurt = (r * 16 + PADDING) * scale
-            touch = r * 16 * CONTACT * scale
-            draw.ellipse((cx - hurt, cy - hurt, cx + hurt, cy + hurt), outline=(150, 150, 160, 255) if armored else (110, 230, 140, 255), width=2)
-            draw.ellipse((cx - touch, cy - touch, cx + touch, cy + touch), outline=(240, 80, 80, 255), width=1)
-        draw.text((ox + 6, oy + 4), f"{name} ({covered / solid:.0%} covered)", fill=(255, 232, 187, 255))
+        coverage = hurtbox_coverage(shell, parts, (CENTER, GROUND))
+        print(f"    // padded hurtboxes cover {coverage:.0%} of the solid body")
+        draw_hurtboxes(draw, parts, (ox, oy), (CENTER, GROUND), scale, (150, 150, 160, 255))
+        draw.text((ox + 6, oy + 4), f"{name} ({coverage:.0%} covered)", fill=(255, 232, 187, 255))
     sheet.save(PREVIEWS / "forest_hurtboxes.png")
 
 
 if __name__ == "__main__":
     effects()
     table, atlas = build()
-    contact_sheet(table, atlas)
+    contact_sheet(table, atlas, title="Old Oakhorn - key poses with Jumping Spider for scale",
+                  filename="forest.png", cell=(CELL_W, CELL_H), columns=COLUMNS, ground=GROUND,
+                  key=[0, 22, 27, 36, 41, 47, 50, 57])
     hurtbox_sheet(table, atlas)
