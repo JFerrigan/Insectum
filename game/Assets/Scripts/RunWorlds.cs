@@ -27,9 +27,11 @@ namespace Insectum.Game
 
         internal static LevelVariant ChooseVariant(LevelSeeds seeds, int worldLevel)
         {
-            var random = new SeededRandom(seeds.Variants);
+            // Boss arenas are always standard. Double boss is off until it has a design for the new bosses
+            // (docs/08_BOSS_REWORK_PLAN.md).
             if (worldLevel == LevelsPerWorld)
-                return random.Next(5) == 0 ? LevelVariant.DoubleBoss : LevelVariant.Standard;
+                return LevelVariant.Standard;
+            var random = new SeededRandom(seeds.Variants);
             return random.Next(8) switch
             {
                 0 => LevelVariant.Night,

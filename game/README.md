@@ -83,9 +83,9 @@ the run.
 
 The seed also selects level variants. Night limits visibility around the
 insect. Each Moth Eyes adds 1.5 world units to the starting 2.7-unit light
-radius. Heavy spawn adds enemies on traversable shelves. Double boss arenas
-have two active bosses, each with its own attack warning. Defeat both to reveal
-one reward, then claim it to unlock the exit.
+radius. Heavy spawn adds enemies on traversable shelves. Boss arenas never get
+a variant: double boss is switched off until it has a design for the new
+bosses.
 
 Run the production verification from this directory on macOS.
 
@@ -111,7 +111,7 @@ take-off points and wait at each laser room's marked spot for a clear run. Each
 world's suite crosses 12 of its tunnels and the fallback with all five insects
 damage-free, opens a vault chest, digs the plug as Worm, and fights the boss.
 The suite also completes the 20-level run on seed 1051 with ordinary
-commands, buys Moth Eyes, and verifies all three variants.
+commands, buys Moth Eyes, and verifies the night and heavy-spawn variants.
 
 If Unity waits for licensing, copy the `LicenseClient` channel name from the
 signed-in editor log and pass it with `-licensingIpc`.

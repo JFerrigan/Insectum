@@ -16,7 +16,6 @@ namespace Insectum.Game.Editor
             VerifyVariantIsolation();
             using var fixture = new PhysicsFixture("Full production run", enableVariants: true);
             Play(fixture, FullRunSeed);
-            VerifyOtherDoubleBosses(fixture);
         }
 
         private static void VerifyVariantIsolation()
@@ -106,32 +105,12 @@ namespace Insectum.Game.Editor
 
             Require(session.Phase == RunPhase.Cleared && run.LevelNumber == RunWorlds.LevelCount && run.World == WorldId.Alien
                     && variants.Contains(LevelVariant.Night) && variants.Contains(LevelVariant.HeavySpawn)
-                    && variants.Contains(LevelVariant.DoubleBoss),
-                $"Seed {seed}: the full run did not complete all 20 levels and all variants.");
+                    && !variants.Contains(LevelVariant.DoubleBoss),
+                $"Seed {seed}: the full run did not complete all 20 levels with night and heavy spawn, and no double boss.");
             string path = ForestReplayFile.Argument("-insectum-record-run");
             if (path != null)
                 ForestReplayFile.Write(path, ant.Insect, seed, ReplayKind.Run, fixture.Replay);
             Debug.Log($"Insectum full run verified: seed {seed}, all 20 levels, all variants, {fixture.Replay.Count} normal commands.");
-        }
-
-        private static void VerifyOtherDoubleBosses(PhysicsFixture fixture)
-        {
-            GameSession session = fixture.Session;
-            Character ant = Character.Roster[(int)Insect.FireAnt];
-            fixture.Replay = null;
-            foreach (WorldId world in new[] { WorldId.Swamp, WorldId.Caves, WorldId.Desert, WorldId.Alien })
-            {
-                int level = RunWorlds.FirstLevel(world) + RunWorlds.LevelsPerWorld - 1;
-                int seed = Enumerable.Range(1000, 128).First(candidate =>
-                    RunWorlds.ChooseVariant(new LevelSeeds(candidate, level), RunWorlds.LevelsPerWorld) == LevelVariant.DoubleBoss);
-                session.StartGenerated(ant, seed, level);
-                ClearArena(fixture);
-                Require(session.Content.ExitUnlocked && session.Run.Alive, $"{world}'s double boss arena did not unlock.");
-                fixture.Step(new PlayerCommand(interactPressed: true));
-                Require(world == WorldId.Alien ? session.Phase == RunPhase.Cleared : session.Run.LevelNumber == level + 1,
-                    $"{world}'s double boss arena could not advance through its exit.");
-                Debug.Log($"Insectum double boss verified: {world}, seed {seed}, both telegraphs and one collected reward.");
-            }
         }
 
         private static void ClearArena(PhysicsFixture fixture)
