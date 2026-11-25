@@ -57,7 +57,7 @@ namespace Insectum.Game
             ? (int)ItemId.FluxCore - (int)ItemId.ExcavatorClaw + 1 : EnemySpec.All.Count;
 
         internal static void Draw(RenderTexture world, Camera camera, GameSession session, MenuPage menu, int selected, string seed,
-            bool editingSeed, bool paused, bool bossRush)
+            bool editingSeed, bool paused, bool bossRush, EncyclopediaSection encyclopediaTab, int encyclopediaPage)
         {
             if (Event.current.type != EventType.Repaint)
                 return;
@@ -101,6 +101,8 @@ namespace Insectum.Game
                 DrawMainMenu();
             else if (session.Phase == RunPhase.Selection && menu == MenuPage.Settings)
                 DrawSettings();
+            else if (session.Phase == RunPhase.Selection && menu == MenuPage.Encyclopedia)
+                DrawEncyclopedia(encyclopediaTab, encyclopediaPage);
             else if (session.Phase == RunPhase.Selection)
                 DrawSelection(selected, seed, editingSeed, bossRush);
             else

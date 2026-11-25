@@ -23,6 +23,8 @@ namespace Insectum.Game
         private bool paused;
         private float timeScaleBeforePause;
         private MenuPage menu = MenuPage.Main;
+        private EncyclopediaSection encyclopediaTab;
+        private int encyclopediaPage;
 
 #if DEVELOPMENT_BUILD
         private ForestReplay replay;
@@ -116,6 +118,8 @@ namespace Insectum.Game
                     UpdateMainMenu();
                 else if (menu == MenuPage.Settings)
                     UpdateSettings();
+                else if (menu == MenuPage.Encyclopedia)
+                    UpdateEncyclopedia();
                 else
                     UpdateSelection();
             }
@@ -131,8 +135,47 @@ namespace Insectum.Game
                 menu = MenuPage.Roster;
             else if (Input.GetKeyDown(KeyCode.S) || Click(ForestScreen.SettingsButton))
                 menu = MenuPage.Settings;
+            else if (Input.GetKeyDown(KeyCode.E) || Click(ForestScreen.EncyclopediaButton))
+            {
+                encyclopediaTab = EncyclopediaSection.Items;
+                encyclopediaPage = 0;
+                menu = MenuPage.Encyclopedia;
+            }
             else if (Input.GetKeyDown(KeyCode.Escape) || Click(ForestScreen.QuitButton))
                 Application.Quit();
+        }
+
+        private void UpdateEncyclopedia()
+        {
+            if (Input.GetKeyDown(KeyCode.Escape) || Click(ForestScreen.EncyclopediaBackButton))
+            {
+                menu = MenuPage.Main;
+                return;
+            }
+
+            EncyclopediaSection tab = encyclopediaTab;
+            if (Click(ForestScreen.EncyclopediaTab(EncyclopediaSection.Items))
+                || Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow))
+                tab = EncyclopediaSection.Items;
+            else if (Click(ForestScreen.EncyclopediaTab(EncyclopediaSection.Enemies))
+                || Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow))
+                tab = EncyclopediaSection.Enemies;
+
+            if (tab != encyclopediaTab)
+            {
+                encyclopediaTab = tab;
+                encyclopediaPage = 0;
+                return;
+            }
+
+            int pages = ForestScreen.EncyclopediaPageCount(encyclopediaTab);
+            if (pages <= 1)
+                return;
+
+            bool previous = Click(ForestScreen.EncyclopediaPrev) || Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow);
+            bool next = Click(ForestScreen.EncyclopediaNext) || Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow);
+            int change = (next ? 1 : 0) - (previous ? 1 : 0);
+            encyclopediaPage = Mathf.Clamp(encyclopediaPage + change, 0, pages - 1);
         }
 
         private void UpdateSettings()
@@ -300,7 +343,8 @@ namespace Insectum.Game
                 RenderTexture.active = previous;
                 display = nightView;
             }
-            ForestScreen.Draw(display, routeCamera, session, menu, selected, seedText, editingSeed, paused, bossRush);
+            ForestScreen.Draw(display, routeCamera, session, menu, selected, seedText, editingSeed, paused, bossRush,
+                encyclopediaTab, encyclopediaPage);
         }
 
         private static RenderTexture CreateNativeTarget(string label) =>
