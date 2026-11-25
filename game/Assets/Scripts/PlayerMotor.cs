@@ -59,6 +59,7 @@ namespace Insectum.Game
         private float previousVelocityY;
         private float highestFallPoint;
         private bool jumping;
+        private float gustDistance;
 
         public Rigidbody2D Body { get; }
         public Collider2D Shape { get; }
@@ -106,6 +107,7 @@ namespace Insectum.Game
         internal void Warp(Vector2 position)
         {
             Body.position = position;
+            gustDistance = 0f;
             Grounded = false;
             highestFallPoint = position.y;
             Launch(Vector2.zero);
@@ -121,8 +123,29 @@ namespace Insectum.Game
 
         public void ApplyImpulse(Vector2 velocity) => Launch(Body.linearVelocity + velocity);
 
+        internal void PushHorizontally(int direction, float distance) =>
+            gustDistance = direction * Mathf.Clamp(distance, 0f, 3f);
+
+        private void StepGust()
+        {
+            if (gustDistance == 0f)
+                return;
+
+            float direction = gustDistance < 0f ? -1f : 1f;
+            float distance = Mathf.Min(Mathf.Abs(gustDistance), 0.25f);
+            Vector2 sweep = Vector2.right * direction;
+            int count = Body.Cast(sweep, terrainFilter, hits, distance + 0.01f);
+            for (int i = 0; i < count; i++)
+                if (Vector2.Dot(hits[i].normal, sweep) < -0.15f)
+                    distance = Mathf.Min(distance, Mathf.Max(0f, hits[i].distance - 0.01f));
+
+            Body.position += sweep * distance;
+            gustDistance = distance < 0.249f ? 0f : Mathf.MoveTowards(gustDistance, 0f, distance);
+        }
+
         public void Step(PlayerCommand command, MotorControl control = default)
         {
+            StepGust();
             Vector2 velocity = Body.linearVelocity;
             Vector2 floor = Vector2.up;
             bool grounded = (followSlopes || velocity.y <= 0.05f) && TryGetFloor(out floor)

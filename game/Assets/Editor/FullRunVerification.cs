@@ -150,6 +150,12 @@ namespace Insectum.Game.Editor
                 BossFightBot.FightStagBeetle(fixture, boss, useHeavy);
                 return;
             }
+            if (boss.Brain is MireLich)
+            {
+                BossFightBot.FightMireLich(fixture, boss, useHeavy);
+                return;
+            }
+
             bool warned = false;
             bool attacked = false;
             int jump = 0;
@@ -165,7 +171,7 @@ namespace Insectum.Game.Editor
                 LevelEnemy.Phase phase = boss.AttackPhase;
                 warned |= phase == LevelEnemy.Phase.Warning;
                 attacked |= phase == LevelEnemy.Phase.Attacking;
-                bool dodgable = boss.Style is EnemyStyle.ChargeBoss or EnemyStyle.QuakeBoss or EnemyStyle.VolleyBoss;
+                bool dodgable = boss.Style is EnemyStyle.ChargeBoss or EnemyStyle.QuakeBoss;
                 bool dodge = dodgable && phase == LevelEnemy.Phase.Attacking && session.Motor.Grounded && jump == 0 && distance < 3f;
                 if (dodge)
                     jump = 22;

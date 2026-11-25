@@ -112,7 +112,7 @@ namespace Insectum.Game
             else if (index == moves + 3)
                 ShowHitboxes = !ShowHitboxes;
             else if (brain.Health.Alive)
-                brain.Damage.Receive(new DamageHit(DamageSource.Melee, brain.Health.Current));
+                brain.Health.TakeDamage(brain.Health.Current);
             session.Content?.ShowStatus($"Boss: {commands[index]}");
         }
 

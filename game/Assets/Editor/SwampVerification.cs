@@ -23,7 +23,7 @@ namespace Insectum.Game.Editor
                 "Swamp generated a foreign encounter or hazard.");
             VerifyGas();
             VerifyProgression(fixture);
-            Debug.Log("Insectum Swamp playthrough verified: vault chest and a 5-energy Worm mud plug, readable gas, three tunnel levels, Mire Bell volley, Reed Flask, and gated exit.");
+            Debug.Log("Insectum Swamp playthrough verified: vault chest and a 5-energy Worm mud plug, readable gas, three tunnel levels, Mire Lich, Reed Flask, and gated exit.");
         }
 
         private static void VerifyGas()
@@ -59,27 +59,23 @@ namespace Insectum.Game.Editor
             }
 
             LevelEnemy boss = session.Content.Enemies.Single(enemy => enemy.Boss);
-            Require(boss.Style == EnemyStyle.VolleyBoss && !session.Content.ExitUnlocked && boss.Name == "Mire Bell",
+            Require(boss.Brain is MireLich && boss.Name == "Mire Lich" && boss.Damage.Health.Maximum == 40 && !session.Content.ExitUnlocked,
                 "Swamp did not enter its own boss arena.");
+            Require(DevMode.BossCommands(session).SequenceEqual(new[]
+            {
+                "Proboscis Dive", "Blood Spray", "Bog Bubbles", "Larva Call", "Land and Feed", "Proboscis Jab",
+                "Wing Buffet", "Subsurface Probe", "Takeoff", "PHASE 2", "PHASE 3", "FREEZE AI",
+                DevMode.ShowHitboxes ? "HIDE BOXES" : "SHOW BOXES", "KILL"
+            }), "Mire Lich's dev commands are missing or out of order.");
             Walk(fixture, () => session.AtExit, 360);
             fixture.Step(new PlayerCommand(interactPressed: true));
             Require(session.Phase == RunPhase.Playing && run.LevelNumber == FirstLevel + 3,
                 "Swamp's exit opened before defeating the boss.");
 
-            bool sawVolley = false;
-            bool sawWarning = false;
-            for (int tick = 0; tick < 800 && boss.Damage.Health.Alive && run.Alive; tick++)
-            {
-                float dx = boss.Position.x - session.Motor.Body.position.x;
-                sawVolley |= boss.AttackPhase == LevelEnemy.Phase.Attacking;
-                sawWarning |= boss.AttackPhase == LevelEnemy.Phase.Warning;
-                bool hit = Mathf.Abs(dx) < 1.95f && sawVolley;
-                int move = Mathf.Abs(dx) > 1.25f || (hit && session.Motor.Facing * dx < 0f) ? Math.Sign(dx) : 0;
-                fixture.Step(new PlayerCommand(move, attackPressed: hit, abilityPressed: hit));
-            }
-            Require(sawVolley && sawWarning && !boss.Damage.Health.Alive && run.Alive,
-                $"Swamp seed {seed}: Mire Bell did not warn, volley and lose to normal attacks. Boss health {boss.Damage.Health.Current}, player health {run.Health}.");
-            Require(!session.Content.ExitUnlocked, "Mire Bell's exit opened before collecting the boss prize.");
+            BossFightBot.FightMireLich(fixture, boss, useHeavy: true);
+            Require(session.Content.Features.Count(feature => feature.Kind == LevelFeatureKind.Nektar && feature.Amount == 4) == 1,
+                "Mire Lich did not drop four Nektar after settling.");
+            Require(!session.Content.ExitUnlocked, "Mire Lich's exit opened before collecting the boss prize.");
             LevelFeature prize = session.Content.Features.Single(feature => feature.Kind == LevelFeatureKind.BossReward);
             MoveTo(fixture, prize.Position.x, () => Vector2.Distance(prize.Position, session.Motor.Body.position) < 1.2f, 220);
             fixture.Step(new PlayerCommand(interactPressed: true));
@@ -97,7 +93,7 @@ namespace Insectum.Game.Editor
                     && run.Inventory.Active == ItemId.SeedBomb && run.Inventory.Count(ItemId.ReedFlask) == 2
                     && run.Energy == ant.MaxEnergy,
                 "Swamp's unlocked exit did not carry the existing run into Caves.");
-            Debug.Log($"Insectum Swamp playthrough: seed {seed}, Mire Bell cleared, Caves entered with run state intact.");
+            Debug.Log($"Insectum Swamp playthrough: seed {seed}, Mire Lich cleared, Caves entered with run state intact.");
         }
 
     }

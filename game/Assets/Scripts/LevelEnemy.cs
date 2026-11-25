@@ -12,7 +12,6 @@ namespace Insectum.Game
         ChargeBoss,
         ReedRunner,
         Skimmer,
-        VolleyBoss,
         CaveHopper,
         GlowFly,
         QuakeBoss,
@@ -35,7 +34,7 @@ namespace Insectum.Game
         public readonly float Radius;
         public readonly Color32 Tint;
         internal readonly BossKind Kind;
-        internal bool IsBoss => Kind != BossKind.None || Style is EnemyStyle.ChargeBoss or EnemyStyle.VolleyBoss
+        internal bool IsBoss => Kind != BossKind.None || Style is EnemyStyle.ChargeBoss
             or EnemyStyle.QuakeBoss or EnemyStyle.BurrowBoss or EnemyStyle.BeamBoss;
 
         public EnemySpec(string name, EnemyStyle style, int hearts, int nektar, float radius, Color32 tint)
@@ -66,7 +65,7 @@ namespace Insectum.Game
                 (ForestContent.OldOakhorn, WorldId.Forest),
                 (SwampContent.ReedRunner, WorldId.Swamp),
                 (SwampContent.MarshSkimmer, WorldId.Swamp),
-                (SwampContent.MireBell, WorldId.Swamp),
+                (SwampContent.Queen, WorldId.Swamp),
                 (CavesContent.Hopper, WorldId.Caves),
                 (CavesContent.GlowFly, WorldId.Caves),
                 (CavesContent.Faultback, WorldId.Caves),
@@ -93,14 +92,17 @@ namespace Insectum.Game
             return null;
         }
 
-        internal static Sprite Portrait(EnemySpec spec) => spec.Kind == BossKind.StagBeetle
-            ? StagBeetleView.IdleFrame : spec.ActorArt(0);
+        internal static Sprite Portrait(EnemySpec spec) => spec.Kind switch
+        {
+            BossKind.StagBeetle => StagBeetleView.IdleFrame,
+            BossKind.MireLich => MireLichView.Portrait,
+            _ => spec.ActorArt(0)
+        };
 
         internal Sprite ActorArt(int frame) => Style switch
         {
             EnemyStyle.ReedRunner => SwampArt.Actor(0, frame),
             EnemyStyle.Skimmer => SwampArt.Actor(1, frame),
-            EnemyStyle.VolleyBoss => SwampArt.Actor(2, frame),
             EnemyStyle.CaveHopper => CavesArt.Actor(0, frame),
             EnemyStyle.GlowFly => CavesArt.Actor(1, frame),
             EnemyStyle.QuakeBoss => CavesArt.Actor(2, frame),
@@ -143,7 +145,7 @@ namespace Insectum.Game
         private readonly bool echo;
         // A reworked boss's own logic and art, or null for every other enemy.
         private readonly Boss brain;
-        private readonly StagBeetleView view;
+        private readonly IBossView view;
         private Vector2 position;
         private int tick;
         private int remaining;
@@ -178,7 +180,7 @@ namespace Insectum.Game
         public Phase AttackPhase { get; private set; }
 
         internal LevelEnemy(Transform parent, Sprite pixel, EnemySpec spec, Vector2 landing, int patrolOffset,
-            Action<Vector2, Vector2> fire, bool echo = false, uint seed = 0)
+            Action<Vector2, Vector2> fire, bool echo = false, uint seed = 0, GameSession session = null)
         {
             this.spec = spec;
             this.patrolOffset = patrolOffset;
@@ -186,11 +188,21 @@ namespace Insectum.Game
             this.fire = fire;
             if (spec.Kind != BossKind.None)
             {
-                var beetle = new StagBeetle(BossArena.Hall, landing, seed);
-                brain = beetle;
+                brain = spec.Kind switch
+                {
+                    BossKind.StagBeetle => new StagBeetle(BossArena.Hall, landing, seed),
+                    BossKind.MireLich => new MireLich(BossArena.Hall, landing, seed, new BossTerrain(session.Terrain.Cells),
+                        session.Combat, session.Motor.PushHorizontally),
+                    _ => throw new ArgumentOutOfRangeException(nameof(spec), spec.Kind, "Unknown boss kind")
+                };
                 Damage = brain.Damage;
                 if (pixel != null)
-                    view = new StagBeetleView(parent, beetle);
+                    view = brain switch
+                    {
+                        StagBeetle beetle => new StagBeetleView(parent, beetle),
+                        MireLich queen => new MireLichView(parent, queen),
+                        _ => throw new InvalidOperationException($"{brain.Name} has no view")
+                    };
                 return;
             }
 
@@ -289,7 +301,6 @@ namespace Insectum.Game
                             burrowTargetX = Mathf.Clamp(target.Position.x, -Lane, Lane);
                         SetPhase(Phase.Warning, spec.Style switch
                         {
-                            EnemyStyle.VolleyBoss => 51,
                             EnemyStyle.QuakeBoss => 44,
                             EnemyStyle.BurrowBoss => 42,
                             EnemyStyle.BeamBoss => 50,
@@ -311,12 +322,11 @@ namespace Insectum.Game
                         StepBurrow(target);
                     else if (spec.Style == EnemyStyle.BeamBoss)
                         StepBeam(target);
-                    else if (!Flies && spec.Style != EnemyStyle.VolleyBoss && !struck)
+                    else if (!Flies && !struck)
                         TryStrike(target);
                     if (remaining == 0)
                         SetPhase(Phase.Recovery, spec.Style switch
                         {
-                            EnemyStyle.VolleyBoss => 69,
                             EnemyStyle.QuakeBoss => 75,
                             EnemyStyle.BurrowBoss => 62,
                             EnemyStyle.BeamBoss => 87,
@@ -342,7 +352,6 @@ namespace Insectum.Game
             quakeRadius = 0f;
             SetPhase(Phase.Attacking, spec.Style switch
             {
-                EnemyStyle.VolleyBoss => 27,
                 EnemyStyle.QuakeBoss => 37,
                 EnemyStyle.BurrowBoss => 44,
                 EnemyStyle.BeamBoss => BeamSteps,
@@ -350,15 +359,7 @@ namespace Insectum.Game
                 _ => 9
             });
             Vector2 aim = (target.Position - Position).normalized;
-            if (spec.Style == EnemyStyle.VolleyBoss)
-            {
-                if (aim == Vector2.zero)
-                    aim = Vector2.right * direction;
-                fire(Position, Quaternion.Euler(0f, 0f, 24f) * aim);
-                fire(Position, aim);
-                fire(Position, Quaternion.Euler(0f, 0f, -24f) * aim);
-            }
-            else if (Flies && aim != Vector2.zero)
+            if (Flies && aim != Vector2.zero)
                 fire(Position, aim);
         }
 

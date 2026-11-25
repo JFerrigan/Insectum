@@ -3,10 +3,15 @@ using UnityEngine;
 
 namespace Insectum.Game
 {
+    internal interface IBossView
+    {
+        void Update();
+    }
+
     // Draws Old Oakhorn from its logic each fixed step: the frame for its act, a jaw glow while it winds
     // up, a white wash on hits and the last frames before an attack, a dull tint during openings, and the
     // markers that say where an attack will land.
-    internal sealed class StagBeetleView
+    internal sealed class StagBeetleView : IBossView
     {
         // Frame ranges in ForestBoss.png, in the order ArtSource/boss_forest_pixels.py draws them.
         private static class Anims
@@ -84,7 +89,7 @@ namespace Insectum.Game
             glows[index] ??= ForestArt.Frame(glowAtlas ??= ForestArt.Load("ForestBossGlow"), index % Columns, index / Columns,
                 CellWidth, CellHeight, new Vector2(0.5f, GroundPixels / CellHeight));
 
-        internal void Update()
+        public void Update()
         {
             tick++;
             if (hitFlash > 0)

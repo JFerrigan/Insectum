@@ -152,7 +152,7 @@ namespace Insectum.Game
 
         internal void AddEnemy(EnemySpec spec, Vector2 landing, int patrolOffset, bool echo = false, uint seed = 0)
         {
-            var enemy = new LevelEnemy(parent, pixel, spec, landing, patrolOffset, FireDart, echo, seed);
+            var enemy = new LevelEnemy(parent, pixel, spec, landing, patrolOffset, FireDart, echo, seed, session);
             enemies.Add(enemy);
             session.Combat.AddTarget(enemy.Damage);
             enemy.Damage.Resolved += (hit, outcome) =>

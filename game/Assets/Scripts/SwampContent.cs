@@ -8,8 +8,8 @@ namespace Insectum.Game
             new Color32(111, 182, 142, 255));
         internal static readonly EnemySpec MarshSkimmer = new("Marsh skimmer", EnemyStyle.Skimmer, 2, 1, 0.35f,
             new Color32(101, 190, 193, 255));
-        internal static readonly EnemySpec MireBell = new("Mire Bell", EnemyStyle.VolleyBoss, 8, 4, 0.78f,
-            new Color32(123, 188, 136, 255));
+        internal static readonly EnemySpec Queen = new(MireLich.Title, EnemyStyle.ArenaBoss, MireLich.Hearts, 4, 0.8f,
+            new Color32(202, 81, 103, 255), BossKind.MireLich);
 
         internal static void Populate(LevelContent content, LevelLayout layout)
         {
@@ -27,7 +27,7 @@ namespace Insectum.Game
                         content.AddEnemy(enemy, marker.Position, encounters.Next(96));
                         break;
                     case LevelMarkerKind.Boss:
-                        content.AddEnemy(MireBell, marker.Position, 0);
+                        content.AddEnemy(Queen, marker.Position, 0, seed: layout.Seeds.Encounters);
                         break;
                     case LevelMarkerKind.Shop:
                         content.AddFeature(LevelFeatureKind.Shop, marker.Position + Vector2.up * 0.52f, 5,

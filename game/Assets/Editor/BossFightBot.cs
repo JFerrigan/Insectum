@@ -110,5 +110,39 @@ namespace Insectum.Game.Editor
                 + $"{beetle.Health.Current}, player health {session.Run.Health}, charge seen {sawCharge}, stuck seen {sawStuck}, "
                 + $"position {session.Motor.Body.position}.");
         }
+        internal static void FightMireLich(PhysicsFixture fixture, LevelEnemy boss, bool useHeavy)
+        {
+            GameSession session = fixture.Session;
+            var queen = (MireLich)boss.Brain;
+            var driver = new MireLichDriver();
+            bool sawWarning = false, sawOpening = false;
+            for (int tick = 0; tick < 60 * 240 && !queen.DeathFinished && session.Run.Alive; tick++)
+            {
+                sawWarning |= queen.InWarning;
+                sawOpening |= queen.Opening;
+                bool heavy = useHeavy && session.Run.Character.Insect == Insect.FireAnt
+                    && session.Run.Energy >= CharacterTuning.Current.fireAntAttackEnergy;
+                MireLichDriver.Input input = driver.Step(queen, session.Motor.Body.position, session.Motor.Body.linearVelocity.x,
+                    session.Motor.Grounded, session.Run.Inventory.MeleeReachBonus, heavy);
+                fixture.Step(new PlayerCommand(input.Move, jumpPressed: input.Jump, jumpHeld: input.HoldJump,
+                    attackPressed: input.Strike, abilityPressed: input.Heavy));
+
+                if (queen.State == Boss.Mode.Dying)
+                    Require(!session.Content.ExitUnlocked && !HasBossReward(session.Content),
+                        "Mire Lich placed her reward before the body settled.");
+            }
+            Require(queen.DeathFinished && session.Run.Alive && sawWarning && sawOpening && queen.Bounces == 1,
+                $"Mire Lich fight for {session.Run.Character.Name} did not finish with ordinary commands. "
+                + $"Boss health {queen.Health.Current}, player health {session.Run.Health}, position {session.Motor.Body.position}.");
+        }
+
+        private static bool HasBossReward(LevelContent content)
+        {
+            foreach (LevelFeature feature in content.Features)
+                if (feature.Kind == LevelFeatureKind.BossReward)
+                    return true;
+            return false;
+        }
+
     }
 }
