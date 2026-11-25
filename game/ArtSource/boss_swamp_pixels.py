@@ -253,10 +253,10 @@ def effect_atlas():
 def death_preview(atlas, count):
     """Build a sprite preview of the death timing for art review."""
     rng = random.Random(0x1D70C0D)
-    droplets = [[54.0, 34.0, rng.uniform(-5, 5) * 16, -rng.uniform(1.75, 9.75) * 16,
+    droplets = [[73.0, 35.0, rng.uniform(-5, 5) * 16, -rng.uniform(1.75, 9.75) * 16,
                  rng.choice((1, 1, 2)), 0] for _ in range(40)]
     frames = []
-    hold, y, velocity, bounced = 0, 45.0, 0.0, False
+    hold, y, velocity, bounced = 0, 28.0, 0.0, False
     for step in range(180):
         if step < 30:
             pose = 24 + min(3, step * 4 // 30)

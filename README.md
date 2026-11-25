@@ -20,7 +20,9 @@
 
 Tooling: `tools/map.sh <seed> [level|all]` renders generated levels to PNG and a text listing without Unity. See `game/README.md` → *Map generator*. `tools/bosscheck.sh` runs the bosses' fight logic headless, and `tools/compilecheck.sh` compiles every script against Unity's DLLs while the editor is open.
 
-Bosses: `docs/08_BOSS_REWORK_PLAN.md` says what each world's boss does; `docs/09_BOSS_DESIGN_HANDOFF.md` says how to build one (the designer's preferences, workflow, recipe, numbers and lessons from Old Oakhorn).
+Old Oakhorn guards Forest on level 4, and Mire Lich guards Swamp on level 8. The
+[boss rework plan](docs/08_BOSS_REWORK_PLAN.md) covers each world's fight.
+The [design handoff](docs/09_BOSS_DESIGN_HANDOFF.md) describes how to build one.
 
 ## Important qualifications
 

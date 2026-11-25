@@ -1,8 +1,9 @@
 # Boss Design Handoff
 
 **For:** whoever builds the next boss, person or agent.
-**Status (November 2026):** Forest's Old Oakhorn (stag beetle) is the finished reference boss. Swamp, Caves,
-Desert and Alien still run the old one-move bosses. Their agreed designs are in
+**Status (November 2026):** Forest's Old Oakhorn (stag beetle) is the finished reference boss.
+Mire Lich is implemented in Swamp and awaits playtest. Caves, Desert and Alien
+still run the old fights. Their agreed designs are in
 `docs/08_BOSS_REWORK_PLAN.md`, sections 4–7. This doc covers **how** to build one so it comes out as
 well as the beetle did. The plan covers **what** each boss does.
 
@@ -123,15 +124,16 @@ time and the scripted fights.
 ## 4. Recipe for the next boss
 
 **0. Generalize what the beetle left hard-coded.** Do this first, as its own commits.
-- `LevelEnemy`'s constructor always builds a `StagBeetle`, and its view field is a `StagBeetleView`.
-  Switch on `spec.Kind` and give views a small `IBossView { void Update(); }`.
+- `LevelEnemy` picks the logic and `IBossView` by `BossKind`. Extend both
+  switches and the encyclopedia portrait switch for the next boss.
 - `BossCheck`'s attack and warning sets and its `Fighter` are beetle-only. Either add per-boss check
   classes, or give `Boss` generic flags (`InWarning`, `Attacking`, `Opening`, `Airborne`) so the
   warning, opening and bounds checks run for every boss.
-- The art script mixes general helpers into the beetle code. Move `rotate`, `ellipse`, the `Pose`
-  pattern, `contact_sheet`, `hurtbox_sheet`, `effects` and the shell-only coverage measure into
-  `ArtSource/boss_pixels.py`.
-- The mosquito needs `BossProjectile` (plan section 2.4). Its blood globs arc under gravity and splash.
+- `ArtSource/boss_pixels.py` shares geometry, poses, effects, and preview
+  helpers. The Swamp generator writes the same fitted circles the game uses.
+- `BossProjectile` sweeps against `BossTerrain`, which reads the live hex
+  dictionary. Mire Lich uses it for globs and uses the same terrain query
+  for landing and dive impacts.
 
 **1. Design sheet.** Fill in, per move:
 - warning steps (**at least 24**; `Boss.MinimumWarningSteps`)
@@ -347,11 +349,10 @@ tools/map.sh 1234 4 10
 
 - Unity batch verification with `BossFightBot` has never run. (Unity's own editor compile of the beetle
   code is clean, and its textures imported with point filtering.)
-- Swamp, Caves, Desert and Alien still use the old bosses (`EnemyStyle` ChargeBoss through BeamBoss, in
-  `LevelEnemy`). The plan's cleanup step deletes them once all four are replaced.
+- Caves, Desert and Alien still use their older bosses. The cleanup step
+  removes the remaining legacy styles once their reworks are in place.
 - The plan's open questions:
   - boss names
-  - whether the mosquito can be hurt in the air
   - the Throne's piper mechanic
   - whether the dunes regrow
-- Possibly the Swamp dive line and the Throne aim lines, given the designer's feedback on markers.
+- The Throne aim lines remain an open art decision.

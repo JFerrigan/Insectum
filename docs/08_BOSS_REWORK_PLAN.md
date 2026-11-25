@@ -1,14 +1,16 @@
 # Boss Rework — Implementation Plan
 
-**Status:** Step 0 and the stag beetle (Step 1) are built, November 2026. Swamp, Caves, Desert and Alien
-are not started. **To build the next one, follow `docs/09_BOSS_DESIGN_HANDOFF.md`.** What changed from this plan
-while building:
+**Status:** Old Oakhorn and Mire Lich are implemented. Mire Lich is at the
+playtest checkpoint with compilation checked. The headless balance checks,
+Unity progression, seed 1051, and art sign-off are pending. Caves, Desert,
+and Alien still use their older fights. Follow `docs/09_BOSS_DESIGN_HANDOFF.md`
+for the next boss.
 
 - **Art:** the beetle is not a runtime rig. `ArtSource/boss_forest_pixels.py` poses a parametric beetle
   and draws each frame crisply, so nothing is rotated at runtime. Runtime work is frame playback, the
   jaw-glow layer, a white or amber wash (`Resources/BossFlash.shader`), tints and effects.
-- **Projectiles:** `BossProjectile` waits for the mosquito. The beetle's shockwaves and falling bark are
-  simple hitboxes in its own logic.
+- **Projectiles:** Mire Lich uses `BossProjectile` to sweep each glob against
+  live terrain. The beetle's shockwaves and falling bark use its own hitboxes.
 - **Beetle health:** 30, not 36. A careful scripted player took about 140 s at 36.
 - **Air Gore:** if you're on the floor when it aims, it flies a high bombing run and drops bark with
   shadows under it. Ramming at floor height left about 0.35 s to jump a 5.5-unit body. If you're up on
@@ -18,8 +20,6 @@ while building:
 - **Hurtboxes:** fitted to each pose's art by the art script and padded 3 px past it, so hits that look
   like they land do. Contact uses circles at 85 % of the art. Charges ram with the head and jaws only;
   the beetle's art is 6.3 units long, too long to jump whole.
-- **Not yet run:** Unity's batch verification, with the new `Editor/BossFightBot.cs`. The editor had the
-  project open.
 **Scope:** Replace all five bosses with new, world-specific fights: a shared boss framework, a full-screen
 health bar, part-based art and animation, telegraphed moves, and death animations. Double boss is switched
 off until it gets its own design.
@@ -101,7 +101,7 @@ New files in `Assets/Scripts/Bosses/`.
 - **`LevelEnemy`** stays the handle that the level, items and tests already use (`Damage`, `Position`, `Boss`,
   `Name`, `Nektar`, burn). A boss `LevelEnemy` holds a `Boss` and passes `Step`, `Position` and art to it.
   Flame Glands burn, Flux Core and the reward logic keep working unchanged.
-- `EnemySpec` gets a `BossKind` (`StagBeetle`, `Mosquito`, `Centipede`, `Sandworm`, `BlindThrone`) that picks
+- `EnemySpec` gets a `BossKind` (`StagBeetle`, `MireLich`, `Centipede`, `Sandworm`, `BlindThrone`) that picks
   the `Boss` subclass. The five old boss `EnemyStyle` values are deleted once their worlds are replaced.
 
 ### 2.3 Rig and animation
@@ -299,11 +299,11 @@ before starting Swamp**, because the beetle sets the template for the other four
 
 ---
 
-## 4. Swamp — Mosquito queen "Mire Bell"
+## 4. Swamp — Mosquito queen "Mire Lich"
 
-*Keeps the old Swamp boss name: the bloated abdomen is the bell.*
-
-**Feel:** mostly airborne and hard to reach. She lands to feed, and that's when you hurt her. Health 40.
+Mire Lich replaces the level 8 volley fight. She has 40 health and takes
+damage whenever you can reach her. Landing to feed and getting stuck after a
+dive give all five insects an opening.
 
 **Size and shape:**
 - Head and thorax about 2.5 units. Proboscis 2.5 units, separate part so it extends and retracts.
@@ -311,13 +311,13 @@ before starting Swamp**, because the beetle sets the template for the other four
 - Wings span about 8 units: translucent, a 4-frame blur, drawn behind the body.
 - **The blood abdomen** is the focus: a glossy, veined, dark-red sac. It starts about 2 units across and
   swells with each feeding, through 3 stages up to 3.5 units. The skin stretches and gets brighter and more
-  translucent as it fills. It sloshes and wobbles in code (squash and stretch against her movement).
+  translucent as it fills. The feeding frames make the sac pulse.
 
 ### Hurtboxes
 | Box | Notes |
 |---|---|
 | Abdomen | Weak point, ×2. The bigger it gets, the bigger the target. |
-| Thorax, head | ×1 |
+| Thorax, head, proboscis | ×1 |
 | Wings, legs | No hurtbox. Hits pass through. |
 
 ### Air behaviour (about 75 % of the fight)
@@ -325,9 +325,8 @@ She hovers in the top third of the arena (y 11–15) with a lazy figure-eight dr
 before attacks. Most of the time only Spider, Dragonfly or the top platform can reach her.
 
 1. **Proboscis Dive**
-   - *Telegraph (0.7 s):* hovers in place and aims; a dotted red line runs from the proboscis to the target
-     point.
-   - *Attack:* dives along the line at 18 units/s and stabs into the floor or platform.
+   - *Telegraph (0.7 s):* hovers in an aiming pose with a locked ground shadow.
+   - *Attack:* sweeps toward the impact at 18 units/s and stabs into the floor or platform.
    - *Stuck (0.6 s):* proboscis in the ground, close to the ground. A short opening (abdomen in reach). Then she
      pulls out and climbs.
 2. **Blood Spray**
@@ -350,7 +349,7 @@ After 2–3 air moves she lands.
   abdomen ×2. Feeding grows the abdomen one stage, capped at the stage for the current phase.
 
 While grounded she has only **weak, small attacks that leave openings:**
-- **Proboscis Jab:** short forward stab, 1.5 units, small box. Telegraph 0.45 s, recovery 0.8 s.
+- **Proboscis Jab:** short forward stab, 1.5 units, small box. Telegraph 0.6 s, recovery 0.8 s.
 - **Wing Buffet:** a gust that pushes the player back about 3 units with no damage. Telegraph 0.4 s, recovery
   0.6 s.
 
@@ -379,6 +378,27 @@ blur faster for 0.4 s.
 - A bot beats it with ordinary commands by hitting her when she lands or dives.
 
 **Checkpoint 2:** contact sheet, then playable. Short playtest pause.
+
+### Mire Lich build sheet
+
+Timings are fixed steps at 60 Hz. Warnings end in the shared three-step white flash. The dive uses her aim pose and a ground shadow at the locked impact point. The landing uses a soft shadow. Both use the actual surface under the target, including platforms. Every opening has a dull tint and no contact damage.
+
+| Move | Phase | Warning | Active | Recovery | Dodge |
+|---|---|---:|---|---:|---|
+| Proboscis Dive | All | 42 | Until impact at 18 u/s. Only the extended proboscis sweeps along the dive path. | 36 steps stuck | Run sideways away from her approach when the shadow stops. Move behind her when she lands. |
+| Blood Spray | All | 36 | One release of 3, 5 or 7 arcing globs by phase. Globs splash on terrain and leave puddles for 90 steps. | 36 steps or until the projectiles and puddles clear, whichever is longer | Move across the gaps in the fan or use a platform as cover. Avoid or jump across each splash site. |
+| Bog Bubbles | 2–3 | 30 | One release of 2 or 3 drifting bubbles by phase. They expire in 240 steps and let off a small cloud. | 36 steps or until the bubbles and clouds clear, whichever is longer | Walk away from the slow bubbles or strike them to pop them safely. |
+| Larva Call | 3 | 30 | Drops up to two 2-HP larvae, with a cap of three alive. The drop is harmless. Each larva locks its dart path for at least 24 steps between queen attacks. | 36 steps | Move perpendicular to the larva's locked dart path or strike it out of the air. |
+| Landing and Feeding | All | 36 | Descend to the marked surface and feed for 150 steps. The landing and feeding are safe. | One ground move, then a 24-step takeoff warning | Approach from either side during feeding. Growth is capped by phase. |
+| Proboscis Jab | All | 36 | 8 steps. The tip reaches 1.5 units forward in the locked direction. | 48 steps | Back out of the jab or step behind her. |
+| Wing Buffet | All | 24 | One horizontal gust of up to 3 units of push. No damage. | 36 steps | Back out of the gust or move behind her. |
+| Subsurface Probe | All, reactive | 42 | 10 steps in a column 1.8 units wide and up to 3.4 units below the surface | 48 steps stuck | Move sideways when the proboscis points straight down and locks over the surface. |
+
+- **Underfloor counter.** Subsurface Probe is a vertical variant of the dive. It answers a nearby player dug into the floor or a landed upward strike. She draws the proboscis back before the stab, then leaves her abdomen exposed while pulling it free.
+- **Hurtboxes.** Use fitted circles for the thorax, head, solid proboscis and abdomen. Thorax, head and proboscis take normal damage. The abdomen takes double and grows from about 2 to 3.5 units across. Wings, antennae and legs are outside the hurtboxes. The default is that a reachable aerial hit counts.
+- **Dive and jab clearance.** Both are designed for a lateral dodge with the ordinary 6.5 u/s run. A 42-step lock gives 4.55 units at full speed. A 1.8-unit target column plus the largest player radius needs 1.33 units of displacement from its center. The jab gives 3.90 units at full speed and reaches at most 1.93 units once the same radius is included. Check both from rest in the headless fight and add margin for turnarounds.
+- **Puddle clearance.** Limit a puddle to 1.4 units wide and 0.2 units high. The player must clear 2.26 units horizontally including their diameter. At 6.5 u/s that takes 0.35 s. A 12.5 u/s jump under 38 u/s² gravity gives about 0.62 s above 0.2 units, with room for takeoff and landing. Each independent splash has a visible edge.
+- **Death.** Keep the 30-step swelling, three-frame rupture, harmless blood droplets and fading splatter. The emptied queen falls, bounces once and darkens. Four Nektar and the Reed Flask appear after she settles. Claiming the Flask unlocks the exit.
 
 ---
 
@@ -612,7 +632,7 @@ playing, drift down and dissolve. The reward appears, then the final exit opens.
 ---
 
 ## 8. Cleanup (Step 6)
-- Delete the old boss styles, specs and art rows (`ChargeBoss`/`VolleyBoss`/`QuakeBoss`/`BurrowBoss`/`BeamBoss`,
+- Delete the old boss styles, specs and art rows (`ChargeBoss`/`QuakeBoss`/`BurrowBoss`/`BeamBoss`,
   `Barkback`, `Faultback`, `Dune Maw`, `Crown Relay`, the `Actors.png` row 7 and row 2 of each world's actors
   sheet), plus the old boss code in `LevelEnemy`.
 - Update `game/README.md` (each world's boss paragraph, double boss) and
@@ -630,7 +650,7 @@ playing, drift down and dissolve. The reward appears, then the final exit opens.
 |---|---|---|
 | 0 | Hurtboxes; Boss, rig and effects base; projectiles; shake; boss bar and name card; double boss off; dev panel | Old bosses still work with the new bar |
 | 1 | Stag beetle | **Contact sheet → your OK → playable → your playtest** |
-| 2 | Mosquito | Contact sheet → playable |
+| 2 | Mire Lich | Contact sheet and death preview → playtest |
 | 3 | Centipede | Contact sheet → playable |
 | 4 | Desert dune map and sandworm | Arena render and contact sheet → playable |
 | 5 | Blind Throne | Contact sheet → playable |
@@ -645,11 +665,9 @@ in the editor with the dev panel's BOSS row.
 ---
 
 ## 10. Open questions for you
-1. **Names:** Old Oakhorn, Mire Bell, Faultline, (sandworm?), The Blind Throne. Keep, change, or leave to me?
+1. **Remaining names:** Faultline, the sandworm, and The Blind Throne.
 2. **Fight length:** health targets aim for about 60 s (beetle) up to about 2 min (Throne) for a decent player.
    Shorter or longer?
-3. **Mosquito in the air:** the plan lets her take damage in the air when you can reach her, but she's mostly
-   out of reach. Should she instead be fully immune until she lands?
-4. **Pipers:** is "kill the court to wake the god" the right core for the Alien fight, or do you want it to be
+3. **Pipers:** is "kill the court to wake the god" the right core for the Alien fight, or do you want it to be
    damageable more directly?
-5. **Desert dunes:** let the worm permanently chew them up, or build the sand-refill extension so they regrow?
+4. **Desert dunes:** let the worm permanently chew them up, or build the sand-refill extension so they regrow?

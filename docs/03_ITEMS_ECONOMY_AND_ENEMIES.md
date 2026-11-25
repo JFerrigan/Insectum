@@ -94,6 +94,10 @@ Currency is spelled **Nektar**. It is found visibly, unearthed by digging terrai
 
 One world-ending boss per world (provisionally level 4); areas may mix destructible and indestructible terrain. Boss victory grants an item. Environments/boss enemies change with biome; certain recurring enemy motifs are allowed.
 
+Mire Lich is the 40-health Swamp boss on level 8. Her abdomen takes double
+damage and grows after feeding. Her defeat drops four Nektar after the death
+animation. Claiming the Reed Flask unlocks the exit to Caves.
+
 **Open:** Boss identities, phases, health, destruction rules, unlock effects, double-boss variant implementation, and whether every boss is always mandatory. Concept boss art is **illustrative** only; no named 'Hive Matriarch' is finalized.
 
 ## Traps and level variants

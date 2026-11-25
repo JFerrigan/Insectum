@@ -97,10 +97,21 @@ while contact stays a little inside, so a hit that looks like it lands does.
 in `Builds/BossPreviews/forest_hurtboxes.png`. Its jaws are armored, so hits
 there clank (a downward strike still bounces off them). When it dies it falls to its knees, then onto its belly,
 before the reward appears. Take the reward to enter the four Swamp levels.
-Watch for the green bubbles before a gas vent opens. The mud plug under a Swamp
-chest vault costs Worm five energy. Reed Flask
-adds ten energy per stack to each energy sap pickup. Defeat Mire Bell and
-claim its prize to enter Caves. Look for falling crystal warnings and jump
+Watch for the green bubbles before a gas vent opens. The mud plug under a
+Swamp chest vault costs Worm five energy.
+
+Mire Lich guards level 8 with 40 health. You can hit her whenever you can
+reach her. Her abdomen takes double damage and grows when she finishes
+feeding. The dive and landing lock a shadow on the terrain. Run out of the
+dive path, use platforms as cover from blood globs, and jump the puddles.
+Strike Bog Bubbles to pop them safely, and step out of each larva's warned
+dart. On the ground, back away from the jab, gust, or Subsurface Probe.
+Touching her is safe while she feeds or recovers. Once her abdomen bursts
+and her body settles, collect four Nektar near the body and claim the Reed
+Flask to unlock the exit to Caves. Reed Flask adds ten energy per stack to
+each energy sap pickup.
+
+Look for falling crystal warnings and jump
 over Faultback's ground waves. The soft-stone plug costs Worm twelve energy.
 Prism Fang adds 0.35 world units per stack to melee reach.
 
@@ -172,6 +183,8 @@ regenerate that world's textures in `Assets/Resources/PixelArt`.
 writes a comparison sheet to `Builds/SpritePreviews/`.
 `boss_forest_pixels.py` draws Old Oakhorn's frames, its jaw glow and the
 shared boss effects, and writes a contact sheet to `Builds/BossPreviews/`.
+`boss_swamp_pixels.py` draws Mire Lich's three stages, generates the fitted
+circles, and writes a contact sheet, overlay, and death preview to that folder.
 
 ## Boss check (no Unity needed)
 
@@ -185,7 +198,8 @@ checks that each attack's warning lasts at least 24 steps with nothing live
 during it, and that openings never hurt on contact. It reports the time
 airborne per phase, checks the boss stays in the hall, and has a scripted
 player win a fight per seed (default 12), reporting fight length and hits
-taken by move. In the game, the dev panel's BOSS row forces any move, jumps
+taken by move. Pass `mire` after the seed count to run just the Swamp
+boss checks. In the game, the dev panel's BOSS row forces any move, jumps
 to a phase, freezes the AI, draws hurtboxes and hitboxes, or kills the boss.
 
 ## Map generator (no Unity needed)
