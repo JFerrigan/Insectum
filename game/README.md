@@ -69,7 +69,8 @@ second and third phases begin, and its name card shows while it rears up
 at the start. Every attack has a warning first:
 
 - **Charge:** it scrapes a foot, crouches low and its jaws glow amber, with
-  dust marking the line. Jump it, pogo off its back, or get up a terrace.
+  dust marking the line. Only its head and jaws hurt while it charges, so
+  back off and jump over them, pogo off its back, or get up a terrace.
   If it reaches the end of the floor, its jaws stick in the terrace for a
   moment. That's the safe time to hit it, and its head takes double damage.
 - **Snap:** it snaps at anyone close in front.
@@ -82,8 +83,11 @@ at the start. Every attack has a warning first:
   beneath.
 
 Touching it hurts, except while it's stuck or recovering, when it looks
-dull. Its jaws are armored, so hits there clank (a downward strike still
-bounces off them). When it dies it falls to its knees, then onto its belly,
+dull. Its hurtboxes are fitted to each pose's art and reach a little past it,
+while contact stays a little inside, so a hit that looks like it lands does.
+`boss_forest_pixels.py` prints the fitted circles and draws them over the art
+in `Builds/BossPreviews/forest_hurtboxes.png`. Its jaws are armored, so hits
+there clank (a downward strike still bounces off them). When it dies it falls to its knees, then onto its belly,
 before the reward appears. Take the reward to enter the four Swamp levels.
 Watch for the green bubbles before a gas vent opens. The mud plug under a Swamp
 chest vault costs Worm five energy. Reed Flask

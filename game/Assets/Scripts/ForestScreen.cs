@@ -363,7 +363,7 @@ namespace Insectum.Game
 
             Boss brain = boss.Brain;
             float intro = brain?.IntroProgress ?? Mathf.Clamp01((Time.time - session.LevelStartTime) / 2f);
-            DrawNameCard(boss, brain, intro);
+            DrawNameCard(boss, intro);
             if (boss.DeathFinished && barGoneTime < 0f)
                 barGoneTime = now;
             float leave = barGoneTime < 0f ? 0f : Mathf.Clamp01((now - barGoneTime - 1f) / 0.4f);
@@ -391,7 +391,8 @@ namespace Insectum.Game
 
         private static readonly float[] PhaseMarks = { 2f / 3f, 1f / 3f };
 
-        private static void DrawNameCard(LevelEnemy boss, Boss brain, float intro)
+        // The boss's name, large, while it makes its entrance. Just the name: no tag line.
+        private static void DrawNameCard(LevelEnemy boss, float intro)
         {
             if (intro >= 1f)
                 return;
@@ -404,19 +405,14 @@ namespace Insectum.Game
             int y = 52 - Mathf.RoundToInt((1f - Mathf.Clamp01(intro * 5f)) * 6f);
             Center(name, 161, y + 2, ink, 2);
             Center(name, 160, y, color, 2);
-            string epithet = brain?.Epithet;
-            if (string.IsNullOrEmpty(epithet))
-                return;
-            epithet = epithet.ToUpperInvariant();
             Color gold = Gold;
             gold.a = alpha;
             int lineWidth = TextWidth(name, 2);
             Fill(new Rect(160 - lineWidth / 2, y + 18, lineWidth, 1), gold);
-            Center(epithet, 161, y + 23, ink);
-            Center(epithet, 160, y + 22, gold);
         }
 
-        // Dev overlay: hurtboxes green (armor grey, weak points yellow) and live hitboxes red.
+        // Dev overlay: hurtboxes green (armor grey, weak points yellow), the contact outline pink while
+        // touching hurts, and live hitboxes pink boxes.
         private static void DrawHitboxes(Camera camera, Boss brain)
         {
             if (brain == null)
@@ -427,9 +423,8 @@ namespace Insectum.Game
                 return new Vector2(view.x * PixelViewport.Width, (1f - view.y) * PixelViewport.Height);
             }
             float pixelsPerUnit = PixelViewport.Width / (2f * PixelViewport.WorldHalfWidth);
-            foreach (Hurtbox part in brain.Parts)
+            void Circle(Hurtbox part, Color color)
             {
-                Color color = part.Armored ? Muted : part.Multiplier > 1 ? Gold : Mint;
                 Vector2 center = ToScreen(part.Center);
                 float radius = part.Radius * pixelsPerUnit;
                 for (int i = 0; i < 24; i++)
@@ -438,6 +433,11 @@ namespace Insectum.Game
                     Fill(new Rect(Mathf.Round(center.x + Mathf.Cos(angle) * radius), Mathf.Round(center.y + Mathf.Sin(angle) * radius), 1, 1), color);
                 }
             }
+            foreach (Hurtbox part in brain.Parts)
+                Circle(part, part.Armored ? Muted : part.Multiplier > 1 ? Gold : Mint);
+            if (brain.ContactHurts)
+                foreach (Hurtbox part in brain.Body)
+                    Circle(part, Pink);
             foreach (BossHitbox hitbox in brain.Hitboxes)
             {
                 Vector2 a = ToScreen(new Vector2(hitbox.Area.xMin, hitbox.Area.yMax));

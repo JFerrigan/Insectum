@@ -87,8 +87,13 @@ namespace Insectum.Game
         // Telegraphs last at least this long before a hitbox goes live.
         internal const int MinimumWarningSteps = 24;
         private const int PogoWindowSteps = 90;
+        // Hurtboxes reach a little past the art (3 px), so a hit that looks like it lands does. Contact and
+        // body hitboxes stay a little inside it, so brushing the edge of the art doesn't hurt.
+        internal const float HurtPadding = 3f / 16f;
+        internal const float ContactShrink = 0.85f;
 
         private readonly List<Hurtbox> parts = new();
+        private readonly List<Hurtbox> body = new();
         private readonly List<BossHitbox> hitboxes = new();
         private readonly List<BossCue> cues = new();
         private SeededRandom random;
@@ -100,7 +105,6 @@ namespace Insectum.Game
         internal DamageReceiver Damage { get; }
         internal HealthPool Health => Damage.Health;
         internal abstract string Name { get; }
-        internal abstract string Epithet { get; }
         // Move names for the dev panel, in the order ForceMove takes them.
         internal abstract IReadOnlyList<string> MoveNames { get; }
         // The ground point under the body's center, or that point carried into the air.
@@ -108,7 +112,10 @@ namespace Insectum.Game
         internal int Facing { get; private protected set; } = -1;
         internal int Phase { get; private set; } = 1;
         internal Mode State { get; private set; } = Mode.Intro;
+        // Where strikes land: the art's circles, padded.
         internal IReadOnlyList<Hurtbox> Parts => parts;
+        // Where touching the boss hurts: the art's circles, shrunk.
+        internal IReadOnlyList<Hurtbox> Body => body;
         internal IReadOnlyList<BossHitbox> Hitboxes => hitboxes;
         // Cues pile up until the view (or a headless caller) takes them, so a clank from the player's strike
         // before this step isn't lost.
@@ -138,6 +145,7 @@ namespace Insectum.Game
         {
             steps++;
             parts.Clear();
+            body.Clear();
             hitboxes.Clear();
             ContactHurts = false;
             ShakeSteps = 0;
@@ -226,9 +234,14 @@ namespace Insectum.Game
             return weights.Length - 1;
         }
 
-        // A part at a point given in the boss's own frame: x forward along its facing, y up from Position.
-        private protected void AddPart(float x, float y, float radius, int multiplier = 1, bool armored = false) =>
-            parts.Add(new Hurtbox(Position + new Vector2(x * Facing, y), radius, multiplier, armored));
+        // A circle fitted to the art, at a point in the boss's own frame: x forward along its facing, y up
+        // from Position. It becomes a padded hurtbox and a shrunk contact circle.
+        private protected void AddPart(float x, float y, float radius, int multiplier = 1, bool armored = false)
+        {
+            Vector2 center = Position + new Vector2(x * Facing, y);
+            parts.Add(new Hurtbox(center, radius + HurtPadding, multiplier, armored));
+            body.Add(new Hurtbox(center, radius * ContactShrink, multiplier, armored));
+        }
 
         // A hitbox spanning x0..x1 forward and y0..y1 up, in the boss's own frame.
         private protected void AddHitbox(float x0, float x1, float y0, float y1, Vector2 knockback)
@@ -242,12 +255,18 @@ namespace Insectum.Game
         // A hitbox in world space.
         private protected void AddWorldHitbox(Rect area, Vector2 knockback) => hitboxes.Add(new BossHitbox(area, knockback));
 
-        // Every part becomes a hitbox with this knockback away from the boss's facing side.
-        private protected void PartsHurt(Vector2 knockback)
+        // The body hurts, as boxes inside its contact circles, with this knockback. A ram passes only the
+        // parts at least `fromForward` ahead of the boss's middle.
+        private protected void PartsHurt(Vector2 knockback, float fromForward = float.NegativeInfinity)
         {
-            foreach (Hurtbox part in parts)
-                hitboxes.Add(new BossHitbox(Rect.MinMaxRect(part.Center.x - part.Radius * 0.8f, part.Center.y - part.Radius * 0.8f,
-                    part.Center.x + part.Radius * 0.8f, part.Center.y + part.Radius * 0.8f), knockback));
+            foreach (Hurtbox part in body)
+            {
+                if ((part.Center.x - Position.x) * Facing < fromForward)
+                    continue;
+                float half = part.Radius * 0.9f;
+                hitboxes.Add(new BossHitbox(Rect.MinMaxRect(part.Center.x - half, part.Center.y - half,
+                    part.Center.x + half, part.Center.y + half), knockback));
+            }
         }
 
         private protected void SetContact(bool hurts) => ContactHurts = hurts;
@@ -278,7 +297,7 @@ namespace Insectum.Game
 
             if (!ContactHurts)
                 return;
-            foreach (Hurtbox part in parts)
+            foreach (Hurtbox part in body)
             {
                 float reach = part.Radius + radius;
                 Vector2 offset = center - part.Center;

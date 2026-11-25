@@ -32,6 +32,8 @@ namespace Insectum.Game
             Stand,
             Crouch,
             Rear,
+            Air,
+            Dive,
             Dash,
             Down
         }
@@ -116,7 +118,6 @@ namespace Insectum.Game
         }
 
         internal override string Name => "Old Oakhorn";
-        internal override string Epithet => "Elder of the Hollow";
         internal override IReadOnlyList<string> MoveNames => Moves;
 
         internal Act CurrentAct { get; private set; }
@@ -157,11 +158,13 @@ namespace Insectum.Game
         internal Pose CurrentPose => CurrentAct switch
         {
             Act.ChargeRun or Act.ChargeSkid or Act.Stuck or Act.Wrench => Pose.Crouch,
-            Act.ChargeWindup => ActProgress > 0.55f ? Pose.Crouch : Pose.Stand,
+            Act.ChargeWindup => ActProgress > 0.66f ? Pose.Crouch : Pose.Stand,
             Act.RearSnap or Act.Roar => Pose.Rear,
             Act.IntroRoar => ActProgress is > 0.2f and < 0.8f ? Pose.Rear : Pose.Stand,
-            Act.RearWindup => ActProgress > 0.6f ? Pose.Rear : Pose.Stand,
             Act.RearRecover => ActProgress < 0.5f ? Pose.Rear : Pose.Stand,
+            Act.WingOpen => ActProgress >= 0.5f ? Pose.Air : Pose.Stand,
+            Act.LiftOff or Act.HoverTrack or Act.DiveLock or Act.GoreRise or Act.SoftDrop => Pose.Air,
+            Act.DiveDrop => Pose.Dive,
             Act.GoreAim or Act.GoreDash => Pose.Dash,
             Act.DeathFall or Act.DeathKneel or Act.DeathPause or Act.DeathDrop or Act.DeathFade => Pose.Down,
             _ => Pose.Stand
@@ -623,34 +626,67 @@ namespace Insectum.Game
         }
 
         // ---------- body ----------
+        // Circles fitted to each pose's frame by ArtSource/boss_forest_pixels.py (it prints these, and draws
+        // them over the art in Builds/BossPreviews/forest_hurtboxes.png): shell, thorax, head, then the
+        // armored jaws, then the lifted wing case in poses that fly.
         private void PoseParts()
         {
             int head = CurrentAct == Act.Stuck ? 2 : 1;
             switch (CurrentPose)
             {
+                case Pose.Stand:
+                    AddPart(-1.94f, 1.5f, 0.72f);
+                    AddPart(-0.75f, 1.56f, 0.78f);
+                    AddPart(0.44f, 1.62f, 0.69f);
+                    AddPart(1.38f, 1.69f, 0.62f, head);
+                    AddPart(2.25f, 1.69f, 0.38f, armored: true);
+                    AddPart(3.19f, 2.06f, 0.44f, armored: true);
+                    break;
                 case Pose.Crouch:
-                    AddPart(2.35f, 0.45f, 0.45f, armored: true);
-                    AddPart(1.35f, 0.6f, 0.5f, head);
-                    AddPart(0.35f, 0.75f, 0.6f);
-                    AddPart(-1.25f, 0.75f, 0.6f);
+                    AddPart(-1.88f, 0.63f, 0.72f);
+                    AddPart(-0.69f, 0.59f, 0.78f);
+                    AddPart(0.49f, 0.55f, 0.69f);
+                    AddPart(1.42f, 0.49f, 0.62f, head);
+                    AddPart(2.28f, 0.39f, 0.38f, armored: true);
+                    AddPart(3.24f, 0.7f, 0.44f, armored: true);
                     break;
                 case Pose.Rear:
-                    AddPart(1.1f, 3.5f, 0.5f, armored: true);
-                    AddPart(0.95f, 2.65f, 0.55f);
-                    AddPart(0.45f, 1.8f, 0.75f);
-                    AddPart(-0.85f, 0.95f, 0.9f);
+                    AddPart(-2.31f, 1.33f, 0.72f);
+                    AddPart(-1.41f, 2.11f, 0.78f);
+                    AddPart(-0.51f, 2.89f, 0.69f);
+                    AddPart(0.15f, 3.57f, 0.62f, head);
+                    AddPart(0.73f, 4.22f, 0.38f, armored: true);
+                    AddPart(1.08f, 5.17f, 0.44f, armored: true);
+                    break;
+                case Pose.Air:
+                    AddPart(-1.94f, 1.5f, 0.72f);
+                    AddPart(-0.75f, 1.56f, 0.78f);
+                    AddPart(0.44f, 1.62f, 0.69f);
+                    AddPart(1.38f, 1.71f, 0.62f, head);
+                    AddPart(2.25f, 1.77f, 0.38f, armored: true);
+                    AddPart(3.16f, 2.21f, 0.44f, armored: true);
+                    AddPart(-1.03f, 2.95f, 0.62f);
+                    AddPart(-1.67f, 3.74f, 0.44f);
+                    break;
+                case Pose.Dive:
+                    AddPart(-1.7f, 1.48f, 0.72f);
+                    AddPart(-0.57f, 1.09f, 0.78f);
+                    AddPart(0.55f, 0.7f, 0.69f);
+                    AddPart(1.4f, 0.36f, 0.62f, head);
+                    AddPart(2.19f, 0.01f, 0.38f, armored: true);
+                    AddPart(3.19f, 0.04f, 0.44f, armored: true);
+                    AddPart(-0.32f, 2.49f, 0.62f);
+                    AddPart(-0.61f, 3.45f, 0.44f);
                     break;
                 case Pose.Dash:
-                    AddPart(2.45f, 1f, 0.4f, armored: true);
-                    AddPart(1.45f, 1f, 0.5f);
-                    AddPart(0.35f, 1f, 0.6f);
-                    AddPart(-1.25f, 1f, 0.65f);
-                    break;
-                case Pose.Stand:
-                    AddPart(2.3f, 0.85f, 0.5f, armored: true);
-                    AddPart(1.35f, 1.05f, 0.55f);
-                    AddPart(0.35f, 1.25f, 0.75f);
-                    AddPart(-1.25f, 1.2f, 0.95f);
+                    AddPart(-1.94f, 1.12f, 0.72f);
+                    AddPart(-0.75f, 1.19f, 0.78f);
+                    AddPart(0.44f, 1.25f, 0.69f);
+                    AddPart(1.37f, 1.3f, 0.62f, head);
+                    AddPart(2.23f, 1.37f, 0.38f, armored: true);
+                    AddPart(3.1f, 1.89f, 0.44f, armored: true);
+                    AddPart(-1.03f, 2.58f, 0.62f);
+                    AddPart(-1.67f, 3.36f, 0.44f);
                     break;
             }
         }
@@ -662,7 +698,8 @@ namespace Insectum.Game
             {
                 case Act.ChargeRun:
                 case Act.ChargeSkid:
-                    PartsHurt(new Vector2(Facing * 9f, 4.5f));
+                    // Only the head and jaws ram; the thorax and shell behind them pass under a jump or a pogo.
+                    PartsHurt(new Vector2(Facing * 9f, 4.5f), fromForward: 1f);
                     break;
                 case Act.Snap:
                     AddHitbox(1.5f, 3.5f, 0.1f, 2f, new Vector2(Facing * 6f, 4f));

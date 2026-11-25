@@ -17,6 +17,7 @@ internal static class BossCheck
 
     internal static int Run(string[] args)
     {
+
         int seeds = args.Length > 1 && int.TryParse(args[1], out int parsed) ? parsed : 12;
         CheckHurtboxes();
         for (uint seed = 1; seed <= seeds; seed++)
@@ -103,6 +104,14 @@ internal static class BossCheck
                 Require(beetle.Hitboxes.Count == 0, $"seed {seed}: a hitbox was live during {act}");
             if (beetle.Opening)
                 Require(!beetle.ContactHurts, $"seed {seed}: contact hurt during the opening {act}");
+            // Hits land a little past the art and contact stays a little inside it.
+            for (int i = 0; i < beetle.Body.Count; i++)
+                Require(beetle.Parts[i].Radius > beetle.Body[i].Radius + 0.15f,
+                    $"seed {seed}: a hurtbox is not bigger than its contact circle during {act}");
+            // A charge stays low enough to jump: its body hitboxes top out under a jump's clearance.
+            if (act == StagBeetle.Act.ChargeRun)
+                foreach (BossHitbox hitbox in beetle.Hitboxes)
+                    Require(hitbox.Area.yMax <= Arena.FloorY + 1.45f, $"seed {seed}: the charge stands {hitbox.Area.yMax - Arena.FloorY:F2} tall");
             Vector2 at = beetle.Position;
             Require(Mathf.Abs(at.x) <= 16f && at.y >= Arena.FloorY - 0.01f && at.y + 3f <= Arena.CeilingY,
                 $"seed {seed}: the beetle left the hall at {at} during {act}");
@@ -268,10 +277,16 @@ internal static class BossCheck
             {
                 case StagBeetle.Act.ChargeRun:
                 case StagBeetle.Act.ChargeSkid:
-                    jump = (position.x - boss.x) * beetle.Facing > 0f && (position.x - boss.x) * beetle.Facing < 4.6f;
+                    // Jump when the jaw tips, 3.7 units ahead of the middle, are under 2 units away.
+                    jump = (position.x - boss.x) * beetle.Facing > 0f && (position.x - boss.x) * beetle.Facing < 5.8f;
+                    // Once up, cross over toward its back rather than running ahead of the jaws.
+                    if (!Grounded)
+                        move = -beetle.Facing;
                     break;
                 case StagBeetle.Act.ChargeWindup:
-                    move = distance < 4f ? -toward : 0;
+                    // Back off while it winds up; if there's no room, jump on the white flash.
+                    move = distance < 6.5f && Mathf.Abs(position.x) < 16.5f ? -toward : 0;
+                    jump = beetle.CurrentGlow == StagBeetle.Glow.Flash && (position.x - boss.x) * beetle.Facing is > 0f and < 6.5f;
                     break;
                 case StagBeetle.Act.SnapWindup:
                 case StagBeetle.Act.Snap:
@@ -305,7 +320,8 @@ internal static class BossCheck
                 if (Mathf.Abs(side) < 1.1f)
                     move = side < 0f ? -1 : 1;
             }
-            if (!Grounded && velocity.y < 0f && !beetle.Opening && distance < 3.2f)
+            bool charging = act is StagBeetle.Act.ChargeRun or StagBeetle.Act.ChargeSkid;
+            if (!Grounded && velocity.y < 0f && !beetle.Opening && !charging && distance < 3.2f)
                 move = -toward;
             foreach (StagBeetle.Shockwave wave in beetle.Shockwaves)
             {

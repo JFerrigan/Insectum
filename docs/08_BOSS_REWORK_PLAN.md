@@ -14,6 +14,9 @@ are not started. What changed from this plan while building:
   the platforms, it still rams at your height.
 - **Headless check:** `tools/bosscheck.sh` runs boss logic without Unity: warnings, openings, bounds, air
   time and scripted fights.
+- **Hurtboxes:** fitted to each pose's art by the art script and padded 3 px past it, so hits that look
+  like they land do. Contact uses circles at 85 % of the art. Charges ram with the head and jaws only;
+  the beetle's art is 6.3 units long, too long to jump whole.
 - **Not yet run:** Unity's batch verification, with the new `Editor/BossFightBot.cs`. The editor had the
   project open.
 **Scope:** Replace all five bosses with new, world-specific fights: a shared boss framework, a full-screen
@@ -135,8 +138,8 @@ New files in `Assets/Scripts/Bosses/`.
   pixel font. Fill color is red; the bar flashes white for 2 frames on each hit.
 - **Chip trail:** after a hit the lost section shows pale and drains to the new value over about 0.5 s.
 - **Phase ticks:** notches at 66 % and 33 %. The tick dims once that phase begins.
-- **Name card:** during the intro, a large name and an epithet line ("OLD OAKHORN — Elder of the Hollow")
-  fade in at the center of the screen, hold 1.5 s, then fade out.
+- **Name card:** during the intro, the boss's name, large, with a thin gold rule under it, fades in at the
+  center of the screen, holds 1.5 s, then fades out. Just the name: no boss gets an epithet or tag line.
 - The bar appears when the intro starts and slides away 1 s after death. The pause screen hides it.
 - The bar reads `HealthPool`, so it works for the old bosses as soon as Step 0 lands.
 

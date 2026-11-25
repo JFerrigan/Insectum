@@ -34,10 +34,16 @@ namespace Insectum.Game.Editor
                     case StagBeetle.Act.ChargeRun:
                     case StagBeetle.Act.ChargeSkid:
                         float ahead = (body.x - at.x) * beetle.Facing;
-                        jump = ahead > 0f && ahead < 4.6f;
+                        // Jump when the jaw tips, 3.7 units ahead of the middle, are under 2 units away.
+                        jump = ahead > 0f && ahead < 5.8f;
+                        // Once up, cross over toward its back rather than running ahead of the jaws.
+                        if (!grounded)
+                            move = -beetle.Facing;
                         break;
                     case StagBeetle.Act.ChargeWindup:
-                        move = distance < 4f ? -toward : 0;
+                        // Back off while it winds up; if there's no room, jump on the white flash.
+                        move = distance < 6.5f && Mathf.Abs(body.x) < 16f ? -toward : 0;
+                        jump = beetle.CurrentGlow == StagBeetle.Glow.Flash && (body.x - at.x) * beetle.Facing is > 0f and < 6.5f;
                         break;
                     case StagBeetle.Act.SnapWindup:
                     case StagBeetle.Act.Snap:
@@ -69,7 +75,8 @@ namespace Insectum.Game.Editor
                     if (Mathf.Abs(side) < 1.1f)
                         move = side < 0f ? -1 : 1;
                 }
-                if (!grounded && session.Motor.Body.linearVelocity.y < 0f && !beetle.Opening && distance < 3.2f)
+                bool charging = act is StagBeetle.Act.ChargeRun or StagBeetle.Act.ChargeSkid;
+                if (!grounded && session.Motor.Body.linearVelocity.y < 0f && !beetle.Opening && !charging && distance < 3.2f)
                     move = -toward;
                 foreach (StagBeetle.Shockwave wave in beetle.Shockwaves)
                 {

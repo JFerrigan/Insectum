@@ -88,9 +88,11 @@ STAND_FEET = [(24, 0), (3, 0), (-29, 0), (28, 0), (8, 0), (-24, 0)]
 
 
 class Beetle:
-    def __init__(self, pose, mask=False):
+    def __init__(self, pose, mask=False, shell_only=False):
         self.p = pose
         self.mask = mask
+        # Draw only the solid body (no legs or wing membranes), for measuring hurtbox coverage.
+        self.shell_only = shell_only
         self.image = Image.new("RGBA", (CELL_W, CELL_H), (0, 0, 0, 0))
         self.draw = ImageDraw.Draw(self.image)
 
@@ -245,17 +247,20 @@ class Beetle:
         feet = p.feet or STAND_FEET
         far, near = feet[3:], feet[:3]
         hips = [(10, -3), (1, -3), (-12, -3)]
-        for hip, foot in zip(hips, far):
-            self.leg((hip[0] + 2, hip[1] + 2), foot, LEG_FAR)
-        self.membrane(far=True)
+        if not self.shell_only:
+            for hip, foot in zip(hips, far):
+                self.leg((hip[0] + 2, hip[1] + 2), foot, LEG_FAR)
+            self.membrane(far=True)
         if p.wings > 0:
             self.abdomen()
         self.thorax()
         self.elytra()
-        self.membrane(far=False)
+        if not self.shell_only:
+            self.membrane(far=False)
         self.head_and_jaws()
-        for hip, foot in zip(hips, near):
-            self.leg(hip, foot, LEG)
+        if not self.shell_only:
+            for hip, foot in zip(hips, near):
+                self.leg(hip, foot, LEG)
         return self.image
 
 
@@ -438,7 +443,86 @@ def contact_sheet(table, atlas):
     sheet.save(PREVIEWS / "forest.png")
 
 
+# ---------- hurtboxes ----------
+# StagBeetle's four body poses, each fitted to one representative frame.
+HURT_POSES = (("Stand", 0), ("Crouch", 18), ("Rear", 36), ("Air", 43), ("Dive", 47), ("Dash", 52))
+# Circles along the body in each part's own frame: (part, point, radius in pixels, armored).
+PARTS = (
+    ("body", (-31, 4), 11.5, False),
+    ("body", (-12, 5), 12.5, False),
+    ("body", (7, 6), 11, False),
+    ("head", (22, 7), 10, False),
+    ("jaw", (36, 7), 6, True),
+    ("jaw", (51, 13), 7, True),
+    # A lifted wing case, in poses that fly.
+    ("case", (-20, 7), 10, False),
+    ("case", (-36, 5), 7, False),
+)
+# StagBeetle pads each hurtbox this far past the art, and keeps contact this much inside it.
+PADDING = 3
+CONTACT = 0.85
+
+
+def fitted_parts(pose):
+    """The body circles for a pose, in world units from the boss's Position: (x, y, radius, armored)."""
+    beetle = Beetle(pose)
+    parts = []
+    for part, point, radius, armored in PARTS:
+        if part == "body":
+            x, y = beetle.body(point)
+        elif part == "head":
+            x, y = beetle.head_point(point)
+        elif part == "case":
+            if pose.wings < 0.5:
+                continue
+            x, y = beetle.body(rotate(point, (0, 14), -pose.wings * 58))
+        else:
+            x, y = beetle.jaw_point(point, True)
+        parts.append(((x - CENTER) / 16, (GROUND - y) / 16, radius / 16, armored))
+    return parts
+
+
+def hurtbox_sheet(table, atlas):
+    """Prints StagBeetle's fitted parts and draws them over their frames, with how much of the solid
+    body the padded hurtboxes cover (it should be all of it)."""
+    poses = [pose for _, group in table for pose in group]
+    scale = 4
+    sheet = Image.new("RGBA", (CELL_W * scale * 2, CELL_H * scale * 3 + 20), (28, 22, 40, 255))
+    draw = ImageDraw.Draw(sheet)
+    draw.text((6, 4), "Hurtboxes: green padded (hits land), grey armored jaws, red contact (touching hurts)",
+              fill=(255, 232, 187, 255))
+    for slot, (name, index) in enumerate(HURT_POSES):
+        parts = fitted_parts(poses[index])
+        print(f"{name}:")
+        for x, y, r, armored in parts:
+            print(f"    AddPart({x:.2f}f, {y:.2f}f, {r:.2f}f{', armored: true' if armored else ''});")
+        frame = atlas.crop((index % COLUMNS * CELL_W, index // COLUMNS * CELL_H,
+                            index % COLUMNS * CELL_W + CELL_W, index // COLUMNS * CELL_H + CELL_H))
+        ox, oy = slot % 2 * CELL_W * scale, 20 + slot // 2 * CELL_H * scale
+        sheet.alpha_composite(frame.resize((CELL_W * scale, CELL_H * scale), Image.NEAREST), (ox, oy))
+        shell = Beetle(poses[index], shell_only=True).render()
+        solid = covered = 0
+        for py in range(CELL_H):
+            for px in range(CELL_W):
+                if shell.getpixel((px, py))[3] < 128:
+                    continue
+                solid += 1
+                wx, wy = (px + 0.5 - CENTER) / 16, (GROUND - py - 0.5) / 16
+                if any((wx - x) ** 2 + (wy - y) ** 2 <= (r + PADDING / 16) ** 2 for x, y, r, _ in parts):
+                    covered += 1
+        print(f"    // padded hurtboxes cover {covered / solid:.0%} of the solid body")
+        for x, y, r, armored in parts:
+            cx, cy = ox + (CENTER + x * 16) * scale, oy + (GROUND - y * 16) * scale
+            hurt = (r * 16 + PADDING) * scale
+            touch = r * 16 * CONTACT * scale
+            draw.ellipse((cx - hurt, cy - hurt, cx + hurt, cy + hurt), outline=(150, 150, 160, 255) if armored else (110, 230, 140, 255), width=2)
+            draw.ellipse((cx - touch, cy - touch, cx + touch, cy + touch), outline=(240, 80, 80, 255), width=1)
+        draw.text((ox + 6, oy + 4), f"{name} ({covered / solid:.0%} covered)", fill=(255, 232, 187, 255))
+    sheet.save(PREVIEWS / "forest_hurtboxes.png")
+
+
 if __name__ == "__main__":
     effects()
     table, atlas = build()
     contact_sheet(table, atlas)
+    hurtbox_sheet(table, atlas)
